@@ -8,28 +8,31 @@
     전관 사이니지 위쪽에 띄우는 셔틀 지도 (화면 전용: 버튼 없음).
     카카오 지도 키는 ds5ezp.github.io 에서만 허용되므로 이 GitHub Pages 주소에서 열어야 함.
     데이터: 승객 화면과 같은 공개 자료 (노선 시트, 공개 위치 publicLiveStatus). 쓰기 없음.
+    - 실시간 위치: 마지막 위치가 3분 안이고 운행 중인 차량만 표시 (실선 테두리)
+    - 시간표 추정: 실시간 위치가 없는 회차는 노선표 시간으로 현재 위치를 추정 (점선 테두리)
   -->
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f01d8615df654cbc9c30cca0069570ba"></script>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020; font-family: 'Pretendard', 'Malgun Gothic', sans-serif; }
     #map { position: absolute; inset: 0; }
-    #legend { position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(25, 31, 40, .88); color: #fff; padding: 12px 16px; border-radius: 16px; font-size: 22px; font-weight: 700; max-width: 60%; }
+    #legend { position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(25, 31, 40, .88); color: #fff; padding: 12px 16px; border-radius: 16px; font-size: 22px; font-weight: 700; max-width: 62%; }
     #summary { margin-bottom: 6px; }
     .course-row { display: flex; align-items: center; gap: 8px; white-space: nowrap; line-height: 1.5; }
     .dot { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; }
+    .eta-row { font-size: 18px; font-weight: 600; color: #e2e8f0; white-space: nowrap; line-height: 1.5; padding-left: 24px; }
     #stamp { position: absolute; bottom: 8px; right: 12px; z-index: 10; color: #cbd5e1; font-size: 16px; background: rgba(25, 31, 40, .7); padding: 4px 10px; border-radius: 8px; }
-    #notice { position: absolute; left: 0; right: 0; bottom: 0; z-index: 12; display: none; background: #dc2626; color: #fff; font-size: 26px; font-weight: 800; padding: 14px 20px; }
     .bus { display: flex; flex-direction: column; align-items: center; }
     .bus-icon { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; font-size: 18px; }
     .bus-icon.delayed { border-color: #fd7e14; }
+    .bus-icon.est { border-style: dashed; opacity: .9; }
     .bus-label { margin-top: 3px; background: #fff; color: #191f28; padding: 1px 7px; border-radius: 7px; font-size: 14px; font-weight: 800; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+    .bus-label.est { background: #f1f5f9; color: #334155; }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  <div id="legend"><div id="summary">불러오는 중…</div><div id="courseList"></div></div>
+  <div id="legend"><div id="summary">불러오는 중…</div><div id="courseList"></div><div id="etaList"></div></div>
   <div id="stamp"></div>
-  <div id="notice"></div>
 
   <script>
     const FIREBASE_URL = 'https://gjcwbus-default-rtdb.asia-southeast1.firebasedatabase.app';
@@ -39,24 +42,42 @@
     const GRAY = '#6c757d';
     const LIVE_REFRESH_MS = 15000;
     const ROUTE_RETRY_MS = 30000;
+    const GPS_STALE_MS = 3 * 60 * 1000;   // 마지막 위치가 이 시간보다 오래되면 실시간 차량으로 보지 않음
+    const GPS_DELAY_MS = 45 * 1000;       // 이 시간을 넘기면 "신호 지연"
+    const HOLIDAYS = ['1-1', '3-1', '5-5', '6-6', '8-15', '10-3', '10-9', '12-25'];   // 승객 화면과 같은 목록
 
     let map = null;
-    let courses = [];          // { key, norm, color, count }
-    let routeLines = [];       // 노선 선 (지도에서 한 번 그린 뒤 유지)
-    let busOverlays = [];      // 차량 표시 (새로고침 때마다 다시 그림)
+    let routeData = {};        // { 코스명: { stops: [{name, lat, lng, times: {회차: 분}}], rounds: [회차명] } }
+    let courses = [];          // { key, norm, color }
+    let routeLines = [];
+    let busOverlays = [];
     let fitted = false;
 
     function esc(v) {
       return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
-    // 코스 이름 비교용: 공백 제거
+    // 코스·회차 이름 비교용: 공백 제거
     function norm(name) {
       return String(name || '').replace(/\s+/g, '');
     }
 
     function kstTime(ms) {
       return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ms));
+    }
+
+    // 지금 시각을 하루 기준 분으로 (KST)
+    function nowKstMinutes() {
+      const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+        .format(new Date()).split(':').map(Number);
+      return p[0] * 60 + p[1] + p[2] / 60;
+    }
+
+    // 오늘이 주말·공휴일이면 셔틀이 다니지 않음 (승객 화면과 같은 기준)
+    function isNonOperatingDayKst() {
+      const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+      if (d.getDay() === 0 || d.getDay() === 6) return true;
+      return HOLIDAYS.includes((d.getMonth() + 1) + '-' + d.getDate());
     }
 
     // 구글 시트는 JSONP(스크립트 태그)로 읽음: 승객 화면과 같은 방식
@@ -92,19 +113,28 @@
       return { byNo, byName };
     }
 
-    // 노선데이터: 코스별로 정류장 순서대로 (경유지는 선 계산에서 뺌)
+    // "08:30" → 510 (분). 미운행이거나 시간이 없으면 null
+    function timeToMinutes(text) {
+      const m = String(text || '').match(/\b(\d{1,2}):(\d{2})\b/);
+      return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    }
+
+    // 노선데이터: 코스별 정류장 순서, 정류장마다 회차별 시간 (경유지는 뺌)
     function parseRoutes(json, stations) {
       const cols = json?.table?.cols || [];
       const rows = json?.table?.rows || [];
       const idx = { course: 0, name: 1, desc: -1, stopNo: -1 };
+      const roundCols = [];
       cols.forEach((col, i) => {
         const l = String(col.label || '').trim();
         if (l.includes('코스')) idx.course = i;
         else if (l.includes('정류장명')) idx.name = i;
         else if (l.includes('설명')) idx.desc = i;
         else if (l.includes('번호')) idx.stopNo = i;
+        else if (l.includes('회')) roundCols.push({ index: i, label: l });
       });
-      const routes = {};
+
+      const result = {};
       rows.forEach(r => {
         const c = r?.c || [];
         const get = i => (i >= 0 && c[i]) ? String(c[i].f || c[i].v || '').trim() : '';
@@ -115,9 +145,16 @@
         const no = get(idx.stopNo).replace(/,/g, '');
         const st = (no && stations.byNo[no]) || stations.byName[name];
         if (!st) return;
-        (routes[course] = routes[course] || []).push({ lat: st.lat, lng: st.lng });
+
+        const times = {};
+        roundCols.forEach(rc => {
+          const t = timeToMinutes(get(rc.index));
+          if (t !== null) times[rc.label] = t;
+        });
+        if (!result[course]) result[course] = { stops: [], rounds: roundCols.map(rc => rc.label) };
+        result[course].stops.push({ name, lat: st.lat, lng: st.lng, times });
       });
-      return routes;
+      return result;
     }
 
     // 도로를 따라가는 경로 (공개 경로 서버). 실패하면 정류장끼리 직선
@@ -147,16 +184,19 @@
 
     async function loadRoutes() {
       const [stationJson, routeJson] = await Promise.all([gvizJsonp('정류소목록'), gvizJsonp('노선데이터')]);
-      const routes = parseRoutes(routeJson, parseStations(stationJson));
-      const keys = Object.keys(routes).filter(k => routes[k].length > 1);
+      const parsed = parseRoutes(routeJson, parseStations(stationJson));
+      const keys = Object.keys(parsed).filter(k => parsed[k].stops.length > 1);
       if (!keys.length) throw new Error('노선 데이터가 비어 있습니다.');
 
       ensureMap();
-      const paths = await Promise.all(keys.map(k => roadPath(routes[k])));
+      const paths = await Promise.all(keys.map(k => roadPath(parsed[k].stops)));
+
+      routeData = {};
+      keys.forEach(k => { routeData[k] = parsed[k]; });
+      courses = keys.map((k, i) => ({ key: k, norm: norm(k), color: COURSE_COLORS[i % COURSE_COLORS.length] }));
 
       routeLines.forEach(l => l.setMap(null));
       routeLines = [];
-      courses = keys.map((k, i) => ({ key: k, norm: norm(k), color: COURSE_COLORS[i % COURSE_COLORS.length], count: 0 }));
       const bounds = new kakao.maps.LatLngBounds();
       keys.forEach((k, i) => {
         const color = courses[i].color;
@@ -174,8 +214,8 @@
       }
     }
 
-    // 지금 운행 중(45초 안 위치) 또는 신호 지연(30분 안 위치) 차량만
-    function runningBuses(live) {
+    // 실시간 위치: 운행 중(isOperating)이고 마지막 위치가 3분 안인 차량만
+    function liveBuses(live) {
       const now = Date.now();
       const list = [];
       Object.keys(live || {}).forEach(course => {
@@ -185,59 +225,116 @@
           const operating = pos.isOperating === true || pos.isOperating === 'true';
           if (!operating || !lat || !lng || !updated) return;
           const age = now - updated;
-          if (age >= 1800000) return;
+          if (age >= GPS_STALE_MS) return;
           list.push({
             course: course,
             round: pos.round || round,
             bus: pos.busNumber || '-',
             lat: lat,
             lng: lng,
-            delayed: age >= 45000
+            delayed: age >= GPS_DELAY_MS
           });
         });
       });
       return list;
     }
 
-    function drawBuses(buses) {
+    // 실시간 위치가 없는 회차만 노선표 시간으로 현재 위치를 추정
+    // 현재 시각이 두 정류장 사이에 있으면, 그 구간에서 지난 시간의 비율만큼 간 위치에 차를 둠
+    function scheduledBuses(live) {
+      if (isNonOperatingDayKst()) return [];
+      const now = nowKstMinutes();
+      const out = [];
+      Object.keys(routeData).forEach(key => {
+        const route = routeData[key];
+        route.rounds.forEach(round => {
+          const liveNow = live.some(b => norm(b.course) === norm(key) && norm(b.round) === norm(round));
+          if (liveNow) return;
+
+          const stops = route.stops.filter(s => s.times[round] !== undefined);
+          for (let i = 0; i < stops.length - 1; i++) {
+            const a = stops[i], b = stops[i + 1];
+            const ta = a.times[round], tb = b.times[round];
+            if (now >= ta && now < tb) {
+              const f = (now - ta) / (tb - ta);
+              out.push({
+                course: key,
+                round: round,
+                lat: a.lat + (b.lat - a.lat) * f,
+                lng: a.lng + (b.lng - a.lng) * f,
+                nextName: b.name,
+                nextTime: tb,
+                minsLeft: Math.max(1, Math.ceil(tb - now)),
+                estimated: true
+              });
+              break;
+            }
+          }
+        });
+      });
+      return out;
+    }
+
+    function minutesToHHMM(min) {
+      const h = Math.floor(min / 60), m = Math.round(min % 60);
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    }
+
+    function colorOf(courseName) {
+      const c = courses.find(x => x.norm === norm(courseName));
+      return c ? c.color : GRAY;
+    }
+
+    function drawBuses(live, estimated) {
       busOverlays.forEach(o => o.setMap(null));
-      busOverlays = buses.map(b => {
-        const c = courses.find(x => x.norm === norm(b.course));
-        const color = c ? c.color : GRAY;
+      const realOnes = live.map(b => {
         const el = document.createElement('div');
         el.className = 'bus';
         el.innerHTML =
-          '<div class="bus-icon' + (b.delayed ? ' delayed' : '') + '" style="background:' + color + '">🚌</div>' +
+          '<div class="bus-icon' + (b.delayed ? ' delayed' : '') + '" style="background:' + colorOf(b.course) + '">🚌</div>' +
           '<div class="bus-label">' + esc(b.course + ' · ' + b.bus) + '</div>';
-        const o = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(b.lat, b.lng), content: el, yAnchor: 0.5, xAnchor: 0.5 });
-        o.setMap(map);
-        return o;
+        return new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(b.lat, b.lng), content: el, yAnchor: 0.5, xAnchor: 0.5 });
       });
+      const estOnes = estimated.map(b => {
+        const el = document.createElement('div');
+        el.className = 'bus';
+        el.innerHTML =
+          '<div class="bus-icon est" style="background:' + colorOf(b.course) + '">🚌</div>' +
+          '<div class="bus-label est">' + esc(b.course + ' · ' + b.nextName + ' ' + minutesToHHMM(b.nextTime) + ' 도착 (약 ' + b.minsLeft + '분 전)') + '</div>';
+        return new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(b.lat, b.lng), content: el, yAnchor: 0.5, xAnchor: 0.5 });
+      });
+      busOverlays = realOnes.concat(estOnes);
+      busOverlays.forEach(o => o.setMap(map));
     }
 
-    function renderLegend(buses) {
-      courses.forEach(c => { c.count = 0; });
-      buses.forEach(b => {
-        const c = courses.find(x => x.norm === norm(b.course));
-        if (c) c.count++;
-      });
-      const delayed = buses.filter(b => b.delayed).length;
-      document.getElementById('summary').innerText = buses.length
-        ? '운행 중 ' + buses.length + '대' + (delayed ? ' · 신호 지연 ' + delayed + '대' : '')
-        : '지금 운행 중인 셔틀이 없습니다';
-      document.getElementById('courseList').innerHTML = courses.map(c =>
-        '<div class="course-row"><span class="dot" style="background:' + c.color + '"></span>' + esc(c.key) +
-        ' <span style="color:#cbd5e1;font-weight:600">' + c.count + '대</span></div>'
+    function renderLegend(live, estimated) {
+      const delayed = live.filter(b => b.delayed).length;
+      const total = live.length + estimated.length;
+      let summary = total ? '운행 중 ' + total + '대' : '지금 운행 중인 셔틀이 없습니다';
+      if (live.length) summary += ' (실시간 ' + live.length + '대' + (delayed ? ', 신호 지연 ' + delayed + '대' : '') + ')';
+      if (estimated.length) summary += ' · 시간표 추정 ' + estimated.length + '대';
+      document.getElementById('summary').innerText = summary;
+
+      document.getElementById('courseList').innerHTML = courses.map(c => {
+        const n = live.filter(b => norm(b.course) === c.norm).length + estimated.filter(b => norm(b.course) === c.norm).length;
+        return '<div class="course-row"><span class="dot" style="background:' + c.color + '"></span>' + esc(c.key) +
+          ' <span style="color:#cbd5e1;font-weight:600">' + n + '대</span></div>';
+      }).join('');
+
+      // 시간표 추정 차량의 다음 도착 정보 (최대 6줄)
+      document.getElementById('etaList').innerHTML = estimated.slice(0, 6).map(b =>
+        '<div class="eta-row">' + esc(b.course + ' · ' + b.nextName) + ' 도착 ' + minutesToHHMM(b.nextTime) +
+        ' <span style="color:#fde68a">(약 ' + b.minsLeft + '분 전)</span></div>'
       ).join('');
     }
 
     async function refreshLive() {
       try {
-        const res = await fetch(FIREBASE_URL + '/publicLiveStatus.json');
-        const live = await res.json();
-        const buses = runningBuses(live || {});
-        drawBuses(buses);
-        renderLegend(buses);
+        const live = await (await fetch(FIREBASE_URL + '/publicLiveStatus.json')).json();
+        const realtime = liveBuses(live || {});
+        const estimated = scheduledBuses(realtime);
+        drawBuses(realtime, estimated);
+        renderLegend(realtime, estimated);
         document.getElementById('stamp').innerText = kstTime(Date.now()) + ' 기준';
       } catch (e) {
         document.getElementById('summary').innerText = '위치를 불러오지 못했습니다';
