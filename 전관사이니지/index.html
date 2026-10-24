@@ -8,8 +8,8 @@
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Pretendard (대시보드와 같은 글꼴) -->
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 
     <style>
         body, html {
@@ -22,18 +22,12 @@
             color: #ffffff;
             user-select: none;
             -webkit-user-select: none;
-            font-family: 'Noto Sans KR', sans-serif;
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+            letter-spacing: -0.01em;
         }
 
         .logo-glow {
             filter: drop-shadow(0 0 35px rgba(56, 189, 248, 0.5));
-        }
-
-        .line-clamp-1 {
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 1;
         }
 
         .line-clamp-2 {
@@ -48,10 +42,6 @@
             display: -webkit-box;
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 10;
-        }
-
-        .title-box-shadow {
-            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
         }
 
         #slide-display, #fullscreen-display {
@@ -121,8 +111,8 @@
         </div>
     </div>
 
-    <!-- [1. 상단 70% 영역 : 미디어 플레이어] -->
-    <div id="topContainer" class="relative w-full bg-black overflow-hidden flex items-center justify-center border-b border-gray-800" style="height: 70vh;">
+    <!-- [1. 상단 미디어 영역 (남는 높이를 모두 사용)] -->
+    <div id="topContainer" class="relative w-full bg-black overflow-hidden flex items-center justify-center" style="flex: 1 1 auto; min-height: 0;">
         <div id="slide-display" class="w-full h-full flex items-center justify-center relative p-2 opacity-100">
             <div class="text-gray-400 text-2xl font-bold flex items-center gap-3">
                 <i class="fa-solid fa-circle-notch fa-spin text-blue-400"></i>
@@ -132,7 +122,7 @@
 
         <div class="absolute top-4 left-4 z-20 flex flex-col items-start gap-3">
             <div class="flex items-center gap-3">
-                <span id="mediaBadge" class="px-5 py-2.5 rounded-xl text-xl font-black text-blue-300 border-2 border-blue-400 shadow-lg" style="background-color: rgba(15, 23, 42, 0.85);">
+                <span id="mediaBadge" class="px-5 py-2.5 rounded-xl text-xl font-black text-blue-300 border border-blue-400/60 shadow-lg" style="background-color: rgba(15, 23, 42, 0.85);">
                     <span id="mediaTypeLabel">PLAYING</span>
                 </span>
                 <span id="mediaCounter" class="px-5 py-2.5 rounded-xl text-xl font-bold text-gray-200 border border-gray-700 shadow-lg" style="background-color: rgba(15, 23, 42, 0.85);">
@@ -141,124 +131,128 @@
             </div>
         </div>
 
-        <div id="slideQrBox" class="hidden absolute top-4 right-4 z-20 flex-col items-center bg-white p-2 rounded-xl shadow-2xl border border-gray-300">
+        <div id="slideQrBox" class="hidden absolute top-4 right-4 z-20 flex-col items-center bg-white p-2 rounded-xl shadow-2xl">
             <img id="slideQrImg" src="" alt="Slide QR" class="w-20 h-20 object-contain">
             <span class="text-[10px] text-gray-900 font-extrabold mt-1">상세 보기</span>
         </div>
 
-        <div class="absolute bottom-0 left-0 right-0 h-2 bg-gray-800 z-20">
+        <div class="absolute bottom-0 left-0 right-0 h-1.5 bg-gray-800 z-20">
             <div id="progressBar" class="h-full bg-blue-400" style="width: 0%;"></div>
         </div>
     </div>
 
-    <!-- [2. 하단 30% 영역 : 공지사항, 오늘의 일정, 언론보도, 실시간 주요 뉴스, 대형 로고] -->
-    <div id="bottomContainer" class="relative w-full overflow-hidden" style="height: 30vh; background-color: #020617;">
+    <!-- [2. 하단 영역 : 헤드라인(고정) + 순환 패널] -->
+    <div id="bottomContainer" class="relative w-full flex flex-col overflow-hidden" style="height: 36vh; flex: 0 0 auto; background-color: #020617;">
 
-        <!-- 2-A. 공지사항 모드 -->
-        <div id="noticeMode" class="absolute inset-0 p-3 pb-24 flex flex-col justify-between mode-transition opacity-100 scale-100 pointer-events-auto">
-            <div class="flex items-center justify-between mb-1">
-                <div class="flex items-center gap-3">
+        <!-- 2-A. 실시간 주요 뉴스 (고정, 1분마다 갱신) -->
+        <div id="headlinePanel" class="flex-none px-5 pt-3">
+            <div class="flex items-center justify-between mb-2">
+                <span class="px-5 py-1.5 text-sky-300 font-black text-2xl rounded-2xl border border-sky-500/50" style="background-color: rgba(56, 189, 248, 0.15);">
+                    <i class="fa-solid fa-newspaper mr-1"></i> 실시간 주요 뉴스
+                </span>
+                <span class="text-lg text-gray-400 font-bold">Google 뉴스 · 1분마다 갱신</span>
+            </div>
+            <div id="headline-list" class="flex flex-col"></div>
+        </div>
+
+        <!-- 2-B. 순환 패널: 공지 → 일정 → 언론보도 → 주간 날씨 → 로고 -->
+        <div id="rotatePanel" class="relative flex-1 min-h-0">
+
+            <!-- 공지사항 -->
+            <div id="noticeMode" class="absolute inset-0 p-4 flex flex-col justify-between mode-transition opacity-100 scale-100 pointer-events-auto">
+                <div class="flex items-center justify-between mb-1">
                     <span class="px-6 py-2 text-yellow-400 border-2 border-yellow-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(245, 158, 11, 0.2);">
                         <i class="fa-solid fa-bullhorn text-2xl"></i> 복지관 공지사항
                     </span>
+                    <div class="text-lg text-gray-300 font-bold flex items-center gap-2">
+                        <span class="w-3.5 h-3.5 rounded-full bg-green-400"></span> 실시간 동기화
+                    </div>
                 </div>
-                <div class="text-lg text-gray-300 font-black flex items-center gap-2">
-                    <span class="w-3.5 h-3.5 rounded-full bg-green-400"></span> 실시간 동기화
-                </div>
+                <div id="notice-list" class="flex-1 flex flex-col justify-center gap-2.5 my-0.5 overflow-hidden"></div>
             </div>
 
-            <div id="notice-list" class="flex-1 flex flex-col justify-center gap-2.5 my-0.5 overflow-hidden"></div>
-        </div>
-
-        <!-- 2-B. 오늘의 일정 모드 -->
-        <div id="scheduleMode" class="absolute inset-0 p-3 pb-24 flex flex-col justify-between mode-transition opacity-0 scale-95 pointer-events-none">
-            <div class="flex items-center justify-between mb-1">
-                <div class="flex items-center gap-3">
+            <!-- 오늘의 일정 -->
+            <div id="scheduleMode" class="absolute inset-0 p-4 flex flex-col justify-between mode-transition opacity-0 scale-95 pointer-events-none">
+                <div class="flex items-center justify-between mb-1">
                     <span class="px-6 py-2 text-emerald-400 border-2 border-emerald-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(16, 185, 129, 0.2);">
                         <i class="fa-solid fa-calendar-day text-2xl"></i> 오늘의 복지관 일정
                     </span>
+                    <div class="text-lg text-gray-300 font-bold flex items-center gap-2">
+                        <span class="w-3.5 h-3.5 rounded-full bg-emerald-400"></span> 구글 캘린더 연동
+                    </div>
                 </div>
-                <div class="text-lg text-gray-300 font-black flex items-center gap-2">
-                    <span class="w-3.5 h-3.5 rounded-full bg-emerald-400"></span> 구글 캘린더 연동
-                </div>
+                <div id="schedule-list" class="flex-1 flex flex-col justify-center gap-2.5 my-0.5 overflow-hidden"></div>
             </div>
 
-            <div id="schedule-list" class="flex-1 flex flex-col justify-center gap-2.5 my-0.5 overflow-hidden"></div>
-        </div>
-
-        <!-- 2-B2. 복지관 언론보도 모드 (언론보도 시트 최근 기사) -->
-        <div id="pressMode" class="absolute inset-0 p-3 pb-24 flex flex-col justify-between mode-transition opacity-0 scale-95 pointer-events-none">
-            <div class="flex items-center justify-between mb-1">
-                <div class="flex items-center gap-3">
+            <!-- 언론보도 -->
+            <div id="pressMode" class="absolute inset-0 p-4 flex flex-col justify-between mode-transition opacity-0 scale-95 pointer-events-none">
+                <div class="flex items-center justify-between mb-1">
                     <span class="px-6 py-2 text-violet-300 border-2 border-violet-400 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(139, 92, 246, 0.2);">
                         <i class="fa-solid fa-newspaper text-2xl"></i> 복지관 언론보도
                     </span>
-                </div>
-                <div class="text-lg text-gray-300 font-black flex items-center gap-2">
-                    <span class="w-3.5 h-3.5 rounded-full bg-violet-400"></span> 언론에 소개된 복지관
-                </div>
-            </div>
-
-            <div id="press-list" class="flex-1 flex flex-col justify-center gap-2.5 my-0.5 overflow-hidden"></div>
-        </div>
-
-        <!-- 2-C. 실시간 주요 뉴스 모드 -->
-        <div id="newsMode" class="absolute inset-0 p-3 pb-24 flex flex-col justify-between mode-transition opacity-0 scale-95 pointer-events-none">
-            <div class="flex items-center justify-between mb-1">
-                <div class="flex items-center gap-3">
-                    <span class="px-6 py-2 text-sky-400 border-2 border-sky-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(56, 189, 248, 0.2);">
-                        <i class="fa-solid fa-newspaper text-2xl"></i> 실시간 주요 뉴스
-                    </span>
-                </div>
-                <div class="text-lg text-gray-300 font-black flex items-center gap-2">
-                    <span class="w-3.5 h-3.5 rounded-full bg-sky-400"></span> 실시간 속보
-                </div>
-            </div>
-
-            <div id="news-list" class="flex-1 flex flex-col justify-start gap-1 my-0.5 overflow-hidden"></div>
-        </div>
-
-        <!-- 2-D. 대형 로고 이미지 모드 -->
-        <div id="logoMode" class="absolute inset-0 p-3 pb-24 flex items-center justify-center mode-transition opacity-0 scale-95 pointer-events-none">
-            <img src="https://lh3.googleusercontent.com/d/1IV2uScHVsv0g4eQt2V33yjtMZewVY5-X"
-                 alt="거제시종합사회복지관 로고"
-                 class="object-contain logo-glow"
-                 style="max-width: 85%; max-height: 85%;"
-                 onerror="if(!this.getAttribute('data-retried')){this.setAttribute('data-retried','true');this.src='https://drive.google.com/uc?export=view&id=1IV2uScHVsv0g4eQt2V33yjtMZewVY5-X';}">
-        </div>
-
-    </div>
-
-    <!-- [3. 최하단 정보 위젯] -->
-    <div id="widgetOverlay" class="absolute bottom-0 left-0 right-0 h-24 border-t border-gray-800 z-30 px-8 flex items-center justify-between" style="background-color: rgba(15, 23, 42, 0.95);">
-        <div class="flex items-center gap-5">
-            <div class="w-16 h-16 rounded-2xl bg-gray-800 flex items-center justify-center text-blue-400 border border-gray-700 shadow-inner">
-                <i class="fa-regular fa-clock text-4xl"></i>
-            </div>
-            <div class="flex flex-col justify-center">
-                <span id="clockDate" class="text-lg text-gray-300 font-extrabold">날짜 로딩 중...</span>
-                <span id="clock-display" class="text-5xl font-black text-yellow-300 font-mono leading-none mt-1">00:00:00</span>
-            </div>
-        </div>
-
-        <div class="hidden md:flex items-center gap-3 text-gray-200 text-lg font-extrabold bg-gray-800 px-6 py-3 rounded-full border border-gray-700">
-            <span id="statusDot" class="w-3.5 h-3.5 rounded-full bg-green-400"></span>
-            <span id="syncStatus">온라인</span>
-        </div>
-
-        <div class="flex items-center gap-5">
-            <div id="weather-display" class="flex items-center gap-3">
-                <i id="weatherIcon" class="fa-solid fa-sun text-yellow-400 text-5xl mr-1"></i>
-                <div class="flex flex-col justify-center">
-                    <span id="weatherStatus" class="text-lg text-gray-300 font-bold">거제시 | 맑음</span>
-                    <div class="flex items-center gap-3 mt-0.5">
-                        <span id="weatherTemp" class="text-3xl font-black text-white">--°C</span>
-                        <span id="dustBadge" class="text-base font-black px-3 py-0.5 rounded-xl bg-blue-500/30 text-blue-300 border border-blue-400/50">
-                            미세 보통
-                        </span>
+                    <div class="text-lg text-gray-300 font-bold flex items-center gap-2">
+                        <span class="w-3.5 h-3.5 rounded-full bg-violet-400"></span> 언론에 소개된 복지관
                     </div>
                 </div>
+                <div id="press-list" class="flex-1 flex flex-col justify-center gap-2.5 my-0.5 overflow-hidden"></div>
             </div>
+
+            <!-- 이번 주 날씨 (5일 예보) -->
+            <div id="weatherMode" class="absolute inset-0 p-4 flex flex-col justify-between mode-transition opacity-0 scale-95 pointer-events-none">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="px-6 py-2 text-cyan-300 border-2 border-cyan-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(6, 182, 212, 0.2);">
+                        <i class="fa-solid fa-cloud-sun text-2xl"></i> 이번 주 날씨
+                    </span>
+                    <div class="text-lg text-gray-300 font-bold flex items-center gap-2">
+                        <span class="w-3.5 h-3.5 rounded-full bg-cyan-400"></span> 거제시 5일 예보
+                    </div>
+                </div>
+                <div id="week-list" class="flex-1 grid grid-cols-5 gap-3 my-2 items-stretch"></div>
+            </div>
+
+            <!-- 대형 로고 -->
+            <div id="logoMode" class="absolute inset-0 p-4 flex items-center justify-center mode-transition opacity-0 scale-95 pointer-events-none">
+                <img src="https://lh3.googleusercontent.com/d/1IV2uScHVsv0g4eQt2V33yjtMZewVY5-X"
+                     alt="거제시종합사회복지관 로고"
+                     class="object-contain logo-glow"
+                     style="max-width: 85%; max-height: 85%;"
+                     onerror="if(!this.getAttribute('data-retried')){this.setAttribute('data-retried','true');this.src='https://drive.google.com/uc?export=view&id=1IV2uScHVsv0g4eQt2V33yjtMZewVY5-X';}">
+            </div>
+        </div>
+    </div>
+
+    <!-- [3. 최하단 위젯바 (고정)] -->
+    <div id="widgetBar" class="flex-none h-24 border-t border-gray-800 px-6 flex items-center justify-between gap-4" style="background-color: rgba(15, 23, 42, 0.95);">
+        <div class="flex items-center gap-4 min-w-0">
+            <div class="w-14 h-14 rounded-2xl bg-gray-800 flex items-center justify-center text-blue-400 border border-gray-700 shrink-0">
+                <i class="fa-regular fa-clock text-3xl"></i>
+            </div>
+            <div class="flex flex-col justify-center min-w-0">
+                <div class="flex items-center gap-2 whitespace-nowrap">
+                    <span id="clockDate" class="text-lg text-gray-300 font-bold">날짜 로딩 중...</span>
+                    <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+                    <span id="syncStatus" class="text-sm text-gray-400 font-bold">온라인</span>
+                </div>
+                <span id="clock-display" class="text-4xl font-black text-yellow-300 font-mono leading-none mt-1">00:00:00</span>
+            </div>
+        </div>
+
+        <div id="weather-display" class="flex items-center gap-3 min-w-0">
+            <i id="weatherIcon" class="fa-solid fa-sun text-yellow-400 text-4xl"></i>
+            <div class="flex flex-col justify-center min-w-0">
+                <span id="weatherStatus" class="text-lg text-gray-300 font-bold truncate">거제시 | 맑음</span>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <span id="weatherTemp" class="text-4xl font-black text-white">--°C</span>
+                    <span id="dustBadge" class="text-base font-black px-2.5 py-0.5 rounded-lg border bg-blue-500/30 text-blue-300 border-blue-400/50">
+                        미세 보통
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div id="promoBox" class="hidden items-center gap-3 px-3 py-2 rounded-2xl border border-gray-700 bg-slate-800/60 min-w-0">
+            <div id="promoText" class="text-base text-gray-100 font-bold leading-snug line-clamp-2" style="max-width: 150px;"></div>
+            <img id="promoQr" alt="홍보 QR" class="w-16 h-16 bg-white p-1 rounded-lg object-contain shrink-0">
         </div>
     </div>
 
@@ -268,6 +262,7 @@
         var SLIDE_REFRESH_MS = 5 * 60 * 1000;   // 상단 슬라이드(드라이브 파일): 5분
         var BOTTOM_HOLD_MS = 10 * 1000;         // 하단 패널 한 장면을 보여주는 시간
         var FADE_MS = 300;                      // 화면 전환 시 페이드 시간
+        var HEADLINE_COUNT = 4;                 // 고정 헤드라인 개수
 
         // 이미지 클래스 (전체 화면 / 일반 미디어)
         var FS_BG = 'absolute inset-0 w-full h-full object-cover filter blur-3xl opacity-50 scale-110 pointer-events-none';
@@ -282,12 +277,13 @@
             schedules: [],
             news: [],
             press: [],
+            forecast: [],
             systemMode: 'normal',
             operationalHours: "08:00 - 18:00",
             slideTimer: null
         };
 
-        // 하단 패널 순환 상태: 지금 패널(index)과 그 패널의 다음 페이지(page)
+        // 하단 순환 상태: 지금 패널(index)과 그 패널의 다음 페이지(page)
         var bottom = { index: 0, page: 0, timer: null };
 
         var welcomeState = {
@@ -390,13 +386,13 @@
             if (!dot || !text) return;
 
             if (isOnline) {
-                dot.className = 'w-3.5 h-3.5 rounded-full bg-green-400';
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-green-400';
                 text.innerText = '온라인';
-                text.className = 'text-gray-200';
+                text.className = 'text-sm text-gray-400 font-bold';
             } else {
-                dot.className = 'w-3.5 h-3.5 rounded-full bg-red-500 animate-pulse';
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse';
                 text.innerText = '오프라인';
-                text.className = 'text-red-400 font-black';
+                text.className = 'text-sm text-red-400 font-black';
             }
         }
 
@@ -513,12 +509,15 @@
             }
 
             if (data.weather) renderWeather(data.weather);
+            renderPromo(data.promo || null);
 
             if (Array.isArray(data.notices)) state.notices = data.notices;
             if (Array.isArray(data.schedule)) state.schedules = data.schedule;
             if (Array.isArray(data.news)) state.news = data.news;
             if (Array.isArray(data.press)) state.press = data.press;
+            if (Array.isArray(data.forecast)) state.forecast = data.forecast;
 
+            renderHeadlines();
             stepBottom();
         }
 
@@ -534,16 +533,26 @@
             }
 
             var icon = document.getElementById('weatherIcon');
-            if (icon) icon.className = getWeatherIconClass(weather.icon || '01d') + ' text-5xl mr-1';
+            if (icon) icon.className = getWeatherIconClass(weather.icon || '01d') + ' text-4xl';
             var status = document.getElementById('weatherStatus');
             if (status) status.innerText = '거제시 | ' + (weather.status || '맑음');
             var temp = document.getElementById('weatherTemp');
             if (temp) temp.innerText = weather.temp || '--°C';
             var dust = document.getElementById('dustBadge');
             if (dust) {
-                dust.className = 'text-base font-black px-3 py-0.5 rounded-xl border ' + dustClass;
+                dust.className = 'text-base font-black px-2.5 py-0.5 rounded-lg border ' + dustClass;
                 dust.innerText = '미세 ' + dustText;
             }
+        }
+
+        // 위젯바 오른쪽 홍보 박스 (운영설정 값이 없으면 숨김)
+        function renderPromo(promo) {
+            var box = document.getElementById('promoBox');
+            box.classList.toggle('hidden', !promo);
+            box.classList.toggle('flex', !!promo);
+            if (!promo) return;
+            document.getElementById('promoText').innerText = promo.text;
+            document.getElementById('promoQr').src = qrImageUrl(promo.url, 200);
         }
 
         // ---------- 기관방문 환영 (전체 화면) ----------
@@ -586,11 +595,41 @@
             }
         }
 
-        // ---------- 하단 패널 (공지 → 일정 → 언론보도 → 뉴스 → 로고 순환) ----------
-        function emptyMessage(containerId, text, className) {
+        // ---------- 고정 헤드라인 ----------
+        function renderHeadlines() {
+            var box = document.getElementById('headline-list');
+            box.innerHTML = '';
+            if (state.news.length === 0) {
+                box.innerHTML = '<div class="text-gray-400 text-2xl font-bold py-4">수집된 뉴스가 없습니다.</div>';
+                return;
+            }
+            state.news.slice(0, HEADLINE_COUNT).forEach(function (item) {
+                var row = document.createElement('div');
+                row.className = 'flex items-center gap-3 py-1.5 border-b border-gray-800 min-w-0';
+
+                var source = document.createElement('span');
+                source.className = 'shrink-0 px-2.5 py-0.5 rounded-md bg-sky-500 text-white text-lg font-black';
+                source.innerText = item.source || '뉴스';
+
+                var title = document.createElement('span');
+                title.className = 'flex-1 min-w-0 truncate text-white text-2xl font-semibold';
+                title.innerText = item.title || '';
+
+                var time = document.createElement('span');
+                time.className = 'ml-auto shrink-0 text-sky-300 text-lg font-bold';
+                time.innerText = item.time || '';
+
+                row.appendChild(source);
+                row.appendChild(title);
+                row.appendChild(time);
+                box.appendChild(row);
+            });
+        }
+
+        // ---------- 하단 순환 패널 (공지 → 일정 → 언론보도 → 주간 날씨 → 로고) ----------
+        function emptyMessage(containerId, text) {
             var box = document.getElementById(containerId);
             if (!box) return;
-            if (className) box.className = className;
             box.innerHTML = '<div class="text-center text-gray-400 text-2xl font-bold py-6">' + text + '</div>';
         }
 
@@ -599,7 +638,7 @@
             box.innerHTML = '';
             items.slice(from, from + 2).forEach(function (notice) {
                 var card = document.createElement('div');
-                card.className = 'w-full border-2 border-gray-700 p-3 rounded-2xl flex items-center justify-between gap-4 shadow-xl';
+                card.className = 'w-full border border-gray-700 p-3 rounded-2xl flex items-center justify-between gap-4 shadow-xl';
                 card.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
 
                 var contentBox = document.createElement('div');
@@ -635,7 +674,7 @@
             box.innerHTML = '';
             items.slice(from, from + 2).forEach(function (item) {
                 var card = document.createElement('div');
-                card.className = 'w-full border-2 border-gray-200 p-3.5 rounded-2xl flex items-center justify-between gap-5 shadow-xl';
+                card.className = 'w-full border border-gray-200 p-3.5 rounded-2xl flex items-center justify-between gap-5 shadow-xl';
                 card.style.backgroundColor = 'rgba(6, 78, 59, 0.3)';
 
                 var leftBox = document.createElement('div');
@@ -660,7 +699,7 @@
             box.innerHTML = '';
             items.slice(from, from + 2).forEach(function (item) {
                 var card = document.createElement('div');
-                card.className = 'w-full border-2 border-gray-200 p-3 rounded-2xl flex items-center justify-between gap-4 shadow-xl';
+                card.className = 'w-full border border-gray-200 p-3 rounded-2xl flex items-center justify-between gap-4 shadow-xl';
                 card.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
 
                 var contentBox = document.createElement('div');
@@ -694,42 +733,41 @@
             });
         }
 
-        // 뉴스는 5건씩 보여주되, 5건보다 적으면 있는 만큼만 보여줘서 같은 기사가 중복되지 않게 함
-        function renderNewsRows(items, from) {
-            var box = document.getElementById('news-list');
-            box.className = 'flex-1 flex flex-col justify-start gap-0.5 my-0.5 overflow-hidden';
+        // 5일 예보를 한 번에 보여줌 (오늘은 '오늘'로 표시)
+        function renderWeekCards(items) {
+            var box = document.getElementById('week-list');
             box.innerHTML = '';
-            var count = Math.min(5, items.length);
-            for (var i = 0; i < count; i++) {
-                var item = items[(from + i) % items.length];
+            items.forEach(function (day, i) {
+                var cell = document.createElement('div');
+                cell.className = 'flex flex-col items-center justify-center gap-2 rounded-2xl py-4 border ' +
+                    (i === 0 ? 'border-sky-400 bg-sky-500/15' : 'border-gray-700 bg-slate-800/60');
 
-                var card = document.createElement('div');
-                card.className = 'w-full px-4 py-1.5 rounded-lg flex items-center justify-between gap-4 border-b border-sky-900/50 shadow-sm overflow-hidden';
-                card.style.backgroundColor = 'rgba(15, 23, 42, 0.75)';
+                var label = document.createElement('div');
+                label.className = 'text-2xl font-black ' + (i === 0 ? 'text-sky-300' : 'text-gray-200');
+                label.innerText = i === 0 ? '오늘' : day.weekday;
 
-                var leftBox = document.createElement('div');
-                leftBox.className = 'flex items-center gap-3 min-w-0 flex-1';
+                var date = document.createElement('div');
+                date.className = 'text-base text-gray-400 font-bold';
+                date.innerText = day.date;
 
-                var sourceBadge = document.createElement('div');
-                sourceBadge.className = 'px-3 py-0.5 bg-sky-500 text-white font-black text-xl rounded-lg whitespace-nowrap shadow shrink-0';
-                sourceBadge.innerText = item.source || '속보';
+                var icon = document.createElement('i');
+                icon.className = getWeatherIconClass(day.icon) + ' text-5xl my-1';
 
-                var titleText = document.createElement('div');
-                titleText.className = 'text-white font-normal text-3xl truncate leading-tight';
-                titleText.innerText = item.title;
+                var temps = document.createElement('div');
+                temps.className = 'flex items-baseline gap-2';
+                temps.innerHTML = '<span class="text-3xl font-black text-white">' + Number(day.max) + '°</span>' +
+                    '<span class="text-2xl font-bold text-sky-200/80">' + Number(day.min) + '°</span>';
 
-                leftBox.appendChild(sourceBadge);
-                leftBox.appendChild(titleText);
-
-                card.appendChild(leftBox);
-                card.appendChild(makeIconText('div', 'fa-regular fa-clock', item.time || '방금 전',
-                    'text-sky-300 font-black text-xl whitespace-nowrap shrink-0'));
-                box.appendChild(card);
-            }
+                cell.appendChild(label);
+                cell.appendChild(date);
+                cell.appendChild(icon);
+                cell.appendChild(temps);
+                box.appendChild(cell);
+            });
         }
 
-        // 패널 목록. items: 보여줄 데이터, pageSize: 한 번에 넘기는 개수, empty: 데이터가 없을 때 화면
-        // skipWhenEmpty: 데이터가 없으면 안내 없이 바로 다음 패널로 넘김 (언론보도)
+        // 패널 목록. items: 보여줄 데이터, pageSize: 한 번에 넘기는 개수, render(items, from): 그리기
+        // skipWhenEmpty: 데이터가 없으면 안내 없이 바로 다음 패널로 넘김 (언론보도, 날씨)
         var BOTTOM_PANELS = [
             { id: 'noticeMode', items: function () { return state.notices; }, pageSize: 2, render: renderNoticeCards,
               empty: function () { emptyMessage('notice-list', '등록된 공지사항이 없습니다.'); } },
@@ -737,8 +775,8 @@
               empty: function () { emptyMessage('schedule-list', '오늘 예정된 복지관 일정이 없습니다.'); } },
             { id: 'pressMode', items: function () { return state.press; }, pageSize: 2, render: renderPressCards,
               skipWhenEmpty: true },
-            { id: 'newsMode', items: function () { return state.news; }, pageSize: 5, render: renderNewsRows,
-              empty: function () { emptyMessage('news-list', '수집된 실시간 뉴스가 없습니다.', 'flex-1 flex flex-col justify-center my-0.5 overflow-hidden'); } },
+            { id: 'weatherMode', items: function () { return state.forecast; }, pageSize: 5,
+              render: function (items) { renderWeekCards(items); }, skipWhenEmpty: true },
             { id: 'logoMode', logo: true }
         ];
 
@@ -918,7 +956,7 @@
             }
 
             var textBox = document.createElement('div');
-            textBox.className = (imgList.length > 0 ? 'w-1/2' : 'w-full') + ' h-full flex flex-col justify-between p-7 bg-slate-900/90 rounded-2xl border-2 border-amber-500/50 shadow-2xl overflow-hidden';
+            textBox.className = (imgList.length > 0 ? 'w-1/2' : 'w-full') + ' h-full flex flex-col justify-between p-7 bg-slate-900/90 rounded-2xl border border-amber-500/50 shadow-2xl overflow-hidden';
 
             var topHeader = document.createElement('div');
             topHeader.className = 'flex flex-col gap-3.5 min-h-0 overflow-hidden';
@@ -964,7 +1002,7 @@
 
                 var qrImgEl = document.createElement('img');
                 qrImgEl.src = qrImageUrl(slide.qr, 200);
-                qrImgEl.className = 'w-24 h-24 bg-white p-1 rounded-xl shadow-lg border border-gray-300 shrink-0 object-contain';
+                qrImgEl.className = 'w-24 h-24 bg-white p-1 rounded-xl shadow-lg shrink-0 object-contain';
 
                 bottomQrBox.appendChild(qrInfoText);
                 bottomQrBox.appendChild(qrImgEl);

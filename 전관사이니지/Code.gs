@@ -22,6 +22,7 @@ const EVENT_DESC_LIMIT = 650;
 const CACHE_SEC_WEATHER = 600;   // 날씨·미세먼지 10분
 const CACHE_SEC_NEWS = 900;      // 실시간 뉴스 15분
 const CACHE_SEC_SCHEDULE = 300;  // 오늘의 일정 5분
+const CACHE_SEC_FORECAST = 3600; // 주간 예보 1시간
 
 // 날씨 기준 좌표 (거제시)
 const WEATHER_LAT = 34.8806;
@@ -317,6 +318,8 @@ function getDashboardData() {
     news: getRealtimeNews(),
     press: getPressItems(),
     operationalHours: operationalHours,
+    forecast: getForecast(),
+    promo: getPromo(),
     welcomeInfo: checkWelcomeMode()
   };
 }
@@ -768,6 +771,60 @@ function fetchDustLevel() {
     console.error("미세먼지 API 에러: " + e.toString());
     return null;
   }
+}
+
+// 주간 예보: 5일 예보(3시간 간격)를 날짜별 최저·최고 기온으로 묶음. 낮 12시에 가장 가까운 시간의 날씨 아이콘을 씀
+function getForecast() {
+  return cachedJson('weather:forecast', CACHE_SEC_FORECAST, fetchForecast) || [];
+}
+
+function fetchForecast() {
+  const key = getSecret('OPENWEATHER_KEY');
+  if (!key) return null;
+  try {
+    const url = 'https://api.openweathermap.org/data/2.5/forecast?lat=' + WEATHER_LAT +
+      '&lon=' + WEATHER_LON + '&appid=' + key + '&units=metric&lang=kr';
+    const json = JSON.parse(UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getContentText());
+    if (!json.list || json.list.length === 0) return null;
+
+    const days = {};
+    json.list.forEach(item => {
+      const at = new Date(item.dt * 1000);
+      const date = fmt_(at, 'yyyy-MM-dd');
+      const hour = Number(fmt_(at, 'H'));
+      const day = days[date] || (days[date] = { min: Infinity, max: -Infinity, icon: '', noonGap: 99 });
+      day.min = Math.min(day.min, item.main.temp_min);
+      day.max = Math.max(day.max, item.main.temp_max);
+      const gap = Math.abs(hour - 12);
+      if (gap < day.noonGap) {
+        day.noonGap = gap;
+        day.icon = item.weather[0].icon;
+      }
+    });
+
+    const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+    return Object.keys(days).sort().slice(0, 5).map(date => {
+      const d = days[date];
+      const parts = date.split('-');
+      return {
+        date: date.slice(5).replace('-', '.'),
+        weekday: WEEKDAYS[new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).getDay()],
+        min: Math.round(d.min),
+        max: Math.round(d.max),
+        icon: d.icon
+      };
+    });
+  } catch(e) {
+    console.error("예보 API 에러: " + e.toString());
+    return null;
+  }
+}
+
+// 하단 위젯의 홍보 박스: 운영설정에 '하단 홍보 문구'와 '하단 홍보 QR 주소' 두 칸이 모두 있을 때만 보임
+function getPromo() {
+  const text = getSettingByLabel('하단 홍보 문구');
+  const url = getSettingByLabel('하단 홍보 QR 주소');
+  return text && url ? { text: text, url: url } : null;
 }
 
 // 기관방문 스케줄 및 환영 이미지 감지
