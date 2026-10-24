@@ -1076,7 +1076,13 @@
             fitSentences(descEl, slide.desc || '');
             if (imgList.length > 0) {
                 loadRatios(imgList).then(function (ratios) {
-                    layoutEventPhotos(photoCol, imgList, ratios);
+                    var fill = layoutEventPhotos(photoCol, imgList, ratios);
+                    if (fill < 0.6) {
+                        // 사진이 너무 작으면 제목과 본문만 넓게 보여줌
+                        photoCol.remove();
+                        textBox.classList.replace('w-1/2', 'w-full');
+                        fitSentences(descEl, slide.desc || '');
+                    }
                 });
             }
         }
@@ -1137,6 +1143,10 @@
                 if (!best || score < best.score) best = { score: score, rows: sized, total: total };
             }
 
+            // 사진 묶음이 칸 높이의 60%도 못 채우면 사진을 그리지 않음 (호출한 쪽이 글만 보여줌)
+            var fill = best.total / H;
+            if (fill < 0.6) return fill;
+
             var scale = best.total > H ? H / best.total : 1;
             container.innerHTML = '';
             var stack = document.createElement('div');
@@ -1157,6 +1167,7 @@
                 stack.appendChild(rowEl);
             });
             container.appendChild(stack);
+            return fill;
         }
 
         // 본문이 칸을 넘으면 문장 단위로 줄여서, 문장 중간에서 잘리지 않게 함
