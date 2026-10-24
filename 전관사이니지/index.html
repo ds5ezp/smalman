@@ -612,11 +612,11 @@
                 source.innerText = item.source || '뉴스';
 
                 var title = document.createElement('span');
-                title.className = 'flex-1 min-w-0 truncate text-white text-2xl font-semibold';
+                title.className = 'flex-1 min-w-0 truncate text-white text-3xl font-bold';
                 title.innerText = item.title || '';
 
                 var time = document.createElement('span');
-                time.className = 'ml-auto shrink-0 text-sky-300 text-lg font-bold';
+                time.className = 'ml-auto shrink-0 text-sky-300 text-2xl font-normal';
                 time.innerText = item.time || '';
 
                 row.appendChild(source);
@@ -713,7 +713,7 @@
                 sourceSpan.innerText = item.source || '언론보도';
 
                 var titleSpan = document.createElement('span');
-                titleSpan.className = 'text-white font-black text-3xl truncate';
+                titleSpan.className = 'text-white font-bold text-3xl truncate';
                 titleSpan.innerText = item.title || '';
 
                 headerBox.appendChild(sourceSpan);
