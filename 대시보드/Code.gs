@@ -1865,14 +1865,48 @@ function repairConfig_() {
   return { fields: REPAIR.FIELDS, results: REPAIR.RESULTS };
 }
 
-// 사진 한 장 저장. 휴대폰에서 줄인 사진을 한 장씩 올림. 저장된 사진 링크를 돌려줌
-function uploadRepairPhoto(name, mime, data) {
+// 드라이브 이름에 쓸 수 없는 글자를 빼고 길이를 줄임
+function repairSafeName_(text) {
+  return String(text || '').replace(/[\\\/:*?"<>|#%{}~&]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+}
+
+// 보수 한 건의 사진 폴더: '시설보수 사진' 안에 '날짜_분야_위치' (예: 2026-10-24_전기_1층 화장실)
+// 같은 이름의 폴더가 있으면 그 안에 이어서 넣음
+function repairRecordFolder_(date, field, place) {
+  const root = repairFolder_();
+  const name = [date, repairSafeName_(field), repairSafeName_(place) || '위치없음'].join('_');
+  const found = root.getFoldersByName(name);
+  return found.hasNext() ? found.next() : root.createFolder(name);
+}
+
+// 사진 파일 이름: '날짜_분야_조치전_01.jpg' (조치 후는 '조치후'). 같은 이름이 있으면 번호를 다음으로 올림
+function repairPhotoName_(folder, date, field, section) {
+  const base = [date, repairSafeName_(field), section === 'after' ? '조치후' : '조치전'].join('_');
+  let max = 0;
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const fileName = files.next().getName();
+    if (fileName.indexOf(base + '_') !== 0 || fileName.slice(-4) !== '.jpg') continue;
+    const n = parseInt(fileName.slice(base.length + 1, -4), 10);
+    if (!isNaN(n)) max = Math.max(max, n);
+  }
+  return base + '_' + String(max + 1).padStart(2, '0') + '.jpg';
+}
+
+// 사진 한 장 저장. 휴대폰에서 줄인 사진을 한 장씩 올림. info = { section: 'before'|'after', date, field, place }
+// 폴더·파일 이름은 여기서 정함. 저장된 사진 링크를 돌려줌
+function uploadRepairPhoto(mime, data, info) {
   requireUser_();
+  info = info || {};
   mime = String(mime || '');
   if (mime.indexOf('image/') !== 0) throw new Error('사진 파일만 올릴 수 있습니다.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(info.date || ''))) throw new Error('보수일자를 확인해 주세요.');
+  if (REPAIR.FIELDS.indexOf(info.field) === -1) throw new Error('분야를 골라 주세요.');
   const bytes = Utilities.base64Decode(data);
   if (bytes.length > REPAIR.MAX_PHOTO_BYTES) throw new Error('사진이 너무 큽니다. 다시 찍어 주세요.');
-  const file = repairFolder_().createFile(Utilities.newBlob(bytes, mime, String(name || 'photo.jpg')));
+  const folder = repairRecordFolder_(info.date, info.field, info.place);
+  const name = repairPhotoName_(folder, info.date, info.field, info.section);
+  const file = folder.createFile(Utilities.newBlob(bytes, mime, name));
   file.setSharing(DriveApp.Access.DOMAIN_WITH_LINK, DriveApp.Permission.VIEW);
   return file.getUrl();
 }

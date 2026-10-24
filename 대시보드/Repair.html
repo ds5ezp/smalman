@@ -383,7 +383,7 @@
             setProgress(done, total, (section === 'before' ? '조치 전' : '조치 후') + ' 사진 ' + (i + 1) + ' 준비 중');
             const shrunk = await shrinkPhoto(p.file, preset);
             setProgress(done + 0.5, total, (section === 'before' ? '조치 전' : '조치 후') + ' 사진 ' + (i + 1) + ' 올리는 중');
-            out.push(await run('uploadRepairPhoto', shrunk.name, shrunk.mime, shrunk.data));
+            out.push(await run('uploadRepairPhoto', shrunk.mime, shrunk.data, { section: section, date: entry.date, field: entry.field, place: entry.place }));
             done += 1;
           }
           return out;
