@@ -790,6 +790,22 @@
             el.classList.toggle('pointer-events-none', !on);
         }
 
+        // 패널 제목 오른쪽에 현재 묶음 표시 (예: 2 / 3). 묶음이 하나뿐이거나 내용이 없으면 숨김
+        function setPageCounter(panelId, current, total) {
+            var panel = document.getElementById(panelId);
+            var right = panel && panel.firstElementChild && panel.firstElementChild.lastElementChild;
+            if (!right) return;
+            var counter = right.querySelector('[data-page]');
+            if (!counter) {
+                counter = document.createElement('span');
+                counter.setAttribute('data-page', '');
+                counter.className = 'ml-2 px-3 py-0.5 rounded-lg bg-white/15 text-white font-black text-xl';
+                right.appendChild(counter);
+            }
+            counter.innerText = total > 1 ? current + ' / ' + total : '';
+            counter.style.display = total > 1 ? '' : 'none';
+        }
+
         // 하단 목록이 바뀔 때: 살짝 흐려지며 내려갔다가, 새 내용이 아래에서 올라오며 나타남
         function swapBox(panelId, render) {
             var panel = document.getElementById(panelId);
@@ -826,7 +842,10 @@
             var items = panel.items();
             if (items.length === 0) {
                 if (panel.skipWhenEmpty) return nextBottomPanel();
-                swapBox(panel.id, function () { panel.empty(); });
+                swapBox(panel.id, function () {
+                    panel.empty();
+                    setPageCounter(panel.id, 0, 0);
+                });
                 return runBottom(BOTTOM_HOLD_MS, nextBottomPanel);
             }
 
@@ -834,7 +853,10 @@
             if (bottom.page >= items.length) return nextBottomPanel();
 
             var from = bottom.page;
-            swapBox(panel.id, function () { panel.render(items, from); });
+            swapBox(panel.id, function () {
+                panel.render(items, from);
+                setPageCounter(panel.id, Math.floor(from / panel.pageSize) + 1, Math.ceil(items.length / panel.pageSize));
+            });
             bottom.page += panel.pageSize;
             runBottom(BOTTOM_HOLD_MS, bottom.page < items.length ? stepBottom : nextBottomPanel);
         }
