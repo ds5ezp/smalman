@@ -147,10 +147,10 @@
         <!-- 2-A. 실시간 주요 뉴스 (고정, 1분마다 갱신) -->
         <div id="headlinePanel" class="flex-none px-5 pt-3">
             <div class="flex items-center justify-between mb-2">
-                <span class="px-5 py-1.5 text-sky-300 font-black text-2xl rounded-2xl border border-sky-500/50" style="background-color: rgba(56, 189, 248, 0.15);">
+                <span class="px-5 py-1.5 text-white font-black text-2xl rounded-2xl border border-sky-500/50" style="background-color: rgba(56, 189, 248, 0.15);">
                     <i class="fa-solid fa-newspaper mr-1"></i> 실시간 주요 뉴스
                 </span>
-                <span class="text-lg text-gray-400 font-bold">Google 뉴스 · 1분마다 갱신</span>
+                <span class="text-lg text-white font-bold">Google 뉴스 · 1분마다 갱신</span>
             </div>
             <div id="headline-list" class="flex flex-col"></div>
         </div>
@@ -161,7 +161,7 @@
             <!-- 공지사항 -->
             <div id="noticeMode" class="absolute inset-0 p-4 flex flex-col justify-between mode-transition opacity-100 scale-100 pointer-events-auto">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="px-6 py-2 text-yellow-400 border-2 border-yellow-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(245, 158, 11, 0.2);">
+                    <span class="px-6 py-2 text-white border-2 border-yellow-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(245, 158, 11, 0.2);">
                         <i class="fa-solid fa-bullhorn text-2xl"></i> 복지관 공지사항
                     </span>
                     <div class="text-lg text-gray-300 font-bold flex items-center gap-2">
@@ -174,7 +174,7 @@
             <!-- 오늘의 일정 -->
             <div id="scheduleMode" class="absolute inset-0 p-4 flex flex-col justify-between mode-transition opacity-0 scale-95 pointer-events-none">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="px-6 py-2 text-emerald-400 border-2 border-emerald-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(16, 185, 129, 0.2);">
+                    <span class="px-6 py-2 text-white border-2 border-emerald-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(16, 185, 129, 0.2);">
                         <i class="fa-solid fa-calendar-day text-2xl"></i> 오늘의 복지관 일정
                     </span>
                     <div class="text-lg text-gray-300 font-bold flex items-center gap-2">
@@ -187,7 +187,7 @@
             <!-- 언론보도 -->
             <div id="pressMode" class="absolute inset-0 p-4 flex flex-col justify-between mode-transition opacity-0 scale-95 pointer-events-none">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="px-6 py-2 text-violet-300 border-2 border-violet-400 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(139, 92, 246, 0.2);">
+                    <span class="px-6 py-2 text-white border-2 border-violet-400 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(139, 92, 246, 0.2);">
                         <i class="fa-solid fa-newspaper text-2xl"></i> 복지관 언론보도
                     </span>
                     <div class="text-lg text-gray-300 font-bold flex items-center gap-2">
@@ -200,7 +200,7 @@
             <!-- 이번 주 날씨 (5일 예보) -->
             <div id="weatherMode" class="absolute inset-0 p-4 flex flex-col justify-between mode-transition opacity-0 scale-95 pointer-events-none">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="px-6 py-2 text-cyan-300 border-2 border-cyan-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(6, 182, 212, 0.2);">
+                    <span class="px-6 py-2 text-white border-2 border-cyan-500 rounded-2xl text-3xl font-black flex items-center gap-3" style="background-color: rgba(6, 182, 212, 0.2);">
                         <i class="fa-solid fa-cloud-sun text-2xl"></i> 이번 주 날씨
                     </span>
                     <div class="text-lg text-gray-300 font-bold flex items-center gap-2">
@@ -616,7 +616,7 @@
                 title.innerText = item.title || '';
 
                 var time = document.createElement('span');
-                time.className = 'ml-auto shrink-0 text-sky-300 text-2xl font-normal';
+                time.className = 'ml-auto shrink-0 text-white text-2xl font-normal';
                 time.innerText = item.time || '';
 
                 row.appendChild(source);
@@ -648,16 +648,16 @@
                 headerBox.className = 'flex items-center gap-3 mb-1';
 
                 var titleSpan = document.createElement('span');
-                titleSpan.className = 'px-4 py-1 text-sky-200 font-black text-3xl rounded-xl border border-gray-200 truncate';
+                titleSpan.className = 'px-4 py-1 text-white font-black text-3xl rounded-xl border border-gray-200 truncate';
                 titleSpan.style.backgroundColor = 'rgba(14, 165, 233, 0.25)';
                 titleSpan.innerText = notice.title || '';
 
                 headerBox.appendChild(titleSpan);
                 headerBox.appendChild(makeIconText('span', 'fa-regular fa-calendar-check', notice.date || '',
-                    'text-2xl text-gray-200 font-black whitespace-nowrap'));
+                    'text-2xl text-white font-black whitespace-nowrap'));
 
                 var descP = document.createElement('p');
-                descP.className = 'text-gray-100 text-2xl leading-snug line-clamp-1 mt-1 font-normal';
+                descP.className = 'text-white text-2xl leading-snug line-clamp-1 mt-1 font-normal';
                 descP.innerText = (notice.desc || notice.title || '').replace(/\r?\n|\r/g, ' ');
 
                 contentBox.appendChild(headerBox);
@@ -689,7 +689,7 @@
 
                 card.appendChild(leftBox);
                 card.appendChild(makeIconText('div', 'fa-solid fa-location-dot', item.location || '복지관 내',
-                    'text-emerald-300 font-black text-xl px-4 py-2 rounded-xl border border-gray-200 whitespace-nowrap'));
+                    'text-white font-black text-xl px-4 py-2 rounded-xl border border-gray-200 whitespace-nowrap'));
                 box.appendChild(card);
             });
         }
@@ -720,7 +720,7 @@
                 headerBox.appendChild(titleSpan);
 
                 var descP = document.createElement('p');
-                descP.className = 'text-gray-200 text-2xl leading-snug line-clamp-1 mt-1 font-normal';
+                descP.className = 'text-white text-2xl leading-snug line-clamp-1 mt-1 font-normal';
                 descP.innerHTML = '<i class="fa-regular fa-calendar-check"></i> ';
                 descP.appendChild(document.createTextNode((item.date || '') + '  ' + (item.desc || '').replace(/\r?\n|\r/g, ' ')));
 
@@ -743,7 +743,7 @@
                     (i === 0 ? 'border-sky-400 bg-sky-500/15' : 'border-gray-700 bg-slate-800/60');
 
                 var label = document.createElement('div');
-                label.className = 'text-2xl font-black ' + (i === 0 ? 'text-sky-300' : 'text-gray-200');
+                label.className = 'text-2xl font-black text-white';
                 label.innerText = i === 0 ? '오늘' : day.weekday;
 
                 var date = document.createElement('div');
@@ -756,7 +756,7 @@
                 var temps = document.createElement('div');
                 temps.className = 'flex items-baseline gap-2';
                 temps.innerHTML = '<span class="text-3xl font-black text-white">' + Number(day.max) + '°</span>' +
-                    '<span class="text-2xl font-bold text-sky-200/80">' + Number(day.min) + '°</span>';
+                    '<span class="text-2xl font-bold text-white">' + Number(day.min) + '°</span>';
 
                 cell.appendChild(label);
                 cell.appendChild(date);
