@@ -924,6 +924,23 @@
             el.appendChild(wrapper);
         }
 
+        function eventPhotoBox(url, flexClass) {
+            var box = document.createElement('div');
+            box.className = flexClass + ' w-full min-h-0 relative overflow-hidden rounded-xl bg-black border border-gray-800 shadow-xl flex items-center justify-center';
+
+            var bg = document.createElement('img');
+            bg.className = 'absolute inset-0 w-full h-full object-cover filter blur-2xl opacity-40 scale-110 pointer-events-none';
+            bg.src = url;
+
+            var img = document.createElement('img');
+            img.className = 'relative z-10 max-w-full max-h-full object-contain rounded-lg shadow-md img-fade-transition';
+            img.src = url;
+
+            box.appendChild(bg);
+            box.appendChild(img);
+            return box;
+        }
+
         // 행사 소식: 왼쪽 사진(최대 3장), 오른쪽 글과 QR
         function renderEventSlide(el, slide, rawPath) {
             var wrapper = document.createElement('div');
@@ -933,33 +950,26 @@
             var imgList = slide.images || (rawPath ? [rawPath] : []);
 
             if (imgList.length > 0) {
-                var imgBoxContainer = document.createElement('div');
-                imgBoxContainer.className = 'w-1/2 h-full flex flex-col gap-2 justify-center items-center';
-
-                imgList.forEach(function(imgUrl) {
-                    var box = document.createElement('div');
-                    box.className = 'flex-1 w-full min-h-0 relative overflow-hidden rounded-xl bg-black border border-gray-800 shadow-xl flex items-center justify-center';
-
-                    var bg = document.createElement('img');
-                    bg.className = 'absolute inset-0 w-full h-full object-cover filter blur-2xl opacity-40 scale-110 pointer-events-none';
-                    bg.src = imgUrl;
-
-                    var img = document.createElement('img');
-                    img.className = 'relative z-10 max-w-full max-h-full object-contain rounded-lg shadow-md img-fade-transition';
-                    img.src = imgUrl;
-
-                    box.appendChild(bg);
-                    box.appendChild(img);
-                    imgBoxContainer.appendChild(box);
-                });
-                wrapper.appendChild(imgBoxContainer);
+                // 첫 사진은 크게, 나머지는 아래에 나란히
+                var photoCol = document.createElement('div');
+                photoCol.className = 'w-1/2 h-full flex flex-col gap-2 min-h-0';
+                photoCol.appendChild(eventPhotoBox(imgList[0], 'flex-[3]'));
+                if (imgList.length > 1) {
+                    var smallRow = document.createElement('div');
+                    smallRow.className = 'flex-[2] flex gap-2 min-h-0';
+                    imgList.slice(1).forEach(function(imgUrl) {
+                        smallRow.appendChild(eventPhotoBox(imgUrl, 'flex-1'));
+                    });
+                    photoCol.appendChild(smallRow);
+                }
+                wrapper.appendChild(photoCol);
             }
 
             var textBox = document.createElement('div');
             textBox.className = (imgList.length > 0 ? 'w-1/2' : 'w-full') + ' h-full flex flex-col justify-between p-7 bg-slate-900/90 rounded-2xl border border-amber-500/50 shadow-2xl overflow-hidden';
 
             var topHeader = document.createElement('div');
-            topHeader.className = 'flex flex-col gap-3.5 min-h-0 overflow-hidden';
+            topHeader.className = 'flex flex-col gap-3.5 flex-1 min-h-0 overflow-hidden';
 
             var badgeBox = document.createElement('div');
             badgeBox.className = 'flex items-center justify-between shrink-0';
@@ -984,7 +994,7 @@
             titleEl.innerText = slide.title || '';
 
             var descEl = document.createElement('p');
-            descEl.className = 'text-4xl text-gray-100 leading-relaxed font-normal mt-2 line-clamp-10 overflow-hidden whitespace-pre-line';
+            descEl.className = 'text-3xl text-gray-100 leading-relaxed font-normal mt-2 flex-1 min-h-0 overflow-hidden';
             descEl.innerText = slide.desc || '';
 
             topHeader.appendChild(badgeBox);
@@ -997,12 +1007,12 @@
                 bottomQrBox.className = 'flex items-center justify-between pt-3 border-t border-gray-800 mt-auto shrink-0';
 
                 var qrInfoText = document.createElement('span');
-                qrInfoText.className = 'text-xl text-amber-200/90 font-bold leading-snug pr-2';
+                qrInfoText.className = 'text-2xl text-amber-200/90 font-bold leading-snug pr-3';
                 qrInfoText.innerText = '스마트폰으로 QR을 스캔하여 자세한 소식을 확인해보세요';
 
                 var qrImgEl = document.createElement('img');
                 qrImgEl.src = qrImageUrl(slide.qr, 200);
-                qrImgEl.className = 'w-24 h-24 bg-white p-1 rounded-xl shadow-lg shrink-0 object-contain';
+                qrImgEl.className = 'w-28 h-28 bg-white p-1 rounded-xl shadow-lg shrink-0 object-contain';
 
                 bottomQrBox.appendChild(qrInfoText);
                 bottomQrBox.appendChild(qrImgEl);
@@ -1011,6 +1021,24 @@
 
             wrapper.appendChild(textBox);
             el.appendChild(wrapper);
+            fitSentences(descEl, slide.desc || '');
+        }
+
+        // 본문이 칸을 넘으면 문장 단위로 줄여서, 문장 중간에서 잘리지 않게 함
+        function fitSentences(el, text) {
+            if (!el.clientHeight) {
+                el.innerText = text;
+                return;
+            }
+            var sentences = (text.match(/[^.!?]+[.!?]*/g) || [text])
+                .map(function (s) { return s.trim(); })
+                .filter(Boolean);
+            var n = sentences.length;
+            el.innerText = sentences.join(' ');
+            while (el.scrollHeight > el.clientHeight && n > 1) {
+                n--;
+                el.innerText = sentences.slice(0, n).join(' ') + ' …';
+            }
         }
 
         function renderSlidesEmbed(el, rawPath) {
