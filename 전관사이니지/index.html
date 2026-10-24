@@ -1082,7 +1082,7 @@
                         photoCol.remove();
                         textBox.classList.replace('w-1/2', 'w-full');
                         // 칸이 짧을 때 제목이 잘리지 않도록 글자를 줄이고 두 줄까지만 보여줌
-                        titleEl.className = 'text-4xl font-black text-amber-300 leading-snug mt-1 line-clamp-2';
+                        titleEl.className = 'text-4xl font-black text-amber-300 leading-snug mt-1 shrink-0 line-clamp-2';
                         fitSentences(descEl, slide.desc || '');
                     }
                 });
