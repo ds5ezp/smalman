@@ -561,15 +561,25 @@
             var box = document.getElementById('shuttleBox');
             var frame = document.getElementById('shuttleFrame');
             if (!box) return;
-            box.classList.toggle('hidden', !on);
+            shuttleOn = !!on;
             if (!on) {
+                box.classList.add('hidden');
                 if (frame.getAttribute('src')) frame.removeAttribute('src');
                 return;
             }
             // 출발 몇 분 전부터 보일지 주소에 실어 보냄 (값이 바뀌면 지도를 다시 불러옴)
+            // 실제로 보이는지는 지도 페이지가 운행 시간인지 알려줄 때 정함 (shuttle-active 메시지)
             var url = SHUTTLE_MAP_URL + '?lead=' + (lead == null ? 10 : lead);
             if (frame.getAttribute('src') !== url) frame.src = url;
         }
+
+        var shuttleOn = false;
+        window.addEventListener('message', function (e) {
+            var frame = document.getElementById('shuttleFrame');
+            if (!shuttleOn || !frame || e.source !== frame.contentWindow) return;
+            if (!e.data || e.data.type !== 'shuttle-active') return;
+            document.getElementById('shuttleBox').classList.toggle('hidden', !e.data.active);
+        });
 
         // 위젯바 오른쪽 홍보 박스 (운영설정 값이 없으면 숨김)
         function renderPromo(promo) {

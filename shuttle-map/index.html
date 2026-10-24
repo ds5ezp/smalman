@@ -297,6 +297,22 @@
       return out;
     }
 
+    // 오늘 어떤 회차든 "첫 출발 LEAD_MIN분 전 ~ 마지막 도착"  사이면 true (사이니지에서 지도를 보일지 정함)
+    function inShuttleWindow() {
+      if (isNonOperatingDayKst()) return false;
+      const now = nowKstMinutes();
+      return Object.keys(routeData).some(key => {
+        const route = routeData[key];
+        return route.rounds.some(round => {
+          const stops = route.stops.filter(s => s.times[round] !== undefined);
+          if (stops.length < 2) return false;
+          const tf = stops[0].times[round];
+          const tl = stops[stops.length - 1].times[round];
+          return now >= tf - LEAD_MIN && now <= tl;
+        });
+      });
+    }
+
     function minutesToHHMM(min) {
       const h = Math.floor(min / 60), m = Math.round(min % 60);
       return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
@@ -357,6 +373,11 @@
         const estimated = scheduledBuses(realtime);
         drawBuses(realtime, estimated);
         renderLegend(realtime, estimated);
+        // 사이니지 쪽에 지도를 보일지 알려줌 (지도 밖 시간에는 사이니지에서 숨김)
+        if (window.parent !== window) {
+          const active = realtime.length > 0 || estimated.length > 0 || inShuttleWindow();
+          window.parent.postMessage({ type: 'shuttle-active', active: active }, '*');
+        }
         document.getElementById('stamp').innerText = kstTime(Date.now()) + ' 기준';
       } catch (e) {
         document.getElementById('summary').innerText = '위치를 불러오지 못했습니다';
