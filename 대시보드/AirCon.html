@@ -1,0 +1,174 @@
+<!-- 에어컨 제어 화면 (Index.html 의 '에어컨 제어' 메뉴에 포함됨). 서버 쪽은 AirCon.gs -->
+<section data-panel="acStatus" class="d-none">
+  <style>
+    .ac-day-btn { min-width: 44px; }
+  </style>
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <span class="small text-muted" id="acCheckedAt"></span>
+    <button class="btn btn-sm btn-outline-secondary" onclick="loadAirCon()"><i class="bi bi-arrow-clockwise me-1"></i>새로고침</button>
+  </div>
+
+  <div class="row g-3 mb-4" id="acUnits">
+    <div class="col-12 text-muted small">불러오는 중…</div>
+  </div>
+
+  <div class="card p-3 mb-3">
+    <h6 class="fw-bold mb-3"><i class="bi bi-alarm me-1"></i>예약 추가</h6>
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        <label class="form-label small fw-bold" for="acDevice">에어컨</label>
+        <select class="form-select" id="acDevice"></select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-bold" for="acAction">동작</label>
+        <select class="form-select" id="acAction">
+          <option value="켜기">켜기</option>
+          <option value="끄기">끄기</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-bold" for="acTime">시각</label>
+        <input type="time" class="form-control" id="acTime" step="60" value="09:00">
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="form-label small fw-bold">요일</div>
+        <div class="d-flex flex-wrap gap-1" id="acDays">
+          <input type="checkbox" class="btn-check" id="acDay_all" value="매일" onchange="toggleAllAcDays(this.checked)">
+          <label class="btn btn-outline-primary btn-sm ac-day-btn" for="acDay_all">매일</label>
+          <!-- 월~일 칸은 acDayButtons() 가 채움 -->
+        </div>
+      </div>
+    </div>
+    <div class="d-flex justify-content-end mt-3">
+      <button class="btn btn-primary" id="acSaveBtn" onclick="saveAcReservation()"><i class="bi bi-save me-1"></i>예약 저장</button>
+    </div>
+  </div>
+
+  <div class="card p-3">
+    <h6 class="fw-bold mb-2">예약 목록</h6>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th>시각</th><th>에어컨</th><th>동작</th><th>요일</th><th>사용</th><th>마지막 실행</th><th></th></tr></thead>
+        <tbody id="acReservations"><tr><td colspan="7" class="text-muted">불러오는 중…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="small text-muted mt-2">예약은 1분 간격으로 확인해서 설정한 시각에 실행됩니다. 실패하면 '마지막 결과'에 이유가 나옵니다.</div>
+  </div>
+</section>
+
+<script>
+  const AC_DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+
+  // 요일 버튼 만들기 (매일 버튼 뒤에 월~일)
+  (function acDayButtons() {
+    const box = document.getElementById('acDays');
+    AC_DAYS.forEach(d => {
+      box.insertAdjacentHTML('beforeend',
+        '<input type="checkbox" class="btn-check ac-day" id="acDay_' + d + '" value="' + d + '" onchange="syncAcAllDay()">' +
+        '<label class="btn btn-outline-primary btn-sm ac-day-btn" for="acDay_' + d + '">' + d + '</label>');
+    });
+  })();
+
+  function toggleAllAcDays(on) {
+    document.querySelectorAll('#acDays .ac-day').forEach(i => { i.checked = on; });
+  }
+
+  // 월~일을 모두 고르면 '매일'도 켜짐
+  function syncAcAllDay() {
+    const all = document.querySelectorAll('#acDays .ac-day');
+    const on = Array.from(all).every(i => i.checked);
+    document.getElementById('acDay_all').checked = on;
+  }
+
+  function loadAirCon() {
+    Promise.all([run('getAirConUnits'), run('getAirConReservations')]).then(([units, rsv]) => {
+      renderAcUnits(units);
+      renderAcDevices(units);
+      renderAcReservations(rsv, units);
+      document.getElementById('acCheckedAt').textContent = '확인: ' + new Date().toLocaleTimeString('ko-KR');
+    }).catch(fail);
+  }
+
+  function renderAcUnits(units) {
+    document.getElementById('acUnits').innerHTML = units.length ? units.map(u => {
+      const badge = !u.online
+        ? '<span class="badge text-bg-secondary">연결 안 됨</span>'
+        : u.on ? '<span class="badge text-bg-success">켜짐</span>' : '<span class="badge text-bg-light text-dark border">꺼짐</span>';
+      const temp = (v, unit) => v == null ? '-' : esc(v) + unit;
+      return '<div class="col-12 col-md-6"><div class="card p-3 h-100">' +
+        '<div class="d-flex justify-content-between align-items-center mb-2"><div class="fw-bold">' + esc(u.name) + '</div>' + badge + '</div>' +
+        '<div class="row g-2 mb-3 small">' +
+          '<div class="col-6"><div class="text-muted">현재 온도</div><div class="fw-bold">' + temp(u.current, '°C') + '</div></div>' +
+          '<div class="col-6"><div class="text-muted">설정 온도</div><div class="fw-bold">' + temp(u.setpoint, '°C') + '</div></div>' +
+        '</div>' +
+        '<div class="d-flex gap-2">' +
+          '<button class="btn btn-primary flex-fill" ' + (!u.online || u.on ? 'disabled' : '') + ' onclick="controlAirCon(\'' + esc(u.id) + '\', true)"><i class="bi bi-power me-1"></i>켜기</button>' +
+          '<button class="btn btn-outline-secondary flex-fill" ' + (!u.online || !u.on ? 'disabled' : '') + ' onclick="controlAirCon(\'' + esc(u.id) + '\', false)"><i class="bi bi-power me-1"></i>끄기</button>' +
+        '</div></div></div>';
+    }).join('') : '<div class="col-12 text-muted small">스마트싱스에서 에어컨을 찾지 못했습니다. 토큰과 기기 연결을 확인해 주세요.</div>';
+  }
+
+  function renderAcDevices(units) {
+    const sel = document.getElementById('acDevice');
+    const keep = sel.value;
+    sel.innerHTML = units.map(u => '<option value="' + esc(u.id) + '">' + esc(u.name) + '</option>').join('');
+    if (keep) sel.value = keep;
+  }
+
+  function renderAcReservations(list, units) {
+    const nameOf = {};
+    units.forEach(u => { nameOf[u.id] = u.name; });
+    document.getElementById('acReservations').innerHTML = list.length ? list.map(r =>
+      '<tr>' +
+        '<td class="fw-bold">' + esc(r.time) + '</td>' +
+        '<td class="small">' + esc(nameOf[r.deviceId] || r.name) + '</td>' +
+        '<td class="small">' + esc(r.action) + '</td>' +
+        '<td class="small">' + esc(r.days) + '</td>' +
+        '<td><div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" ' + (r.enabled ? 'checked' : '') +
+          ' onchange="toggleAcReservation(' + esc(r.no) + ', this.checked)" aria-label="예약 사용"></div></td>' +
+        '<td class="small">' + (r.lastRun ? esc(r.lastRun) + '<div class="' + (r.lastResult === '성공' ? 'text-success' : 'text-danger') + '">' + esc(r.lastResult) + '</div>' : '<span class="text-muted">아직 없음</span>') + '</td>' +
+        '<td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="removeAcReservation(' + esc(r.no) + ')">삭제</button></td>' +
+      '</tr>'
+    ).join('') : '<tr><td colspan="7" class="text-muted">예약이 없습니다.</td></tr>';
+  }
+
+  // 켜기·끄기 버튼: 명령을 보낸 뒤 몇 초 후 상태를 다시 읽음
+  function controlAirCon(id, on) {
+    save('setAirCon', id, on).then(() => {
+      toast(on ? '에어컨을 켭니다. 잠시 후 상태가 바뀝니다.' : '에어컨을 끕니다. 잠시 후 상태가 바뀝니다.');
+      setTimeout(loadAirCon, 3000);
+    }).catch(fail);
+  }
+
+  function saveAcReservation() {
+    const sel = document.getElementById('acDevice');
+    const days = Array.from(document.querySelectorAll('#acDays .ac-day')).filter(i => i.checked).map(i => i.value);
+    if (days.length === 0) return fail(new Error('요일을 하나 이상 골라 주세요.'));
+    const entry = {
+      deviceId: sel.value,
+      name: sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : '',
+      action: document.getElementById('acAction').value,
+      time: document.getElementById('acTime').value,
+      days: days
+    };
+    save('saveAirConReservation', entry).then(() => {
+      toast('예약을 저장했습니다.');
+      loadAirCon();
+    }).catch(fail);
+  }
+
+  function toggleAcReservation(no, on) {
+    save('setAirConReservationEnabled', no, on).then(() => {
+      toast(on ? '예약을 켰습니다.' : '예약을 껐습니다.');
+      loadAirCon();
+    }).catch(err => { fail(err); loadAirCon(); });
+  }
+
+  function removeAcReservation(no) {
+    if (!confirm(no + '번 예약을 지울까요?')) return;
+    save('deleteAirConReservation', no).then(() => {
+      toast('예약을 지웠습니다.');
+      loadAirCon();
+    }).catch(fail);
+  }
+</script>

@@ -61,6 +61,7 @@
         <div class="menu-items">
           <a class="module" href="#" data-module="repair" onclick="showModule('repair'); return false;"><i class="bi bi-tools"></i>시설보수대장</a>
           <a class="module" href="#" data-module="hvac" onclick="showModule('hvac'); return false;"><i class="bi bi-thermometer-half"></i>냉난방 현황</a>
+          <a class="module" href="#" data-module="aircon" onclick="showModule('aircon'); return false;"><i class="bi bi-snow"></i>에어컨 제어</a>
         </div>
       </div>
     </aside>
@@ -1164,6 +1165,13 @@
         </div>
       </section>
      </div>
+     <!-- ===================== 에어컨 제어 (스마트싱스) ===================== -->
+     <div data-module-view="aircon" class="d-none">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h4 class="mb-0">에어컨 제어</h4>
+      </div>
+      <?!= include('AirCon'); ?>
+     </div>
     </main>
 
   <!-- 시설보수 세부 내용 -->
@@ -1411,11 +1419,12 @@
       mStaff: loadMeeting, mFoundation: loadMeeting,
       vRepair: loadRepairList,
       eList: loadLed, eSetup: loadLed,
-      hStatus: loadHvac, hSetup: loadHvacSetup
+      hStatus: loadHvac, hSetup: loadHvacSetup,
+      acStatus: () => loadAirCon()
     };
     // 열 때마다 새로 읽는 탭
-    const ALWAYS_RELOAD = ['status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup'];
-    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus' };
+    const ALWAYS_RELOAD = ['status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus'];
+    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus' };
 
     function moduleOfTab(tab) {
       if (/^r[A-Z]/.test(tab)) return 'rooms';
@@ -1427,6 +1436,7 @@
       if (/^v[A-Z]/.test(tab)) return 'repair';
       if (/^e[A-Z]/.test(tab)) return 'led';
       if (/^h[A-Z]/.test(tab)) return 'hvac';
+      if (/^ac[A-Z]/.test(tab)) return 'aircon';
       return 'lobby';
     }
 
