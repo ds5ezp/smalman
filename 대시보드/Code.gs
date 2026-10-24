@@ -2720,11 +2720,13 @@ function resetHvacKey() {
 
 // =====================================================================
 // 사이니지 셔틀 지도 설정 (대시보드 셔틀 탭의 스위치·표시 시작 시점)
-// 운영설정 시트의 두 칸: '셔틀 지도 표시' (ON/OFF), '셔틀 표시 시작(분 전)' (5/10/15/20/30)
+// 운영설정 시트의 세 칸: '셔틀 지도 표시' (ON/OFF), '셔틀 표시 시작(분 전)' (5/10/15/20/30),
+// '셔틀 표시 기준' (출발/도착)
 // =====================================================================
 
 const SHUTTLE_SIGNAGE_LABEL = '셔틀 지도 표시';
 const SHUTTLE_LEAD_LABEL = '셔틀 표시 시작(분 전)';
+const SHUTTLE_BASE_LABEL = '셔틀 표시 기준';
 
 function readSettingValue_(label) {
   const row = readSettings_().rows.find(x => String(x.key).trim() === label);
@@ -2736,7 +2738,8 @@ function getShuttleSignageOn() {
   const lead = parseInt(readSettingValue_(SHUTTLE_LEAD_LABEL), 10);
   return {
     on: readSettingValue_(SHUTTLE_SIGNAGE_LABEL).toUpperCase() === 'ON',
-    lead: isNaN(lead) ? 10 : Math.min(Math.max(lead, 0), 60)
+    lead: isNaN(lead) ? 10 : Math.min(Math.max(lead, 0), 60),
+    base: readSettingValue_(SHUTTLE_BASE_LABEL) === '도착' ? '도착' : '출발'
   };
 }
 
@@ -2751,15 +2754,17 @@ function upsertSettingRow_(sheet, label, value, note) {
   }
 }
 
-function saveShuttleSignage(on, lead) {
+function saveShuttleSignage(on, lead, base) {
   requireUser_();
   return withLock_(() => {
     const sheet = lobbySheet_('운영설정');
     const minutes = Math.min(Math.max(parseInt(lead, 10) || 10, 0), 60);
+    const baseLabel = base === '도착' ? '도착' : '출발';
     upsertSettingRow_(sheet, SHUTTLE_SIGNAGE_LABEL, on ? 'ON' : 'OFF', '셔틀 실시간 지도를 전관 사이니지 위쪽에 띄울지 (ON/OFF)');
-    upsertSettingRow_(sheet, SHUTTLE_LEAD_LABEL, String(minutes), '셔틀이 출발하기 몇 분 전부터 지도에 나올지 (5/10/15/20/30)');
+    upsertSettingRow_(sheet, SHUTTLE_LEAD_LABEL, String(minutes), '기준 시각 몇 분 전부터 지도에 나올지 (5/10/15/20/30)');
+    upsertSettingRow_(sheet, SHUTTLE_BASE_LABEL, baseLabel, '지도 표시 기준: 출발 (첫 출발 전부터) / 도착 (마지막 도착 전부터)');
     SpreadsheetApp.flush();
-    log_('셔틀 지도 사이니지 표시', (on ? 'ON' : 'OFF') + ' / ' + minutes + '분 전');
-    return { on: !!on, lead: minutes };
+    log_('셔틀 지도 사이니지 표시', (on ? 'ON' : 'OFF') + ' / ' + baseLabel + ' ' + minutes + '분 전');
+    return { on: !!on, lead: minutes, base: baseLabel };
   });
 }

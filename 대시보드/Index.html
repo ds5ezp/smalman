@@ -769,13 +769,16 @@
           </div>
           <div class="d-flex align-items-center gap-3">
             <div class="d-flex align-items-center gap-2">
-              <label class="small fw-bold text-nowrap" for="shuttleLeadSelect">표시 시작</label>
-              <select class="form-select form-select-sm" id="shuttleLeadSelect" style="width:auto" onchange="saveShuttleLead(this.value)">
-                <option value="5">출발 5분 전</option>
-                <option value="10">출발 10분 전</option>
-                <option value="15">출발 15분 전</option>
-                <option value="20">출발 20분 전</option>
-                <option value="30">출발 30분 전</option>
+              <select class="form-select form-select-sm" id="shuttleBaseSelect" style="width:auto" onchange="saveShuttleSettings()" aria-label="표시 기준">
+                <option value="출발">출발 기준</option>
+                <option value="도착">도착 기준</option>
+              </select>
+              <select class="form-select form-select-sm" id="shuttleLeadSelect" style="width:auto" onchange="saveShuttleSettings()" aria-label="표시 시작 시점">
+                <option value="5">5분 전부터</option>
+                <option value="10">10분 전부터</option>
+                <option value="15">15분 전부터</option>
+                <option value="20">20분 전부터</option>
+                <option value="30">30분 전부터</option>
               </select>
             </div>
             <div class="form-check form-switch m-0">
@@ -3552,22 +3555,26 @@
     function setShuttleSignageSwitch(s) {
       document.getElementById('shuttleSignageSwitch').checked = !!s.on;
       document.getElementById('shuttleSignageLabel').innerText = s.on ? '켜짐' : '꺼짐';
+      document.getElementById('shuttleBaseSelect').value = s.base;
       document.getElementById('shuttleLeadSelect').value = String(s.lead);
     }
 
     function toggleShuttleSignage(on) {
+      const base = document.getElementById('shuttleBaseSelect').value;
       const lead = document.getElementById('shuttleLeadSelect').value;
-      save('saveShuttleSignage', on, lead).then(s => {
+      save('saveShuttleSignage', on, lead, base).then(s => {
         setShuttleSignageSwitch(s);
         toast(on ? '사이니지에 셔틀 지도를 띄웁니다. 약 1분 안에 반영돼요.' : '사이니지에서 셔틀 지도를 뺍니다.');
       }).catch(err => { fail(err); loadShuttleSignageSwitch(); });
     }
 
-    function saveShuttleLead(lead) {
+    function saveShuttleSettings() {
       const on = document.getElementById('shuttleSignageSwitch').checked;
-      save('saveShuttleSignage', on, lead).then(s => {
+      const base = document.getElementById('shuttleBaseSelect').value;
+      const lead = document.getElementById('shuttleLeadSelect').value;
+      save('saveShuttleSignage', on, lead, base).then(s => {
         setShuttleSignageSwitch(s);
-        toast('출발 ' + s.lead + '분 전부터 지도에 나오게 했습니다. 약 1분 안에 반영돼요.');
+        toast((s.base === '도착' ? '도착' : '출발') + ' 기준 ' + s.lead + '분 전부터 지도에 나오게 했습니다. 약 1분 안에 반영돼요.');
       }).catch(err => { fail(err); loadShuttleSignageSwitch(); });
     }
 
