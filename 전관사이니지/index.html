@@ -520,7 +520,7 @@
 
             if (data.weather) renderWeather(data.weather);
             renderPromo(data.promo || null);
-            renderShuttleMap(!!data.shuttleMap);
+            renderShuttleMap(!!data.shuttleMap, data.shuttleLead);
 
             if (Array.isArray(data.notices)) state.notices = data.notices;
             if (Array.isArray(data.schedule)) state.schedules = data.schedule;
@@ -557,13 +557,18 @@
         }
 
         // 셔틀 지도: 켜면 위쪽에 나오고, 끄면 숨기면서 주소도 지워서 지도 페이지가 돌지 않게 함
-        function renderShuttleMap(on) {
+        function renderShuttleMap(on, lead) {
             var box = document.getElementById('shuttleBox');
             var frame = document.getElementById('shuttleFrame');
             if (!box) return;
             box.classList.toggle('hidden', !on);
-            if (on && !frame.getAttribute('src')) frame.src = SHUTTLE_MAP_URL;
-            if (!on && frame.getAttribute('src')) frame.removeAttribute('src');
+            if (!on) {
+                if (frame.getAttribute('src')) frame.removeAttribute('src');
+                return;
+            }
+            // 출발 몇 분 전부터 보일지 주소에 실어 보냄 (값이 바뀌면 지도를 다시 불러옴)
+            var url = SHUTTLE_MAP_URL + '?lead=' + (lead == null ? 10 : lead);
+            if (frame.getAttribute('src') !== url) frame.src = url;
         }
 
         // 위젯바 오른쪽 홍보 박스 (운영설정 값이 없으면 숨김)

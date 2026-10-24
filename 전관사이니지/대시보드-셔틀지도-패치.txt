@@ -1,86 +1,117 @@
-[대시보드 셔틀 지도 On/Off 붙여넣기 안내]
+[대시보드 셔틀 지도 On/Off · 표시 시작 시점 붙여넣기 안내 (개정 2)]
 
 대시보드(업무포털) 프로젝트는 이 저장소에 없으므로, 아래 내용을 대시보드 프로젝트에 직접 붙여넣어 주세요.
+이전 개정(1)을 붙여넣었다면 그 함수들을 아래 내용으로 교체하면 됩니다.
 붙여넣은 뒤에는 대시보드를 "새 버전"으로 배포해야 반영됩니다.
 
-사이니지 쪽은 이미 반영되어 있습니다. 운영설정 시트의 '셔틀 지도 표시' 칸(B열)이 ON일 때만 위쪽에 지도가 나옵니다.
+운영설정 시트에 두 칸이 생깁니다(없으면 자동으로 추가됩니다).
+  - '셔틀 지도 표시' : ON / OFF
+  - '셔틀 표시 시작(분 전)' : 5, 10, 15, 20, 30 중 하나 (기본 10)
 
 
 =====================================================================
-1) 대시보드 Code.gs 에 추가 (아무 함수 아래나 붙여넣기)
+1) 대시보드 Code.gs : 기존 SHUTTLE_SIGNAGE 관련 함수를 모두 지우고 아래로 교체
 =====================================================================
 
-// 사이니지 셔틀 지도 켜기/끄기: 운영설정 시트의 '셔틀 지도 표시' 칸 (ON/OFF)
+// 사이니지 셔틀 지도 설정: 운영설정 시트의 두 칸
 const SHUTTLE_SIGNAGE_LABEL = '셔틀 지도 표시';
+const SHUTTLE_LEAD_LABEL = '셔틀 표시 시작(분 전)';
 
-function shuttleSignageOn_() {
-  const row = readSettings_().rows.find(x => String(x.key).trim() === SHUTTLE_SIGNAGE_LABEL);
-  return !!row && String(row.value).trim().toUpperCase() === 'ON';
+function readSettingValue_(label) {
+  const row = readSettings_().rows.find(x => String(x.key).trim() === label);
+  return row ? String(row.value).trim() : '';
 }
 
 function getShuttleSignageOn() {
   requireUser_();
-  return shuttleSignageOn_();
+  const lead = parseInt(readSettingValue_(SHUTTLE_LEAD_LABEL), 10);
+  return {
+    on: readSettingValue_(SHUTTLE_SIGNAGE_LABEL).toUpperCase() === 'ON',
+    lead: isNaN(lead) ? 10 : Math.min(Math.max(lead, 0), 60)
+  };
 }
 
-function saveShuttleSignage(on) {
+// 운영설정 한 칸을 찾아 값을 바꾸고, 없으면 맨 아래에 한 줄 추가
+function upsertSettingRow_(sheet, label, value, note) {
+  const labels = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 1), 1).getDisplayValues();
+  const idx = labels.findIndex(r => String(r[0]).trim() === label);
+  if (idx === -1) {
+    sheet.appendRow([label, value, note]);
+  } else {
+    sheet.getRange(idx + 1, 2).setNumberFormat('@').setValue(value);
+  }
+}
+
+function saveShuttleSignage(on, lead) {
   requireUser_();
   return withLock_(() => {
     const sheet = lobbySheet_('운영설정');
-    const labels = sheet.getRange(1, 1, Math.max(sheet.getLastRow(), 1), 1).getDisplayValues();
-    const idx = labels.findIndex(r => String(r[0]).trim() === SHUTTLE_SIGNAGE_LABEL);
-    const value = on ? 'ON' : 'OFF';
-    if (idx === -1) {
-      sheet.appendRow([SHUTTLE_SIGNAGE_LABEL, value, '셔틀 실시간 지도를 전관 사이니지 위쪽에 띄울지 (ON/OFF)']);
-    } else {
-      sheet.getRange(idx + 1, 2).setNumberFormat('@').setValue(value);
-    }
+    const minutes = Math.min(Math.max(parseInt(lead, 10) || 10, 0), 60);
+    upsertSettingRow_(sheet, SHUTTLE_SIGNAGE_LABEL, on ? 'ON' : 'OFF', '셔틀 실시간 지도를 전관 사이니지 위쪽에 띄울지 (ON/OFF)');
+    upsertSettingRow_(sheet, SHUTTLE_LEAD_LABEL, String(minutes), '셔틀이 출발하기 몇 분 전부터 지도에 나올지 (5/10/15/20/30)');
     SpreadsheetApp.flush();
-    log_('셔틀 지도 사이니지 표시', value);
-    return on;
+    log_('셔틀 지도 사이니지 표시', (on ? 'ON' : 'OFF') + ' / ' + minutes + '분 전');
+    return { on: !!on, lead: minutes };
   });
 }
 
 
 =====================================================================
-2) 대시보드 Index.html 의 셔틀버스 현황 탭(data-panel="sStatus")에 추가
+2) 대시보드 Index.html : 셔틀 탭 카드 교체
 =====================================================================
 
-(a) 아래 카드를 '15초마다 자동 새로고침' 줄 바로 아래(sStatus 섹션 맨 위)에 넣기
+(a) '15초마다 자동 새로고침' 줄 아래에 있는 기존 카드(id="shuttleSignageSwitch")를 아래 카드로 교체
 
         <div class="card p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div>
             <div class="fw-bold">전관 사이니지에 셔틀 지도 띄우기</div>
             <div class="small text-muted">켜면 로비 사이니지 위쪽에 셔틀 운행 지도가 나옵니다. (약 1분 안에 반영)</div>
           </div>
-          <div class="form-check form-switch m-0">
-            <input class="form-check-input" type="checkbox" id="shuttleSignageSwitch" style="width:3rem;height:1.5rem" onchange="toggleShuttleSignage(this.checked)">
-            <label class="form-check-label small" for="shuttleSignageSwitch" id="shuttleSignageLabel">꺼짐</label>
+          <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+              <label class="small fw-bold text-nowrap" for="shuttleLeadSelect">표시 시작</label>
+              <select class="form-select form-select-sm" id="shuttleLeadSelect" style="width:auto" onchange="saveShuttleLead(this.value)">
+                <option value="5">출발 5분 전</option>
+                <option value="10">출발 10분 전</option>
+                <option value="15">출발 15분 전</option>
+                <option value="20">출발 20분 전</option>
+                <option value="30">출발 30분 전</option>
+              </select>
+            </div>
+            <div class="form-check form-switch m-0">
+              <input class="form-check-input" type="checkbox" id="shuttleSignageSwitch" style="width:3rem;height:1.5rem" onchange="toggleShuttleSignage(this.checked)">
+              <label class="form-check-label small" for="shuttleSignageSwitch" id="shuttleSignageLabel">꺼짐</label>
+            </div>
           </div>
         </div>
 
-(b) <script> 안, function loadShuttleStatus() { 바로 위에 추가
+(b) <script> 안의 기존 함수 3개(loadShuttleSignageSwitch, setShuttleSignageSwitch, toggleShuttleSignage)를 아래로 교체
 
     function loadShuttleSignageSwitch() {
       run('getShuttleSignageOn').then(setShuttleSignageSwitch).catch(fail);
     }
 
-    function setShuttleSignageSwitch(on) {
-      document.getElementById('shuttleSignageSwitch').checked = on;
-      document.getElementById('shuttleSignageLabel').innerText = on ? '켜짐' : '꺼짐';
+    function setShuttleSignageSwitch(s) {
+      document.getElementById('shuttleSignageSwitch').checked = !!s.on;
+      document.getElementById('shuttleSignageLabel').innerText = s.on ? '켜짐' : '꺼짐';
+      document.getElementById('shuttleLeadSelect').value = String(s.lead);
     }
 
     function toggleShuttleSignage(on) {
-      save('saveShuttleSignage', on).then(v => {
-        setShuttleSignageSwitch(v);
+      const lead = document.getElementById('shuttleLeadSelect').value;
+      save('saveShuttleSignage', on, lead).then(s => {
+        setShuttleSignageSwitch(s);
         toast(on ? '사이니지에 셔틀 지도를 띄웁니다. 약 1분 안에 반영돼요.' : '사이니지에서 셔틀 지도를 뺍니다.');
       }).catch(err => { fail(err); loadShuttleSignageSwitch(); });
     }
 
-(c) TAB_LOADERS 안의 이 줄을 교체
+    function saveShuttleLead(lead) {
+      const on = document.getElementById('shuttleSignageSwitch').checked;
+      save('saveShuttleSignage', on, lead).then(s => {
+        setShuttleSignageSwitch(s);
+        toast('출발 ' + s.lead + '분 전부터 지도에 나오게 했습니다. 약 1분 안에 반영돼요.');
+      }).catch(err => { fail(err); loadShuttleSignageSwitch(); });
+    }
 
-      sStatus: loadShuttleStatus,
-
-  를 아래로 바꾸기
-
+(c) TAB_LOADERS 의 sStatus 줄은 개정 1과 동일하게 유지
       sStatus: () => { loadShuttleStatus(); loadShuttleSignageSwitch(); },

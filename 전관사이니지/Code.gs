@@ -321,6 +321,7 @@ function getDashboardData() {
     forecast: getForecast(),
     promo: getPromo(),
     shuttleMap: getSettingByLabel('셔틀 지도 표시').toUpperCase() === 'ON',
+    shuttleLead: shuttleLead_(),
     welcomeInfo: checkWelcomeMode()
   };
 }
@@ -772,6 +773,12 @@ function fetchDustLevel() {
     console.error("미세먼지 API 에러: " + e.toString());
     return null;
   }
+}
+
+// 셔틀 지도 표시 시작 시점 (출발 몇 분 전부터 지도에 나올지). 운영설정 '셔틀 표시 시작(분 전)', 없으면 10분
+function shuttleLead_() {
+  const n = parseInt(getSettingByLabel('셔틀 표시 시작(분 전)'), 10);
+  return isNaN(n) ? 10 : Math.min(Math.max(n, 0), 60);
 }
 
 // 주간 예보: 5일 예보(3시간 간격)를 날짜별 최저·최고 기온으로 묶음. 낮 12시에 가장 가까운 시간의 날씨 아이콘을 씀
