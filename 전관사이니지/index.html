@@ -790,6 +790,25 @@
             el.classList.toggle('pointer-events-none', !on);
         }
 
+        // 하단 목록이 바뀔 때: 살짝 흐려지며 내려갔다가, 새 내용이 아래에서 올라오며 나타남
+        function swapBox(panelId, render) {
+            var panel = document.getElementById(panelId);
+            var box = panel && panel.lastElementChild;
+            if (!box) return render();
+            box.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            box.style.opacity = '0';
+            box.style.transform = 'translateY(14px)';
+            setTimeout(function () {
+                render();
+                box.style.transition = 'none';
+                box.style.transform = 'translateY(-14px)';
+                box.offsetHeight;
+                box.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                box.style.opacity = '1';
+                box.style.transform = 'none';
+            }, 400);
+        }
+
         function runBottom(ms, next) {
             clearTimeout(bottom.timer);
             bottom.timer = setTimeout(next, ms);
@@ -807,14 +826,15 @@
             var items = panel.items();
             if (items.length === 0) {
                 if (panel.skipWhenEmpty) return nextBottomPanel();
-                panel.empty();
+                swapBox(panel.id, function () { panel.empty(); });
                 return runBottom(BOTTOM_HOLD_MS, nextBottomPanel);
             }
 
             // 데이터가 줄어서 이 페이지가 없어진 경우 다음 패널로
             if (bottom.page >= items.length) return nextBottomPanel();
 
-            panel.render(items, bottom.page);
+            var from = bottom.page;
+            swapBox(panel.id, function () { panel.render(items, from); });
             bottom.page += panel.pageSize;
             runBottom(BOTTOM_HOLD_MS, bottom.page < items.length ? stepBottom : nextBottomPanel);
         }
