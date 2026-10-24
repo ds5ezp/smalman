@@ -1807,7 +1807,8 @@ function writeExportTable_(sheet, rows) {
 
 const REPAIR = {
   SHEET_NAME: '시설보수대장',
-  HEADERS: ['번호', '보수일자', '분야', '위치', '보수 내용', '원인·비고', '조치결과', '비용(원)', '작성자', '작성자이메일', '작성일시', '사진'],
+  // 사진: '사진(이전 기록)'은 조치 전·후를 나누기 전 기록, 이후 기록은 '조치 전 사진'·'조치 후 사진'에 들어감
+  HEADERS: ['번호', '보수일자', '분야', '위치', '보수 내용', '원인·비고', '조치결과', '비용(원)', '작성자', '작성자이메일', '작성일시', '사진(이전 기록)', '조치 전 사진', '조치 후 사진'],
   FIELDS: ['전기', '설비(급배수·냉난방)', '건축(벽·바닥·천장)', '창호·문', '소방', '가구·비품', '기타'],
   RESULTS: ['완료', '진행중', '이월'],
   FOLDER_NAME: '시설보수 사진',
@@ -1815,7 +1816,16 @@ const REPAIR = {
 };
 
 function repairSheet_() {
-  return meetingTab_(REPAIR.SHEET_NAME, REPAIR.HEADERS);
+  const sheet = meetingTab_(REPAIR.SHEET_NAME, REPAIR.HEADERS);
+  // 조치 전·후 칸이 생기기 전에 만든 시트면 머리글을 새로 채워 넣음
+  if (String(sheet.getRange(1, REPAIR.HEADERS.length).getValue()) !== REPAIR.HEADERS[REPAIR.HEADERS.length - 1]) {
+    sheet.getRange(1, 1, 1, REPAIR.HEADERS.length).setValues([REPAIR.HEADERS]).setFontWeight('bold');
+  }
+  return sheet;
+}
+
+function splitPhotos_(text) {
+  return String(text || '').split('\n').filter(Boolean);
 }
 
 function repairFolder_() {
@@ -1844,7 +1854,9 @@ function repairRows_() {
     cost: String(v[7] || ''),
     name: String(v[8] || ''),
     email: String(v[9] || '').toLowerCase(),
-    photos: String(v[11] || '').split('\n').filter(Boolean)
+    legacy: splitPhotos_(v[11]),
+    before: splitPhotos_(v[12]),
+    after: splitPhotos_(v[13])
   })).filter(r => r.no);
 }
 
@@ -1865,7 +1877,14 @@ function uploadRepairPhoto(name, mime, data) {
   return file.getUrl();
 }
 
-// 보수 기록 1건 저장. 번호는 자동으로 이어 붙임
+// 사진 링크 목록 정리: 빈 값·중복 제외, 최대 30장
+function cleanPhotoList_(list) {
+  return (Array.isArray(list) ? list : []).map(u => String(u || '').trim())
+    .filter((u, i, arr) => u && arr.indexOf(u) === i).slice(0, 30);
+}
+
+// 보수 기록 1건 저장. 번호는 자동으로 이어 붙임. entry.no 가 있으면 본인 기록을 고침
+// (사진은 화면에 남긴 기존 사진 + 새로 올린 사진 전체 목록으로 받아 그대로 씀)
 function saveRepair(entry) {
   const email = requireUser_();
   const date = String(entry.date || '');
@@ -1873,13 +1892,28 @@ function saveRepair(entry) {
   if (REPAIR.FIELDS.indexOf(entry.field) === -1) throw new Error('분야를 골라 주세요.');
   if (!String(entry.content || '').trim()) throw new Error('보수 내용을 적어 주세요.');
   const name = staffName_(email);
-  const photos = (entry.photos || []).join('\n');
+  const result = REPAIR.RESULTS.indexOf(entry.result) === -1 ? '완료' : entry.result;
+  const before = cleanPhotoList_(entry.beforePhotos).join('\n');
+  const after = cleanPhotoList_(entry.afterPhotos).join('\n');
   return withLock_(() => {
+    const sheet = repairSheet_();
+    if (entry.no) {
+      const hit = repairRows_().filter(r => r.no === Number(entry.no))[0];
+      if (!hit) throw new Error('해당 기록을 찾을 수 없습니다.');
+      if (hit.email !== email) throw new Error('본인이 쓴 기록만 고칠 수 있습니다.');
+      sheet.getRange(hit.row, 2, 1, 7).setNumberFormat('@').setValues([[
+        date, entry.field, String(entry.place || '').trim(), String(entry.content).trim(),
+        String(entry.cause || '').trim(), result, String(Number(entry.cost) || 0)
+      ]]);
+      sheet.getRange(hit.row, 13, 1, 2).setNumberFormat('@').setValues([[before, after]]);
+      log_('시설보수 수정', date + ' ' + entry.field + ' ' + hit.no + '번');
+      return hit.no;
+    }
     const no = repairRows_().reduce((max, r) => Math.max(max, r.no), 0) + 1;
-    writeMeetingRow_(repairSheet_(), 0, [
+    writeMeetingRow_(sheet, 0, [
       no, date, entry.field, String(entry.place || '').trim(), String(entry.content).trim(),
-      String(entry.cause || '').trim(), REPAIR.RESULTS.indexOf(entry.result) === -1 ? '완료' : entry.result,
-      String(Number(entry.cost) || 0), name, email, fmt_(new Date(), 'yyyy-MM-dd HH:mm'), photos
+      String(entry.cause || '').trim(), result, String(Number(entry.cost) || 0),
+      name, email, fmt_(new Date(), 'yyyy-MM-dd HH:mm'), '', before, after
     ]);
     log_('시설보수 등록', date + ' ' + entry.field + ' ' + no + '번');
     return no;
@@ -1894,7 +1928,10 @@ function getRepairList(year) {
     .sort((a, b) => (b.date.localeCompare(a.date)) || (b.no - a.no))
     .map(r => ({
       no: r.no, date: r.date, field: r.field, place: r.place, content: r.content,
-      cause: r.cause, result: r.result, cost: r.cost, name: r.name, photos: r.photos,
+      cause: r.cause, result: r.result, cost: r.cost, name: r.name,
+      before: r.before, after: r.after,
+      // 세부 창에서 한꺼번에 넘겨 보도록 조치 전 → 조치 후 → 이전 기록 순서로 모은 목록
+      photos: r.before.concat(r.after, r.legacy),
       mine: r.email === email
     }));
 }
@@ -2054,11 +2091,14 @@ function exportRepairMonth(month) {
   const rows = repairRows_()
     .filter(r => r.date.indexOf(month) === 0)
     .sort((a, b) => a.date.localeCompare(b.date) || a.no - b.no);
-  const body = rows.map(r => [r.no, r.date, r.field, r.place, r.content, r.cause, r.result, r.cost, r.name, r.photos.length + '장', r.photos.join('\n')]);
+  const body = rows.map(r => [
+    r.no, r.date, r.field, r.place, r.content, r.cause, r.result, r.cost, r.name,
+    r.before.length, r.after.length, r.before.join('\n'), r.after.join('\n'), r.legacy.join('\n')
+  ]);
   const ss = SpreadsheetApp.create('시설보수 ' + month + ' 자료');
   const sheet = ss.getSheets()[0];
   sheet.setName('시설보수');
-  writeExportTable_(sheet, [['번호', '보수일자', '분야', '위치', '보수 내용', '원인·비고', '조치결과', '비용(원)', '작성자', '사진 수', '사진 링크']].concat(body));
+  writeExportTable_(sheet, [['번호', '보수일자', '분야', '위치', '보수 내용', '원인·비고', '조치결과', '비용(원)', '작성자', '조치 전 사진 수', '조치 후 사진 수', '조치 전 사진 링크', '조치 후 사진 링크', '이전 기록 사진 링크']].concat(body));
   DriveApp.getFileById(ss.getId()).setSharing(DriveApp.Access.DOMAIN_WITH_LINK, DriveApp.Permission.VIEW);
   log_('시설보수 내보내기', month);
   return ss.getUrl();

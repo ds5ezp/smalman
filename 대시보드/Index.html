@@ -1157,7 +1157,7 @@
         <div class="card p-3">
           <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
-              <thead><tr><th>번호</th><th>보수일자</th><th>분야</th><th>위치</th><th>보수 내용</th><th>조치</th><th class="text-end">비용(원)</th><th>작성자</th><th>사진</th><th></th></tr></thead>
+              <thead><tr><th>번호</th><th>보수일자</th><th>분야</th><th>위치</th><th>보수 내용</th><th>조치</th><th class="text-end">비용(원)</th><th>작성자</th><th>사진 (전·후)</th><th></th></tr></thead>
               <tbody id="repairRows"><tr class="loading-row"><td colspan="10">불러오는 중…</td></tr></tbody>
             </table>
           </div>
@@ -2097,7 +2097,7 @@
           '<tr class="clickable-row" onclick="openRepair(' + idx + ')"><td>' + esc(r.no) + '</td><td class="small text-nowrap">' + esc(r.date) + '</td><td class="small">' + esc(r.field) + '</td><td class="small">' + esc(r.place) + '</td>' +
           '<td class="small" style="white-space:pre-wrap">' + esc(r.content) + (r.cause ? '<div class="text-muted">' + esc(r.cause) + '</div>' : '') + '</td>' +
           '<td class="small">' + esc(r.result) + '</td><td class="small text-end">' + esc(r.cost) + '</td><td class="small">' + esc(r.name) + '</td>' +
-          '<td class="small text-nowrap">' + (r.photos.length ? '<i class="bi bi-image me-1"></i>' + r.photos.length + '장' : '<span class="text-muted">없음</span>') + '</td>' +
+          '<td class="small text-nowrap">' + (r.photos.length ? '<i class="bi bi-image me-1"></i>전 ' + r.before.length + ' · 후 ' + r.after.length : '<span class="text-muted">없음</span>') + '</td>' +
           '<td class="text-end">' + (r.mine ? '<button class="btn btn-sm btn-outline-danger" data-no="' + esc(r.no) + '" onclick="event.stopPropagation(); removeRepair(this.dataset.no)">삭제</button>' : '') + '</td></tr>'
         ).join('') : '<tr class="loading-row"><td colspan="10">이 해의 보수 기록이 없습니다.</td></tr>';
       }).catch(fail);
@@ -2136,10 +2136,7 @@
         '<div class="small text-muted">보수 내용</div><div class="mb-3" style="white-space:pre-wrap">' + esc(r.content) + '</div>' +
         (r.cause ? '<div class="small text-muted">원인·비고</div><div class="mb-3" style="white-space:pre-wrap">' + esc(r.cause) + '</div>' : '') +
         '<div class="small text-muted mb-2">사진 ' + r.photos.length + '장' + (r.photos.length ? ' · 누르면 크게 보여요' : '') + '</div>' +
-        (r.photos.length
-          ? '<div class="photo-thumbs">' + r.photos.map((u, i) =>
-              '<button type="button" class="photo-thumb" onclick="openPhotoViewer(' + i + ')"><span class="photo-loading spinner-border spinner-border-sm"></span><img id="repThumb' + i + '" alt="사진 ' + (i + 1) + '"></button>').join('') + '</div>'
-          : '<div class="text-muted small">사진이 없습니다.</div>');
+        (r.photos.length ? repairPhotoGroups_(r) : '<div class="text-muted small">사진이 없습니다.</div>');
       const del = document.getElementById('repairModalDelete');
       del.classList.toggle('d-none', !r.mine);
       del.dataset.no = r.no;
@@ -2156,6 +2153,16 @@
           if (img) img.closest('.photo-thumb').innerHTML = '<span class="small text-muted p-2">불러오지 못함</span>';
         });
       });
+    }
+
+    // 조치 전 · 조치 후 · 이전 기록 사진을 칸별로 나눠 보여줌. 사진 번호는 r.photos 순서와 같음 (크게 보기와 맞춤)
+    function repairPhotoGroups_(r) {
+      const nb = r.before.length, na = r.after.length;
+      const group = (title, list, offset) => list.length
+        ? '<div class="small fw-bold mb-1">' + title + ' ' + list.length + '장</div><div class="photo-thumbs mb-3">' +
+          list.map((u, j) => '<button type="button" class="photo-thumb" onclick="openPhotoViewer(' + (offset + j) + ')"><span class="photo-loading spinner-border spinner-border-sm"></span><img id="repThumb' + (offset + j) + '" alt="' + title + ' ' + (j + 1) + '번 사진"></button>').join('') + '</div>'
+        : '';
+      return group('조치 전', r.before, 0) + group('조치 후', r.after, nb) + group('이전 기록 사진', r.photos.slice(nb + na), nb + na);
     }
 
     // 사진 크게 보기: 좌우 화살표·키보드 ←→·휴대폰 밀기로 넘기고, Esc·✕로 닫음
