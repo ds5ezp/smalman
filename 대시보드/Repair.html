@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <?!= include('Style'); ?>
+  <style>
+    .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+    .photo-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: var(--t-fill); }
+    .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-item button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: none; border-radius: 50%; background: rgba(0, 0, 0, .55); color: #fff; font-size: 12px; line-height: 1; }
+    .upload-progress { height: 10px; border-radius: 999px; background: var(--t-fill); }
+    .upload-progress .progress-bar { background: var(--t-blue); border-radius: 999px; transition: width .3s; }
+  </style>
+</head>
+<body class="p-3">
+  <div style="max-width:560px;margin:0 auto">
+    <h5 class="fw-bold mb-1"><i class="bi bi-tools me-1"></i>시설 보수 기록</h5>
+    <div class="small text-muted mb-3">보수한 뒤 바로 입력하세요. 사진은 여러 장 올릴 수 있습니다.</div>
+
+    <div class="card p-3 mb-3">
+      <div class="mb-2">
+        <label class="form-label small fw-bold" for="fDate">보수일자</label>
+        <input type="date" class="form-control" id="fDate">
+      </div>
+      <div class="mb-2">
+        <label class="form-label small fw-bold" for="fField">분야</label>
+        <select class="form-select" id="fField"></select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small fw-bold" for="fPlace">위치</label>
+        <input class="form-control" id="fPlace" placeholder="예: 1층 화장실, 주차장">
+      </div>
+      <div class="mb-2">
+        <label class="form-label small fw-bold" for="fContent">보수 내용</label>
+        <textarea class="form-control" id="fContent" rows="3" placeholder="무엇을 어떻게 고쳤는지 적어 주세요"></textarea>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small fw-bold" for="fCause">원인·비고</label>
+        <textarea class="form-control" id="fCause" rows="2" placeholder="고장 원인이나 참고 사항 (없으면 비워 두세요)"></textarea>
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <label class="form-label small fw-bold" for="fResult">조치결과</label>
+          <select class="form-select" id="fResult"></select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-bold" for="fCost">비용(원)</label>
+          <input type="number" class="form-control" id="fCost" min="0" inputmode="numeric" placeholder="0">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-bold">사진 (여러 장)</label>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-light flex-fill text-nowrap" onclick="document.getElementById('fCamera').click()"><i class="bi bi-camera me-1"></i>사진 찍기</button>
+          <button type="button" class="btn btn-light flex-fill text-nowrap" onclick="document.getElementById('fGallery').click()"><i class="bi bi-images me-1"></i>갤러리</button>
+        </div>
+        <!-- capture: 휴대폰에서 바로 카메라가 열림. 여러 장이면 찍을 때마다 한 장씩 추가 -->
+        <input type="file" id="fCamera" class="d-none" accept="image/*" capture="environment" onchange="addPhotos(this)">
+        <input type="file" id="fGallery" class="d-none" accept="image/*" multiple onchange="addPhotos(this)">
+        <div class="photo-grid mt-2" id="photoList"></div>
+        <div class="small text-muted mt-1" id="photoCount">선택한 사진 없음</div>
+      </div>
+      <button class="btn btn-primary w-100" id="saveBtn" onclick="submitRepair()"><i class="bi bi-save me-1"></i>저장</button>
+      <div class="progress upload-progress mt-3 d-none" id="progressWrap" role="progressbar" aria-label="저장 진행률">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+      </div>
+      <div class="small mt-2" id="status"></div>
+    </div>
+
+    <div class="card p-3">
+      <h6 class="fw-bold mb-2">최근 기록 (올해)</h6>
+      <div class="small" id="recent"><span class="text-muted">불러오는 중…</span></div>
+    </div>
+  </div>
+
+  <script>
+    const CFG = <?!= JSON.stringify(repairConfig_()) ?>;
+    // 카메라·갤러리에서 고른 사진을 모아 두는 목록 { file, url(미리보기) }
+    const photos = [];
+
+    function run(fn, ...args) {
+      return new Promise((resolve, reject) => {
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+      });
+    }
+
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function todayStr() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function setStatus(msg, isError) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'small mt-2 ' + (isError ? 'text-danger' : 'text-success');
+    }
+
+    // done / total 만큼 진행 막대를 채우고 아래에 지금 하는 일을 보여줌
+    function setProgress(done, total, label) {
+      const pct = total ? Math.min(100, Math.round(done / total * 100)) : 0;
+      document.getElementById('progressWrap').classList.remove('d-none');
+      document.getElementById('progressBar').style.width = pct + '%';
+      document.getElementById('progressWrap').setAttribute('aria-valuenow', pct);
+      setStatus(label + ' · ' + pct + '%');
+      document.getElementById('status').className = 'small mt-2 text-muted';
+    }
+
+    function hideProgress() {
+      document.getElementById('progressWrap').classList.add('d-none');
+      document.getElementById('progressBar').style.width = '0%';
+    }
+
+    function addPhotos(input) {
+      Array.from(input.files || []).forEach(file => photos.push({ file: file, url: URL.createObjectURL(file) }));
+      input.value = '';   // 같은 사진을 다시 골라도 추가되도록 비움
+      renderPhotos();
+    }
+
+    function removePhoto(i) {
+      URL.revokeObjectURL(photos[i].url);
+      photos.splice(i, 1);
+      renderPhotos();
+    }
+
+    function renderPhotos() {
+      document.getElementById('photoList').innerHTML = photos.map((p, i) =>
+        '<div class="photo-item"><img src="' + p.url + '" alt=""><button type="button" onclick="removePhoto(' + i + ')" aria-label="사진 빼기"><i class="bi bi-x-lg"></i></button></div>'
+      ).join('');
+      document.getElementById('photoCount').textContent = photos.length ? '선택한 사진 ' + photos.length + '장' : '선택한 사진 없음';
+    }
+
+    function clearPhotos() {
+      photos.forEach(p => URL.revokeObjectURL(p.url));
+      photos.length = 0;
+      renderPhotos();
+    }
+
+    // 휴대폰 사진은 크기가 커서 1600px, JPEG 80%로 줄여서 올림
+    function shrinkPhoto(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          resolve({
+            name: (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg',
+            mime: 'image/jpeg',
+            data: canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
+          });
+        };
+        img.onerror = () => reject(new Error('사진을 읽을 수 없습니다. (아이폰 HEIC 사진이면 카메라 설정을 "호환성 우선"으로 바꿔 다시 찍어 주세요)'));
+        img.src = url;
+      });
+    }
+
+    async function submitRepair() {
+      const entry = {
+        date: document.getElementById('fDate').value,
+        field: document.getElementById('fField').value,
+        place: document.getElementById('fPlace').value,
+        content: document.getElementById('fContent').value,
+        cause: document.getElementById('fCause').value,
+        result: document.getElementById('fResult').value,
+        cost: document.getElementById('fCost').value
+      };
+      if (!entry.date) return setStatus('보수일자를 입력해 주세요.', true);
+      if (!entry.content.trim()) return setStatus('보수 내용을 적어 주세요.', true);
+
+      const btn = document.getElementById('saveBtn');
+      const files = photos.map(p => p.file);
+      // 단계: 사진마다 (줄이기 반, 올리기 반) + 마지막 기록 저장 1
+      const total = files.length + 1;
+      btn.disabled = true;
+      try {
+        entry.photos = [];
+        for (let i = 0; i < files.length; i++) {
+          setProgress(i, total, '사진 ' + (i + 1) + '/' + files.length + ' 준비 중');
+          const p = await shrinkPhoto(files[i]);
+          setProgress(i + 0.5, total, '사진 ' + (i + 1) + '/' + files.length + ' 올리는 중');
+          entry.photos.push(await run('uploadRepairPhoto', p.name, p.mime, p.data));
+        }
+        setProgress(files.length, total, '기록 저장 중');
+        const no = await run('saveRepair', entry);
+        setProgress(total, total, '저장 완료');
+        setStatus('✔ ' + no + '번으로 저장했습니다.' + (files.length ? ' (사진 ' + files.length + '장)' : ''));
+        setTimeout(hideProgress, 1500);
+        document.getElementById('fPlace').value = '';
+        document.getElementById('fContent').value = '';
+        document.getElementById('fCause').value = '';
+        document.getElementById('fCost').value = '';
+        clearPhotos();
+        loadRecent();
+      } catch (err) {
+        hideProgress();
+        setStatus((err && err.message) ? err.message.replace(/^Exception:\s*/, '') : String(err), true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function loadRecent() {
+      run('getRepairList', Number(todayStr().slice(0, 4))).then(list => {
+        document.getElementById('recent').innerHTML = list.length ? list.slice(0, 8).map(r =>
+          '<div class="border-bottom py-2"><b>' + esc(r.date) + '</b> · ' + esc(r.field) + ' · ' + esc(r.place) +
+          '<div class="text-muted">' + esc(r.content) + '</div></div>'
+        ).join('') : '<span class="text-muted">아직 기록이 없습니다.</span>';
+      }).catch(() => {
+        document.getElementById('recent').innerHTML = '<span class="text-muted">최근 기록을 불러오지 못했습니다.</span>';
+      });
+    }
+
+    function init() {
+      document.getElementById('fDate').value = todayStr();
+      document.getElementById('fField').innerHTML = CFG.fields.map(v => '<option>' + esc(v) + '</option>').join('');
+      document.getElementById('fResult').innerHTML = CFG.results.map(v => '<option>' + esc(v) + '</option>').join('');
+      loadRecent();
+    }
+    init();
+  </script>
+</body>
+</html>
