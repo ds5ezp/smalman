@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>셔틀 운행 지도 (사이니지)</title>
+  <!--
+    전관 사이니지 위쪽에 띄우는 셔틀 지도 (화면 전용: 버튼 없음).
+    카카오 지도 키는 ds5ezp.github.io 에서만 허용되므로 이 GitHub Pages 주소에서 열어야 함.
+    데이터: 승객 화면과 같은 공개 자료 (노선 시트, 공개 위치 publicLiveStatus). 쓰기 없음.
+  -->
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f01d8615df654cbc9c30cca0069570ba"></script>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020; font-family: 'Pretendard', 'Malgun Gothic', sans-serif; }
+    #map { position: absolute; inset: 0; }
+    #legend { position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(25, 31, 40, .88); color: #fff; padding: 12px 16px; border-radius: 16px; font-size: 22px; font-weight: 700; max-width: 60%; }
+    #summary { margin-bottom: 6px; }
+    .course-row { display: flex; align-items: center; gap: 8px; white-space: nowrap; line-height: 1.5; }
+    .dot { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; }
+    #stamp { position: absolute; bottom: 8px; right: 12px; z-index: 10; color: #cbd5e1; font-size: 16px; background: rgba(25, 31, 40, .7); padding: 4px 10px; border-radius: 8px; }
+    #notice { position: absolute; left: 0; right: 0; bottom: 0; z-index: 12; display: none; background: #dc2626; color: #fff; font-size: 26px; font-weight: 800; padding: 14px 20px; }
+    .bus { display: flex; flex-direction: column; align-items: center; }
+    .bus-icon { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .bus-icon.delayed { border-color: #fd7e14; }
+    .bus-label { margin-top: 3px; background: #fff; color: #191f28; padding: 1px 7px; border-radius: 7px; font-size: 14px; font-weight: 800; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="legend"><div id="summary">불러오는 중…</div><div id="courseList"></div></div>
+  <div id="stamp"></div>
+  <div id="notice"></div>
+
+  <script>
+    const FIREBASE_URL = 'https://gjcwbus-default-rtdb.asia-southeast1.firebasedatabase.app';
+    const SPREADSHEET_ID = '1QlfkQgzaIqB8gRSkFgQowxXV9pQU507050R2hv7CTyw';
+    const CENTER = { lat: 34.8872, lng: 128.625 };
+    const COURSE_COLORS = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#0891b2', '#db2777', '#ca8a04', '#4f46e5'];
+    const GRAY = '#6c757d';
+    const LIVE_REFRESH_MS = 15000;
+    const ROUTE_RETRY_MS = 30000;
+
+    let map = null;
+    let courses = [];          // { key, norm, color, count }
+    let routeLines = [];       // 노선 선 (지도에서 한 번 그린 뒤 유지)
+    let busOverlays = [];      // 차량 표시 (새로고침 때마다 다시 그림)
+    let fitted = false;
+
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // 코스 이름 비교용: 공백 제거
+    function norm(name) {
+      return String(name || '').replace(/\s+/g, '');
+    }
+
+    function kstTime(ms) {
+      return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ms));
+    }
+
+    // 구글 시트는 JSONP(스크립트 태그)로 읽음: 승객 화면과 같은 방식
+    function gvizJsonp(sheet) {
+      return new Promise((resolve, reject) => {
+        const name = 'gviz_' + Math.random().toString(36).slice(2);
+        const s = document.createElement('script');
+        const cleanup = () => { clearTimeout(timer); delete window[name]; s.remove(); };
+        const timer = setTimeout(() => { cleanup(); reject(new Error(sheet + ' 시트를 불러오지 못했습니다.')); }, 12000);
+        window[name] = json => { cleanup(); resolve(json); };
+        s.onerror = () => { cleanup(); reject(new Error(sheet + ' 시트 오류')); };
+        s.src = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?sheet=' + encodeURIComponent(sheet) +
+          '&tqx=responseHandler:' + name + '&_t=' + Date.now();
+        document.body.appendChild(s);
+      });
+    }
+
+    // 정류소목록: 이름, 위도, 경도, 정류장 번호
+    function parseStations(json) {
+      const byNo = {}, byName = {};
+      (json?.table?.rows || []).forEach(r => {
+        const c = r?.c || [];
+        const name = String(c[0]?.f || c[0]?.v || '').trim();
+        const lat = parseFloat(c[1]?.v || c[1]?.f);
+        const lng = parseFloat(c[2]?.v || c[2]?.f);
+        const no = String(c[3]?.f || c[3]?.v || '').replace(/,/g, '').trim();
+        if (name && !isNaN(lat) && !isNaN(lng)) {
+          const d = { name, lat, lng };
+          if (no) byNo[no] = d;
+          byName[name] = d;
+        }
+      });
+      return { byNo, byName };
+    }
+
+    // 노선데이터: 코스별로 정류장 순서대로 (경유지는 선 계산에서 뺌)
+    function parseRoutes(json, stations) {
+      const cols = json?.table?.cols || [];
+      const rows = json?.table?.rows || [];
+      const idx = { course: 0, name: 1, desc: -1, stopNo: -1 };
+      cols.forEach((col, i) => {
+        const l = String(col.label || '').trim();
+        if (l.includes('코스')) idx.course = i;
+        else if (l.includes('정류장명')) idx.name = i;
+        else if (l.includes('설명')) idx.desc = i;
+        else if (l.includes('번호')) idx.stopNo = i;
+      });
+      const routes = {};
+      rows.forEach(r => {
+        const c = r?.c || [];
+        const get = i => (i >= 0 && c[i]) ? String(c[i].f || c[i].v || '').trim() : '';
+        const course = get(idx.course), name = get(idx.name);
+        if (!course || !name || course.includes('코스구분')) return;
+        const isWaypoint = get(idx.desc).includes('경유') || name.includes('[경유]');
+        if (isWaypoint) return;
+        const no = get(idx.stopNo).replace(/,/g, '');
+        const st = (no && stations.byNo[no]) || stations.byName[name];
+        if (!st) return;
+        (routes[course] = routes[course] || []).push({ lat: st.lat, lng: st.lng });
+      });
+      return routes;
+    }
+
+    // 도로를 따라가는 경로 (공개 경로 서버). 실패하면 정류장끼리 직선
+    async function roadPath(stops) {
+      const coords = stops.map(s => s.lng + ',' + s.lat).join(';');
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch('https://routing.openstreetmap.de/routed-car/route/v1/driving/' + coords + '?overview=full&geometries=geojson', { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.code === 'Ok' && data.routes && data.routes[0]) {
+            return data.routes[0].geometry.coordinates.map(c => new kakao.maps.LatLng(c[1], c[0]));
+          }
+        }
+      } catch (e) {}
+      return stops.map(s => new kakao.maps.LatLng(s.lat, s.lng));
+    }
+
+    function ensureMap() {
+      if (!map) {
+        map = new kakao.maps.Map(document.getElementById('map'), { center: new kakao.maps.LatLng(CENTER.lat, CENTER.lng), level: 6 });
+      }
+      return map;
+    }
+
+    async function loadRoutes() {
+      const [stationJson, routeJson] = await Promise.all([gvizJsonp('정류소목록'), gvizJsonp('노선데이터')]);
+      const routes = parseRoutes(routeJson, parseStations(stationJson));
+      const keys = Object.keys(routes).filter(k => routes[k].length > 1);
+      if (!keys.length) throw new Error('노선 데이터가 비어 있습니다.');
+
+      ensureMap();
+      const paths = await Promise.all(keys.map(k => roadPath(routes[k])));
+
+      routeLines.forEach(l => l.setMap(null));
+      routeLines = [];
+      courses = keys.map((k, i) => ({ key: k, norm: norm(k), color: COURSE_COLORS[i % COURSE_COLORS.length], count: 0 }));
+      const bounds = new kakao.maps.LatLngBounds();
+      keys.forEach((k, i) => {
+        const color = courses[i].color;
+        // 흰 외곽선을 먼저 깔아 지도 배경과 겹쳐도 노선이 보이게 함
+        const casing = new kakao.maps.Polyline({ path: paths[i], strokeWeight: 9, strokeColor: '#ffffff', strokeOpacity: 0.85, zIndex: 1 });
+        const line = new kakao.maps.Polyline({ path: paths[i], strokeWeight: 5, strokeColor: color, strokeOpacity: 0.95, zIndex: 2 });
+        casing.setMap(map);
+        line.setMap(map);
+        routeLines.push(casing, line);
+        paths[i].forEach(p => bounds.extend(p));
+      });
+      if (!fitted && !bounds.isEmpty()) {
+        map.setBounds(bounds, 40);
+        fitted = true;
+      }
+    }
+
+    // 지금 운행 중(45초 안 위치) 또는 신호 지연(30분 안 위치) 차량만
+    function runningBuses(live) {
+      const now = Date.now();
+      const list = [];
+      Object.keys(live || {}).forEach(course => {
+        Object.keys(live[course] || {}).forEach(round => {
+          const pos = (live[course][round] || {}).busPosition || {};
+          const lat = Number(pos.lat), lng = Number(pos.lng), updated = Number(pos.updatedAt) || 0;
+          const operating = pos.isOperating === true || pos.isOperating === 'true';
+          if (!operating || !lat || !lng || !updated) return;
+          const age = now - updated;
+          if (age >= 1800000) return;
+          list.push({
+            course: course,
+            round: pos.round || round,
+            bus: pos.busNumber || '-',
+            lat: lat,
+            lng: lng,
+            delayed: age >= 45000
+          });
+        });
+      });
+      return list;
+    }
+
+    function drawBuses(buses) {
+      busOverlays.forEach(o => o.setMap(null));
+      busOverlays = buses.map(b => {
+        const c = courses.find(x => x.norm === norm(b.course));
+        const color = c ? c.color : GRAY;
+        const el = document.createElement('div');
+        el.className = 'bus';
+        el.innerHTML =
+          '<div class="bus-icon' + (b.delayed ? ' delayed' : '') + '" style="background:' + color + '">🚌</div>' +
+          '<div class="bus-label">' + esc(b.course + ' · ' + b.bus) + '</div>';
+        const o = new kakao.maps.CustomOverlay({ position: new kakao.maps.LatLng(b.lat, b.lng), content: el, yAnchor: 0.5, xAnchor: 0.5 });
+        o.setMap(map);
+        return o;
+      });
+    }
+
+    function renderLegend(buses) {
+      courses.forEach(c => { c.count = 0; });
+      buses.forEach(b => {
+        const c = courses.find(x => x.norm === norm(b.course));
+        if (c) c.count++;
+      });
+      const delayed = buses.filter(b => b.delayed).length;
+      document.getElementById('summary').innerText = buses.length
+        ? '운행 중 ' + buses.length + '대' + (delayed ? ' · 신호 지연 ' + delayed + '대' : '')
+        : '지금 운행 중인 셔틀이 없습니다';
+      document.getElementById('courseList').innerHTML = courses.map(c =>
+        '<div class="course-row"><span class="dot" style="background:' + c.color + '"></span>' + esc(c.key) +
+        ' <span style="color:#cbd5e1;font-weight:600">' + c.count + '대</span></div>'
+      ).join('');
+    }
+
+    async function refreshLive() {
+      try {
+        const res = await fetch(FIREBASE_URL + '/publicLiveStatus.json');
+        const live = await res.json();
+        const buses = runningBuses(live || {});
+        drawBuses(buses);
+        renderLegend(buses);
+        document.getElementById('stamp').innerText = kstTime(Date.now()) + ' 기준';
+      } catch (e) {
+        document.getElementById('summary').innerText = '위치를 불러오지 못했습니다';
+      } finally {
+        setTimeout(refreshLive, LIVE_REFRESH_MS);
+      }
+    }
+
+    // 노선을 불러오지 못하면 30초 뒤 다시 시도
+    async function startRoutes() {
+      try {
+        await loadRoutes();
+      } catch (e) {
+        document.getElementById('stamp').innerText = '노선 불러오기 실패: ' + e.message;
+        setTimeout(startRoutes, ROUTE_RETRY_MS);
+      }
+    }
+
+    if (window.kakao && kakao.maps) {
+      ensureMap();
+      startRoutes();
+      refreshLive();
+    } else {
+      document.getElementById('summary').innerText = '카카오지도를 불러오지 못했습니다';
+    }
+  </script>
+</body>
+</html>
