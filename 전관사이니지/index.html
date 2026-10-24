@@ -111,6 +111,14 @@
         </div>
     </div>
 
+    <!-- [0-1. 셔틀 운행 지도 (운영설정 '셔틀 지도 표시' = ON 일 때만 보임)] -->
+    <div id="shuttleBox" class="hidden relative w-full bg-black overflow-hidden" style="flex: 0 0 42%;">
+        <iframe id="shuttleFrame" alt="셔틀 운행 지도" style="width: 100%; height: 100%; border: 0;"></iframe>
+        <span class="absolute top-3 right-3 z-20 px-4 py-1.5 rounded-xl text-white font-black text-xl shadow-lg" style="background-color: rgba(14, 165, 233, 0.9);">
+            <i class="fa-solid fa-bus mr-1"></i> 셔틀 운행
+        </span>
+    </div>
+
     <!-- [1. 상단 미디어 영역 (남는 높이를 모두 사용)] -->
     <div id="topContainer" class="relative w-full bg-black overflow-hidden flex items-center justify-center" style="flex: 1 1 auto; min-height: 0;">
         <div id="slide-display" class="w-full h-full flex items-center justify-center relative p-2 opacity-100">
@@ -263,6 +271,8 @@
         var BOTTOM_HOLD_MS = 10 * 1000;         // 하단 패널 한 장면을 보여주는 시간
         var FADE_MS = 300;                      // 화면 전환 시 페이드 시간
         var HEADLINE_COUNT = 4;                 // 고정 헤드라인 개수
+        // 셔틀 운행 지도 (GitHub Pages, shuttle-map 폴더). 저장소 설정에서 Pages를 켜야 열림
+        var SHUTTLE_MAP_URL = 'https://ds5ezp.github.io/smalman/shuttle-map/';
 
         // 이미지 클래스 (전체 화면 / 일반 미디어)
         var FS_BG = 'absolute inset-0 w-full h-full object-cover filter blur-3xl opacity-50 scale-110 pointer-events-none';
@@ -510,6 +520,7 @@
 
             if (data.weather) renderWeather(data.weather);
             renderPromo(data.promo || null);
+            renderShuttleMap(!!data.shuttleMap);
 
             if (Array.isArray(data.notices)) state.notices = data.notices;
             if (Array.isArray(data.schedule)) state.schedules = data.schedule;
@@ -543,6 +554,16 @@
                 dust.className = 'text-base font-black px-2.5 py-0.5 rounded-lg border ' + dustClass;
                 dust.innerText = '미세 ' + dustText;
             }
+        }
+
+        // 셔틀 지도: 켜면 위쪽에 나오고, 끄면 숨기면서 주소도 지워서 지도 페이지가 돌지 않게 함
+        function renderShuttleMap(on) {
+            var box = document.getElementById('shuttleBox');
+            var frame = document.getElementById('shuttleFrame');
+            if (!box) return;
+            box.classList.toggle('hidden', !on);
+            if (on && !frame.getAttribute('src')) frame.src = SHUTTLE_MAP_URL;
+            if (!on && frame.getAttribute('src')) frame.removeAttribute('src');
         }
 
         // 위젯바 오른쪽 홍보 박스 (운영설정 값이 없으면 숨김)

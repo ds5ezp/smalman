@@ -320,6 +320,7 @@ function getDashboardData() {
     operationalHours: operationalHours,
     forecast: getForecast(),
     promo: getPromo(),
+    shuttleMap: getSettingByLabel('셔틀 지도 표시').toUpperCase() === 'ON',
     welcomeInfo: checkWelcomeMode()
   };
 }
