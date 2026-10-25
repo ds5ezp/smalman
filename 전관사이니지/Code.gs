@@ -573,6 +573,17 @@ function fetchPostImages_(uid) {
   return list;
 }
 
+// 진단용: 워드프레스 사진 목록(media API)을 구글 서버에서 읽을 수 있는지 확인. 편집기에서 직접 실행하고 실행 로그를 보면 됨
+function testWpMedia() {
+  const url = 'http://gjcw.or.kr/wp-json/wp/v2/media?per_page=3';
+  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+  const text = res.getContentText('UTF-8');
+  console.log('응답 코드: ' + res.getResponseCode());
+  console.log('앞부분: ' + text.substring(0, 300));
+  const urls = (text.match(/"source_url":"[^"]+"/g) || []).slice(0, 3);
+  console.log('사진 주소 ' + urls.length + '개 찾음: ' + urls.join(' , '));
+}
+
 function getEventBoardSlides() {
   const eventSlides = [];
   try {
