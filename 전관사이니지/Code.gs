@@ -545,6 +545,34 @@ function getPressItems() {
 // 홈페이지가 앱스 스크립트 요청을 막아서 '홈페이지행사' 탭(setupHomepageFeedSheets)에서 읽음
 // 글 내용은 M열(글 페이지 문단, 줄바꿈 유지), 없으면 IMPORTFEED 요약
 // 사진은 L열 IMPORTXML이 글 페이지 본문에서 가져온 주소
+// 글 페이지를 서버에서 직접 받아 사진 주소를 찾음 (구글 시트가 글 페이지를 못 읽을 때 대신 사용). 성공한 결과는 6시간 캐시
+function fetchPostImages_(uid) {
+  if (!uid) return [];
+  const cache = CacheService.getScriptCache();
+  const key = 'postimg:' + uid;
+  const cached = cache.get(key);
+  if (cached) return JSON.parse(cached);
+  const list = [];
+  try {
+    const res = UrlFetchApp.fetch('http://gjcw.or.kr/sub06-2/?uid=' + uid + '&mod=document', { muteHttpExceptions: true, followRedirects: true });
+    if (res.getResponseCode() === 200) {
+      const tags = res.getContentText('UTF-8').match(/<img[^>]*>/gi) || [];
+      tags.forEach(tag => {
+        const m = tag.match(/data-src=["']([^"']+)["']/i) || tag.match(/\ssrc=["']([^"']+)["']/i);
+        if (!m) return;
+        let src = m[1].trim();
+        if (src.indexOf('//') === 0) src = 'http:' + src;
+        else if (src.charAt(0) === '/') src = 'http://gjcw.or.kr' + src;
+        if (list.indexOf(src) === -1) list.push(src);
+      });
+    }
+  } catch (e) {
+    console.error('글 사진 읽기 실패 (' + uid + '): ' + e.message);
+  }
+  if (list.length) cache.put(key, JSON.stringify(list), 21600);
+  return list;
+}
+
 function getEventBoardSlides() {
   const eventSlides = [];
   try {
@@ -561,8 +589,10 @@ function getEventBoardSlides() {
       const targetLink = postUrl('sub06-2', uid, item.link);
       const postId = uid || title;
 
+      // 시트(L열)에 사진 주소가 없으면 서버가 글 페이지를 직접 받아서 찾음
       const imgUrls = [];
-      item.images.filter(isEventPhoto).forEach(src => {
+      const srcs = item.images.length ? item.images : fetchPostImages_(uid);
+      srcs.filter(isEventPhoto).forEach(src => {
         const url = toDisplayImageUrl(getCleanWpImageUrl(src));
         if (url && imgUrls.indexOf(url) === -1) {
           imgUrls.push(url);
