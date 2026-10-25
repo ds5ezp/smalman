@@ -1,0 +1,32 @@
+# 진단용: GitHub 서버에서 복지관 사이트 접속이 되는지 확인 (사진 수집 전에 한 번 실행)
+name: 사이트 접속 테스트
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/jolly-fermat-x6v4aa]
+    paths: [".github/workflows/site-access-test.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 워드프레스 사진 목록 (media API)
+        run: |
+          code=$(curl -s -o /tmp/media.json -w "%{http_code}" -m 30 "http://gjcw.or.kr/wp-json/wp/v2/media?per_page=3")
+          echo "응답 코드: $code"
+          head -c 300 /tmp/media.json; echo
+          echo "사진 주소:"; grep -o '"source_url":"[^"]*"' /tmp/media.json | head -3 || true
+
+      - name: 행사 글 페이지 (uid 4475)
+        run: |
+          code=$(curl -s -o /tmp/post.html -w "%{http_code}" -m 30 "http://gjcw.or.kr/sub06-2/?uid=4475&mod=document")
+          echo "응답 코드: $code"
+          echo "이미지 태그 수: $(grep -o '<img' /tmp/post.html | wc -l)"
+          grep -o '<img[^>]*>' /tmp/post.html | head -5 || true
+
+      - name: 행사 목록 RSS (board 6)
+        run: |
+          code=$(curl -s -o /tmp/rss.xml -w "%{http_code}" -m 30 "http://gjcw.or.kr/wp-content/plugins/kboard/rss.php?board_id=6")
+          echo "응답 코드: $code"
+          echo "글 개수: $(grep -o '<item>' /tmp/rss.xml | wc -l)"
