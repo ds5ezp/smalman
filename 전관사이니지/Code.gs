@@ -545,6 +545,43 @@ function getPressItems() {
 // 홈페이지가 앱스 스크립트 요청을 막아서 '홈페이지행사' 탭(setupHomepageFeedSheets)에서 읽음
 // 글 내용은 M열(글 페이지 문단, 줄바꿈 유지), 없으면 IMPORTFEED 요약
 // 사진은 L열 IMPORTXML이 글 페이지 본문에서 가져온 주소
+// 행사 게시판 RSS(kboard rss.php)를 서버에서 직접 읽음. 본문 안의 사진 주소가 그대로 들어 있음
+// 읽지 못하면 기존 시트(홈페이지행사)에서 가져옴
+function fetchEventFeed_(limit) {
+  try {
+    const res = UrlFetchApp.fetch('http://gjcw.or.kr/wp-content/plugins/kboard/rss.php?board_id=6', { muteHttpExceptions: true, followRedirects: true });
+    if (res.getResponseCode() === 200) {
+      const xml = res.getContentText('UTF-8');
+      const cdata = (block, tag) => {
+        const m = block.match(new RegExp('<' + tag + '>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</' + tag + '>'));
+        return m ? m[1].trim() : '';
+      };
+      const items = (xml.match(/<item>[\s\S]*?<\/item>/g) || []).slice(0, limit).map(block => {
+        const description = cdata(block, 'description');
+        const images = [];
+        (description.match(/<img[^>]+src=["']([^"']+)["']/gi) || []).forEach(tag => {
+          const m = tag.match(/src=["']([^"']+)["']/i);
+          if (m && images.indexOf(m[1]) === -1) images.push(m[1]);
+        });
+        const pub = cdata(block, 'pubDate');
+        const d = new Date(pub);
+        return {
+          title: cdata(block, 'title'),
+          link: cdata(block, 'link'),
+          date: isNaN(d.getTime()) ? '' : Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy.MM.dd'),
+          summary: '',
+          body: description,
+          images: images
+        };
+      });
+      if (items.length) return items;
+    }
+  } catch (e) {
+    console.error('행사 RSS 읽기 실패: ' + e.message);
+  }
+  return readFeedSheet('홈페이지행사', limit);
+}
+
 // 글 페이지를 서버에서 직접 받아 사진 주소를 찾음 (구글 시트가 글 페이지를 못 읽을 때 대신 사용). 성공한 결과는 6시간 캐시
 function fetchPostImages_(uid) {
   if (!uid) return [];
@@ -587,7 +624,7 @@ function testWpMedia() {
 function getEventBoardSlides() {
   const eventSlides = [];
   try {
-    readFeedSheet('홈페이지행사', 4).forEach(item => {
+    fetchEventFeed_(4).forEach(item => {
       const title = decodeHtmlEntities(item.title || '복지관 행사 소식');
 
       const cleanDesc = decodeHtmlEntities((item.body || item.summary).replace(/<[^>]*>?/gm, ''))
