@@ -1093,7 +1093,15 @@
                 loadRatios(imgList).then(function (ratios) {
                     var fill = layoutEventPhotos(photoCol, imgList, ratios);
                     if (fill < 0.6) {
-                        // 사진이 너무 작으면 제목과 본문만 넓게 보여줌
+                        // 가로 사진이 옆 칸에 작게 들어가면: 사진을 화면 위쪽 가로 띠에 두고 글은 아래에 둠 (사진이 빠지지 않게)
+                        wrapper.classList.replace('flex-row', 'flex-col');
+                        photoCol.className = 'w-full h-[45%] min-h-0 flex items-center justify-center';
+                        textBox.className = 'w-full flex-1 min-h-0 flex flex-col justify-between p-7 bg-slate-900/90 rounded-2xl border border-amber-500/50 shadow-2xl overflow-hidden';
+                        fill = layoutEventPhotos(photoCol, imgList, ratios);
+                        fitSentences(descEl, slide.desc || '');
+                    }
+                    if (fill < 0.6) {
+                        // 그래도 사진이 너무 작으면 제목과 본문만 넓게 보여줌
                         photoCol.remove();
                         textBox.classList.replace('w-1/2', 'w-full');
                         // 칸이 짧을 때 제목이 잘리지 않도록 글자를 줄이고 두 줄까지만 보여줌
