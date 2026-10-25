@@ -119,7 +119,8 @@ function setupHomepageFeedSheets() {
     const page = '"http://gjcw.or.kr/sub06-2/?uid="&K' + row + '&"&mod=document"';
     // 같은 줄 A~E열의 글 주소에서 글 번호를 찾음 (RSS 주소는 ?kboard_content_redirect=4475 또는 &uid=4475 형태)
     event.getRange('K' + row).setFormula('=IFERROR(REGEXEXTRACT(TEXTJOIN(" ",TRUE,A' + row + ':E' + row + '),"(?:uid|kboard_content_redirect)=(\\d+)"),"")');
-    event.getRange('L' + row).setFormula('=IF(K' + row + '="","",IFERROR(TEXTJOIN(" ",TRUE,IMPORTXML(' + page + ',"' + content + '//img/@src")),""))');
+    // 글 페이지의 모든 이미지 주소 (지연 로딩용 data-src 포함). 읽지 못하면 '조회 실패'로 남겨서 원인을 알 수 있게 함
+    event.getRange('L' + row).setFormula('=IF(K' + row + '="","",IFERROR(TEXTJOIN(" ",TRUE,IMPORTXML(' + page + ',"//img/@src | //img/@data-src")),"조회 실패"))');
     // 문단을 줄바꿈으로 이어 붙여 글 배치를 유지
     event.getRange('M' + row).setFormula('=IF(K' + row + '="","",IFERROR(TEXTJOIN(CHAR(10),FALSE,IMPORTXML(' + page + ',"' + content + '//p")),""))');
   }
