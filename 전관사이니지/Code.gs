@@ -545,9 +545,21 @@ function getPressItems() {
 // 홈페이지가 앱스 스크립트 요청을 막아서 '홈페이지행사' 탭(setupHomepageFeedSheets)에서 읽음
 // 글 내용은 M열(글 페이지 문단, 줄바꿈 유지), 없으면 IMPORTFEED 요약
 // 사진은 L열 IMPORTXML이 글 페이지 본문에서 가져온 주소
+// 사이트 접속이 실패하면 30분 동안은 다시 요청하지 않음 (반복 요청이 차단을 오래 끄는 것을 막음)
+const FETCH_COOLDOWN_SEC = 1800;
+
+function fetchBlockedRecently_(key) {
+  return !!CacheService.getScriptCache().get('blocked:' + key);
+}
+
+function markFetchBlocked_(key) {
+  CacheService.getScriptCache().put('blocked:' + key, '1', FETCH_COOLDOWN_SEC);
+}
+
 // 행사 게시판 RSS(kboard rss.php)를 서버에서 직접 읽음. 본문 안의 사진 주소가 그대로 들어 있음
 // 읽지 못하면 기존 시트(홈페이지행사)에서 가져옴
 function fetchEventFeed_(limit) {
+  if (fetchBlockedRecently_('rss')) return readFeedSheet('홈페이지행사', limit);
   try {
     const res = UrlFetchApp.fetch('http://gjcw.or.kr/wp-content/plugins/kboard/rss.php?board_id=6', { muteHttpExceptions: true, followRedirects: true });
     if (res.getResponseCode() === 200) {
@@ -579,12 +591,13 @@ function fetchEventFeed_(limit) {
   } catch (e) {
     console.error('행사 RSS 읽기 실패: ' + e.message);
   }
+  markFetchBlocked_('rss');
   return readFeedSheet('홈페이지행사', limit);
 }
 
 // 글 페이지를 서버에서 직접 받아 사진 주소를 찾음 (구글 시트가 글 페이지를 못 읽을 때 대신 사용). 성공한 결과는 6시간 캐시
 function fetchPostImages_(uid) {
-  if (!uid) return [];
+  if (!uid || fetchBlockedRecently_('post')) return [];
   const cache = CacheService.getScriptCache();
   const key = 'postimg:' + uid;
   const cached = cache.get(key);
@@ -592,7 +605,9 @@ function fetchPostImages_(uid) {
   const list = [];
   try {
     const res = UrlFetchApp.fetch('http://gjcw.or.kr/sub06-2/?uid=' + uid + '&mod=document', { muteHttpExceptions: true, followRedirects: true });
-    if (res.getResponseCode() === 200) {
+    if (res.getResponseCode() !== 200) {
+      markFetchBlocked_('post');
+    } else {
       const tags = res.getContentText('UTF-8').match(/<img[^>]*>/gi) || [];
       tags.forEach(tag => {
         const m = tag.match(/data-src=["']([^"']+)["']/i) || tag.match(/\ssrc=["']([^"']+)["']/i);
@@ -605,6 +620,7 @@ function fetchPostImages_(uid) {
     }
   } catch (e) {
     console.error('글 사진 읽기 실패 (' + uid + '): ' + e.message);
+    markFetchBlocked_('post');
   }
   if (list.length) cache.put(key, JSON.stringify(list), 21600);
   return list;
