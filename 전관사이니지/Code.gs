@@ -589,9 +589,10 @@ function getEventBoardSlides() {
       const targetLink = postUrl('sub06-2', uid, item.link);
       const postId = uid || title;
 
-      // 시트(L열)에 사진 주소가 없으면 서버가 글 페이지를 직접 받아서 찾음
+      // 시트(L열)에 사진 주소(http로 시작하는 값)가 없으면 서버가 글 페이지를 직접 받아서 찾음
       const imgUrls = [];
-      const srcs = item.images.length ? item.images : fetchPostImages_(uid);
+      const sheetImgs = item.images.filter(src => /^https?:\/\//i.test(src));
+      const srcs = sheetImgs.length ? sheetImgs : fetchPostImages_(uid);
       srcs.filter(isEventPhoto).forEach(src => {
         const url = toDisplayImageUrl(getCleanWpImageUrl(src));
         if (url && imgUrls.indexOf(url) === -1) {
