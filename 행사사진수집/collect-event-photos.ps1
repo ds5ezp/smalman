@@ -53,6 +53,7 @@ try {
         $urls += $u
       }
     }
+    Write-Log ("[{0}] 사진 주소 {1}개 찾음" -f $folderName, $urls.Count)
     if ($urls.Count -eq 0) { continue }
 
     if (-not (Test-Path $folder)) { New-Item -ItemType Directory -Path $folder | Out-Null }
