@@ -166,6 +166,22 @@
   .admin button.danger { background: #ffe5e5; color: #c62828; }
   .admin button.danger.armed { background: #c62828; color: #fff; }
   .admin button.close { grid-column: 1 / -1; background: #222; color: #fff; }
+  /* 터치 위치 확인 화면 */
+  .tcheck { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 200; background: rgba(20,20,30,.92); color: #fff; display: none; font-family: 'Malgun Gothic', sans-serif; }
+  .tcheck.open { display: block; }
+  .tcheck .msg { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); text-align: center; font-size: calc(3 * var(--u)); line-height: 1.6; width: 80%; pointer-events: none; }
+  .tcheck .msg small { display: block; font-size: calc(2.2 * var(--u)); color: #bbb; margin-top: calc(1 * var(--u)); }
+  .tcheck .exit { position: absolute; left: 50%; top: 52%; transform: translateX(-50%); font: inherit; font-size: calc(3 * var(--u)); padding: calc(2 * var(--u)) calc(5 * var(--u)); border: 0; border-radius: 999px; background: #fff; color: #222; }
+  .tcheck .target { position: absolute; width: calc(10 * var(--u)); height: calc(10 * var(--u)); margin: calc(-5 * var(--u)) 0 0 calc(-5 * var(--u)); border: .4vh dashed #ffd54a; border-radius: 50%; pointer-events: none; }
+  .tcheck .target::before, .tcheck .target::after { content: ''; position: absolute; background: #ffd54a; left: 50%; top: 50%; }
+  .tcheck .target::before { width: 2px; height: 60%; transform: translate(-50%, -50%); }
+  .tcheck .target::after { width: 60%; height: 2px; transform: translate(-50%, -50%); }
+  .tcheck .dot { position: absolute; width: calc(4 * var(--u)); height: calc(4 * var(--u)); margin: calc(-2 * var(--u)) 0 0 calc(-2 * var(--u)); border-radius: 50%; pointer-events: none; }
+  .tcheck .dot span { position: absolute; left: 110%; top: 0; white-space: nowrap; font-size: calc(1.8 * var(--u)); }
+  .tcheck .dot.left span { left: auto; right: 110%; }
+  .tcheck .dot.touch { background: #4cd964; } .tcheck .dot.touch span { color: #4cd964; }
+  .tcheck .dot.pointer { background: #5ac8fa; } .tcheck .dot.pointer span { color: #5ac8fa; }
+  .tcheck .dot.mouse { background: #ff6b6b; } .tcheck .dot.mouse span { color: #ff6b6b; }
   .admin p.tip { margin: calc(2 * var(--u)) 0 0; font-size: calc(1.9 * var(--u)); color: #777; line-height: 1.5; }
 
   /* ---------- 세로형 화면 ---------- */
@@ -312,6 +328,7 @@
       <button id="btnFull">전체 화면</button>
       <button id="btnReset" class="danger">전체 초기화</button>
       <button id="btnReload">화면 새로 고침</button>
+      <button id="btnTouch">터치 위치 확인</button>
       <button id="btnClose" class="close">닫기</button>
     </div>
     <p class="tip">결과는 이 기기의 브라우저에 자동 저장되어 전원이 꺼지거나 새로 고침해도 유지됩니다.<br>행사가 끝나면 ‘결과 파일 저장’으로 기록을 받아 두세요.</p>
@@ -319,6 +336,14 @@
   </div>
 </div>
 
+<!-- 터치 위치 확인: 손가락으로 누른 곳에 점이 찍히는지 확인 (화면 회전 시 터치가 어긋나는 문제 진단용) -->
+<div class="tcheck" id="tcheck">
+  <div class="msg">노란 십자 표시를 손가락으로 눌러 보세요.<br>누른 곳에 <b style="color:#4cd964">초록 점</b>이 찍히면 정상입니다.
+    <small>점이 엉뚱한 곳에 찍히면 → 화면 회전과 터치 방향이 맞지 않음 (설명서의 ‘터치 방향 맞추기’)<br>
+    아무 점도 안 찍히면 → 브라우저가 터치를 못 받음 (설명서의 ‘실행 파일’ 사용)<br>
+    빨간 점(마우스)만 찍히면 → 터치가 마우스로 들어오는 상태 (한 손가락만 동작)</small></div>
+  <button class="exit" id="tcheckExit">확인 끝내기</button>
+</div>
 <script>
 // ===================== 설정 (행사마다 여기만 고치면 됩니다) =====================
 const CONFIG = {
@@ -584,6 +609,43 @@ document.addEventListener('keydown', e => {
 $('btnClose').onclick = () => { adminBg.classList.remove('open'); disarmReset(); };
 $('btnCount').onclick = () => { state.showCount = !state.showCount; save(); updateCounts(); };
 $('btnReload').onclick = () => location.reload();
+
+// ---------- 터치 위치 확인 ----------
+const tcheck = $('tcheck');
+let tcheckTimer = null;
+function tcheckDot(x, y, kind, label) {
+  const d = document.createElement('div');
+  d.className = 'dot ' + kind;
+  d.style.left = x + 'px'; d.style.top = y + 'px';
+  if (x > innerWidth * 0.6) d.classList.add('left');
+  d.innerHTML = `<span>${label} (${Math.round(x)}, ${Math.round(y)})</span>`;
+  tcheck.appendChild(d);
+  const dots = tcheck.querySelectorAll('.dot');
+  if (dots.length > 40) dots[0].remove();
+}
+function tcheckClose() { clearTimeout(tcheckTimer); tcheck.classList.remove('open'); }
+$('btnTouch').onclick = () => {
+  adminBg.classList.remove('open');
+  tcheck.querySelectorAll('.dot, .target').forEach(e => e.remove());
+  [[10, 10], [90, 10], [50, 25], [10, 90], [90, 90], [50, 78]].forEach(([px, py]) => {
+    const t = document.createElement('div');
+    t.className = 'target';
+    t.style.left = px + '%'; t.style.top = py + '%';
+    tcheck.appendChild(t);
+  });
+  tcheck.classList.add('open');
+  clearTimeout(tcheckTimer);
+  tcheckTimer = setTimeout(tcheckClose, 120000); // 2분 뒤 자동으로 닫힘
+};
+tcheck.addEventListener('touchstart', e => {
+  for (const t of e.changedTouches) tcheckDot(t.clientX, t.clientY, 'touch', '터치 #' + t.identifier);
+}, { passive: true });
+tcheck.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'mouse' && !(e.pointerType === 'touch' && HAS_TOUCH)) tcheckDot(e.clientX, e.clientY, 'pointer', '포인터-' + e.pointerType);
+});
+tcheck.addEventListener('mousedown', e => tcheckDot(e.clientX, e.clientY, 'mouse', '마우스'));
+$('tcheckExit').addEventListener('click', tcheckClose);
+$('tcheckExit').addEventListener('touchend', e => { e.preventDefault(); tcheckClose(); });
 $('btnFull').onclick = () => {
   const el = document.documentElement;
   if (document.fullscreenElement) document.exitFullscreen();
