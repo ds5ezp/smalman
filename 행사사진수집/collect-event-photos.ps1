@@ -34,7 +34,10 @@ try {
   }
 
   $rssUrl = 'http://gjcw.or.kr/wp-content/plugins/kboard/rss.php?board_id=6'
-  $rss = [xml](Invoke-WebRequest -Uri $rssUrl -UseBasicParsing).Content
+  # RSS는 UTF-8로 읽어야 한글 제목이 깨지지 않음 (인코딩 표시가 없어서 명시적으로 지정)
+  $rawBytes = (Invoke-WebRequest -Uri $rssUrl -UseBasicParsing).RawContentStream.ToArray()
+  $rssText = [Text.Encoding]::UTF8.GetString($rawBytes)
+  $rss = [xml]$rssText
   $items = @($rss.rss.channel.item | Select-Object -First $MaxItems)
   Write-Log ("RSS 글 {0}개 확인" -f $items.Count)
 
