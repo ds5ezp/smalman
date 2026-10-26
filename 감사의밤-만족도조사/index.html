@@ -361,12 +361,29 @@ function save() {
 }
 
 // ---------- 붙은 스티커 그리기 ----------
-// 스티커가 많아질수록 조금씩 작게 붙여 칸이 넘치지 않게 함
-function placedSize(n) {
-  if (n < 60) return 8;
-  if (n < 140) return 6.5;
-  if (n < 260) return 5.2;
-  return 4.2;
+// 칸 넓이를 붙은 개수로 나눠 크기를 정함: 처음엔 크게, 많아질수록 모두 함께 작아짐 (px)
+function placedSize(zoneName, n) {
+  const r = zoneByName[zoneName].querySelector('.layer').getBoundingClientRect();
+  const u = Math.min(innerWidth, innerHeight) / 100;
+  const fit = Math.sqrt(r.width * r.height * 0.9 / Math.max(n, 1));
+  return Math.max(2.8 * u, Math.min(9 * u, fit));
+}
+// 놓은 자리에 이미 스티커가 있으면 가까운 빈자리로 살짝 비켜 붙임 (좌표는 붙임 영역 기준 px)
+function findSpot(zoneName, x0, y0, size, w, h) {
+  const others = state.stickers.filter(s => s.zone === zoneName).map(s => [s.x * w, s.y * h]);
+  const half = size / 2, need = size * 0.85;
+  const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+  let best = [clamp(x0, half, w - half), clamp(y0, half, h - half)], bestGap = -1;
+  for (let i = 0; i < 500; i++) {
+    const a = i * 2.4, rad = Math.sqrt(i) * size * 0.35;
+    const x = x0 + Math.cos(a) * rad, y = y0 + Math.sin(a) * rad;
+    if (x < half || x > w - half || y < half || y > h - half) continue;
+    let gap = Infinity;
+    for (const [ox, oy] of others) gap = Math.min(gap, Math.hypot(x - ox, y - oy));
+    if (gap >= need) return [x, y];
+    if (gap > bestGap) { bestGap = gap; best = [x, y]; }
+  }
+  return best;
 }
 function addPlaced(s, animate) {
   const layer = zoneByName[s.zone].querySelector('.layer');
@@ -388,8 +405,8 @@ function updateCounts() {
   const n = state.stickers.length - y;
   $('yesCount').textContent = y;
   $('noCount').textContent = n;
-  zoneByName.yes.style.setProperty('--ps', `calc(${placedSize(y)} * var(--u))`);
-  zoneByName.no.style.setProperty('--ps', `calc(${placedSize(n)} * var(--u))`);
+  zoneByName.yes.style.setProperty('--ps', placedSize('yes', y) + 'px');
+  zoneByName.no.style.setProperty('--ps', placedSize('no', n) + 'px');
   document.body.classList.toggle('hide-count', !state.showCount);
   const total = y + n, yp = total ? Math.round(y / total * 100) : 0;
   $('aYes').textContent = y; $('aNo').textContent = n;
@@ -461,16 +478,16 @@ function endDrag(e, cancelled) {
   const z = cancelled ? null : zoneAt(d.x, d.y);
   if (z) {
     const lr = z.querySelector('.layer').getBoundingClientRect();
-    const zr = z.getBoundingClientRect();
-    // 이름표(Yes/No) 위에 놓아도 그 아래쪽 붙임 영역 안으로 맞춰 붙임
-    const half = placedSize(state.stickers.filter(s => s.zone === z.dataset.zone).length) * Math.min(innerWidth, innerHeight) / 200;
-    const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
-    const px = clamp(d.x, lr.left + half, lr.right - half);
-    const py = clamp(d.y, lr.top + half, lr.bottom - half);
+    const zone = z.dataset.zone;
+    // 이름표(Yes/No) 위에 놓아도 그 아래쪽 붙임 영역 안의 빈자리로 맞춰 붙임
+    const size = placedSize(zone, state.stickers.filter(s => s.zone === zone).length + 1);
+    const half = size / 2;
+    const [sx, sy] = findSpot(zone, d.x - lr.left, d.y - lr.top, size, lr.width, lr.height);
+    const px = lr.left + sx, py = lr.top + sy;
     const s = {
-      type: d.type, zone: z.dataset.zone,
-      x: +((px - lr.left) / lr.width).toFixed(4),
-      y: +((py - lr.top) / lr.height).toFixed(4),
+      type: d.type, zone,
+      x: +(sx / lr.width).toFixed(4),
+      y: +(sy / lr.height).toFixed(4),
       r: d.r, t: new Date().toISOString()
     };
     state.stickers.push(s);
@@ -578,6 +595,8 @@ $('btnCsv').onclick = () => {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 };
+
+window.addEventListener('resize', updateCounts);
 
 load();
 renderAll();
