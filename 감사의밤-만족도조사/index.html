@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>감사의 밤 만족도 조사</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #fdf0c4;
+    --grid: #f6e3a6;
+    --panel-edge: #d9d9d9;
+    --pill: #ececec;
+    --ink: #1d1d1d;
+    --yes: #f7896b;
+    --yes-text: #f2601f;
+    --no: #f8a12c;
+    --no-text: #f39a1c;
+    --blue: #4285e0;
+    --orange: #f9a632;
+    --title-font: 'Black Han Sans', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    --body-font: 'Jua', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
+  body {
+    background-color: var(--cream);
+    background-image:
+      linear-gradient(var(--grid) 2px, transparent 2px),
+      linear-gradient(90deg, var(--grid) 2px, transparent 2px);
+    background-size: 4.2vh 4.2vh;
+    font-family: var(--body-font);
+    color: var(--ink);
+  }
+
+  /* ---------- 전체 배치 ---------- */
+  .stage {
+    position: relative; height: 100vh; width: 100vw;
+    display: grid; grid-template-rows: 18.5vh 1fr 6vh; grid-template-columns: minmax(0, 1fr);
+    padding: 0 2.4vw;
+  }
+  header { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 1vh; z-index: 2; }
+  header h1 {
+    margin: 0; font-family: var(--title-font); font-weight: 400; line-height: 1.05; text-align: center;
+    font-size: 6.6vh; letter-spacing: -0.02em;
+    text-shadow: 0.35vh 0.35vh 0 #fff, -0.2vh -0.2vh 0 #fff;
+  }
+  header h1 span { display: block; }
+  header h1 .l2 { font-size: 7.4vh; }
+
+  /* 캐릭터 */
+  .char { position: absolute; z-index: 3; pointer-events: none; }
+  .char.blue { left: 1.2vw; top: 1vh; width: 19vw; max-width: 37vh; }
+  .char.orange { right: 0.4vw; top: 3vh; width: 18vw; max-width: 33vh; }
+  .char svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .eye { animation: blink 5s infinite; transform-box: fill-box; transform-origin: center; }
+  .char.orange .eye { animation-delay: 1.7s; }
+  @keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
+  .bob { animation: bob 3.2s ease-in-out infinite; }
+  .char.orange .bob { animation-delay: .8s; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.8vh); } }
+
+  /* 흰 판 */
+  .panel {
+    position: relative; z-index: 1; background: #fff;
+    border: 1.3vh solid var(--panel-edge); border-radius: 2.6vh;
+    display: grid; grid-template-rows: auto 1fr auto; gap: 1.6vh;
+    padding: 2vh 1.6vw 1.6vh; min-height: 0;
+  }
+  .question {
+    background: var(--pill); border-radius: 999px; text-align: center;
+    padding: 1.4vh 4vw; font-size: 4.3vh; line-height: 1.35; word-break: keep-all;
+  }
+  .zones { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4vw; min-height: 0; }
+  .zone {
+    position: relative; border: 0.6vh solid; border-radius: 2.2vh; background: #fff;
+    transition: background .15s, transform .15s, box-shadow .15s; overflow: hidden; min-height: 0;
+  }
+  .zone.yes { border-color: var(--yes); }
+  .zone.no { border-color: var(--no); }
+  .zone.hover { transform: scale(1.012); }
+  .zone.yes.hover { background: #fff3ee; box-shadow: 0 0 0 0.8vh rgba(247,137,107,.25); }
+  .zone.no.hover { background: #fff7ea; box-shadow: 0 0 0 0.8vh rgba(248,161,44,.25); }
+  .zone .label { position: absolute; left: 0; right: 0; top: 1.2vh; text-align: center; pointer-events: none; z-index: 1; }
+  .zone .label small { display: block; font-size: 3.4vh; color: #333; }
+  .zone .label b { display: block; font-family: 'Jua', var(--body-font); font-weight: 400; font-size: 9vh; line-height: 1; margin-top: .2vh; }
+  .zone.yes .label b { color: var(--yes-text); }
+  .zone.no .label b { color: var(--no-text); }
+  .zone .count {
+    position: absolute; right: 1.2vw; top: 1.4vh; z-index: 2; font-size: 3vh;
+    padding: .5vh 1.1vw; border-radius: 999px; color: #fff; pointer-events: none;
+  }
+  .zone.yes .count { background: var(--yes); }
+  .zone.no .count { background: var(--no); }
+  body.hide-count .zone .count { display: none; }
+  .zone .layer { position: absolute; left: 1.5%; right: 1.5%; top: 15.5vh; bottom: 1.5%; }
+
+  /* 스티커 받침 */
+  .tray {
+    display: flex; align-items: center; justify-content: center; gap: 1.4vw; min-width: 0;
+    background: #fafafa; border: 0.4vh dashed #d4d4d4; border-radius: 2vh; padding: 0.8vh 1.5vw;
+  }
+  .tray .hint { font-size: 2.8vh; line-height: 1.3; color: #555; margin-right: .6vw; max-width: 15em; word-break: keep-all; }
+  .tray .hint em { font-style: normal; color: var(--yes-text); }
+  .src { width: 10vh; height: 10vh; flex: 0 1 10vh; aspect-ratio: 1; cursor: grab; transition: transform .12s; }
+  .src:active { transform: scale(0.92); }
+  .src svg, .sticker svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+  .src svg { filter: drop-shadow(0 .4vh .3vh rgba(0,0,0,.18)); animation: wiggle 4s ease-in-out infinite; }
+  .src:nth-child(odd) svg { animation-delay: -2s; }
+  @keyframes wiggle { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-9deg); } 96% { transform: rotate(9deg); } }
+
+  /* 끌고 있는 스티커 / 붙은 스티커 */
+  .sticker { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 50; will-change: transform; }
+  .sticker.dragging svg { filter: drop-shadow(0 1.4vh 1vh rgba(0,0,0,.28)); }
+  .sticker.vanish { transition: opacity .3s, transform .3s; opacity: 0; }
+  .placed {
+    position: absolute; width: var(--ps, 8vh); height: var(--ps, 8vh); margin: calc(var(--ps, 8vh) / -2) 0 0 calc(var(--ps, 8vh) / -2);
+    pointer-events: none;
+  }
+  .placed svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 .3vh .2vh rgba(0,0,0,.15)); }
+  .placed.pop { animation: pop .35s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes pop { from { scale: 1.45; } to { scale: 1; } }
+
+  .toast {
+    position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, -100%);
+    background: #fff; border: .4vh solid currentColor; border-radius: 999px;
+    padding: .8vh 1.6vw; font-size: 3.2vh; white-space: nowrap;
+    animation: floatup 1.6s ease-out forwards;
+  }
+  @keyframes floatup {
+    0% { opacity: 0; margin-top: 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; margin-top: -8vh; }
+  }
+
+  footer { display: flex; align-items: center; justify-content: center; gap: .8vw; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 2.6vh; color: #333; }
+  footer img { height: 4.6vh; }
+
+  /* ---------- 관리자 메뉴 ---------- */
+  .admin-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: none; align-items: center; justify-content: center; }
+  .admin-bg.open { display: flex; }
+  .admin {
+    background: #fff; border-radius: 2.4vh; padding: 3vh 2.6vw; width: min(92vw, 90vh);
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; box-shadow: 0 2vh 6vh rgba(0,0,0,.3);
+  }
+  .admin h2 { margin: 0 0 2vh; font-size: 3.4vh; }
+  .admin .result { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4vw; margin-bottom: 2.4vh; }
+  .admin .result div { border-radius: 1.6vh; padding: 2vh; text-align: center; font-size: 2.6vh; }
+  .admin .result .y { background: #fff1ec; color: #c8461a; }
+  .admin .result .n { background: #fff5e4; color: #b86e05; }
+  .admin .result strong { display: block; font-size: 6vh; }
+  .admin .bar { height: 2.4vh; border-radius: 999px; background: var(--no); overflow: hidden; margin-bottom: 3vh; }
+  .admin .bar i { display: block; height: 100%; background: var(--yes); width: 50%; transition: width .3s; }
+  .admin .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2vh 1.2vw; }
+  .admin button {
+    font: inherit; font-size: 2.5vh; padding: 2vh 1vw; border-radius: 1.4vh; border: 0;
+    background: #f1f1f1; color: #222; cursor: pointer;
+  }
+  .admin button:active { background: #e0e0e0; }
+  .admin button.danger { background: #ffe5e5; color: #c62828; }
+  .admin button.danger.armed { background: #c62828; color: #fff; }
+  .admin button.close { grid-column: 1 / -1; background: #222; color: #fff; }
+  .admin p.tip { margin: 2vh 0 0; font-size: 1.9vh; color: #777; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- 스티커 모양 (한 번 정의하고 여러 번 재사용) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="s-heart" viewBox="0 0 100 100">
+      <path d="M50 90 C22 70 4 52 4 31 A23 23 0 0 1 50 19 A23 23 0 0 1 96 31 C96 52 78 70 50 90Z" fill="#ff4d6d" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <ellipse cx="29" cy="32" rx="8" ry="5" fill="#fff" opacity=".55" transform="rotate(-35 29 32)"/>
+    </symbol>
+    <symbol id="s-pinkheart" viewBox="0 0 100 100">
+      <path d="M50 90 C22 70 4 52 4 31 A23 23 0 0 1 50 19 A23 23 0 0 1 96 31 C96 52 78 70 50 90Z" fill="#ff8fb7" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <ellipse cx="29" cy="32" rx="8" ry="5" fill="#fff" opacity=".6" transform="rotate(-35 29 32)"/>
+    </symbol>
+    <symbol id="s-star" viewBox="0 0 100 100">
+      <path d="M50 5 L62 36 L95 37 L69 58 L78 91 L50 72 L22 91 L31 58 L5 37 L38 36Z" fill="#ffc928" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <circle cx="41" cy="52" r="4" fill="#5a3b00"/><circle cx="59" cy="52" r="4" fill="#5a3b00"/>
+      <path d="M43 62 Q50 68 57 62" stroke="#5a3b00" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="s-smile" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="44" fill="#ffb12b" stroke="#fff" stroke-width="6"/>
+      <circle cx="35" cy="42" r="6" fill="#3b2500"/><circle cx="65" cy="42" r="6" fill="#3b2500"/>
+      <path d="M30 58 Q50 80 70 58" stroke="#3b2500" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <circle cx="25" cy="60" r="6" fill="#ff7a6b" opacity=".6"/><circle cx="75" cy="60" r="6" fill="#ff7a6b" opacity=".6"/>
+    </symbol>
+    <symbol id="s-flower" viewBox="0 0 100 100">
+      <g stroke="#fff" stroke-width="5" fill="#ff86c2">
+        <circle cx="50" cy="24" r="19"/><circle cx="75" cy="42" r="19"/><circle cx="65" cy="72" r="19"/>
+        <circle cx="35" cy="72" r="19"/><circle cx="25" cy="42" r="19"/>
+      </g>
+      <g fill="#ff86c2"><circle cx="50" cy="24" r="16"/><circle cx="75" cy="42" r="16"/><circle cx="65" cy="72" r="16"/><circle cx="35" cy="72" r="16"/><circle cx="25" cy="42" r="16"/></g>
+      <circle cx="50" cy="51" r="15" fill="#ffd93b" stroke="#fff" stroke-width="4"/>
+    </symbol>
+    <symbol id="s-blueheart" viewBox="0 0 100 100">
+      <path d="M50 90 C22 70 4 52 4 31 A23 23 0 0 1 50 19 A23 23 0 0 1 96 31 C96 52 78 70 50 90Z" fill="#4c8cf0" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <ellipse cx="29" cy="32" rx="8" ry="5" fill="#fff" opacity=".55" transform="rotate(-35 29 32)"/>
+    </symbol>
+    <symbol id="s-clover" viewBox="0 0 100 100">
+      <g fill="#42b96a" stroke="#fff" stroke-width="5">
+        <path d="M50 50 C30 50 18 40 22 26 C26 14 42 14 50 28 C58 14 74 14 78 26 C82 40 70 50 50 50Z"/>
+        <path d="M50 50 C30 50 18 60 22 74 C26 86 42 86 50 72 C58 86 74 86 78 74 C82 60 70 50 50 50Z"/>
+      </g>
+      <circle cx="50" cy="50" r="7" fill="#2e9a52"/>
+    </symbol>
+    <symbol id="s-thumb" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="44" fill="#ff7a59" stroke="#fff" stroke-width="6"/>
+      <path d="M30 48 h10 v26 h-10z M44 74 V48 L55 26 C60 24 64 28 62 34 L58 44 H72 C77 44 80 49 78 54 L72 70 C71 73 68 74 66 74Z" fill="#fff"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="stage">
+  <!-- 파란 캐릭터 -->
+  <div class="char blue">
+    <svg viewBox="0 0 200 150">
+      <g class="bob">
+        <path d="M5 140 C5 55 50 5 100 5 C150 5 195 55 195 140 Z" fill="#4285e0"/>
+        <circle cx="30" cy="55" r="6" fill="none" stroke="#1d1d1d" stroke-width="3"/>
+        <g class="eye"><ellipse cx="82" cy="78" rx="18" ry="20" fill="#fff"/><ellipse cx="86" cy="82" rx="10" ry="14" fill="#111"/></g>
+        <g class="eye"><ellipse cx="122" cy="78" rx="18" ry="20" fill="#fff"/><ellipse cx="126" cy="82" rx="10" ry="14" fill="#111"/></g>
+        <path d="M84 108 Q98 118 114 112" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/>
+      </g>
+      <path d="M38 150 A18 18 0 0 1 74 150 Z" fill="#4285e0"/><path d="M40 146 A16 16 0 0 1 72 146" stroke="#1d3f8a" stroke-width="3" fill="none"/>
+      <path d="M128 150 A18 18 0 0 1 164 150 Z" fill="#4285e0"/><path d="M130 146 A16 16 0 0 1 162 146" stroke="#1d3f8a" stroke-width="3" fill="none"/>
+    </svg>
+  </div>
+  <!-- 주황 캐릭터 -->
+  <div class="char orange">
+    <svg viewBox="0 0 200 190">
+      <g class="bob">
+        <path d="M100 8 L116 30 L140 14 L146 42 L176 38 L168 66 L196 80 L172 98 L192 120 L162 126 L164 154 L136 144 L124 168 L104 148 L80 166 L72 140 L44 148 L48 120 L18 112 L40 94 L16 74 L46 66 L42 38 L70 44 L80 16 Z" fill="#f9a632"/>
+        <g class="eye"><ellipse cx="82" cy="88" rx="17" ry="19" fill="#fff"/><ellipse cx="86" cy="92" rx="9" ry="13" fill="#111"/></g>
+        <g class="eye"><ellipse cx="120" cy="88" rx="17" ry="19" fill="#fff"/><ellipse cx="124" cy="92" rx="9" ry="13" fill="#111"/></g>
+      </g>
+      <path d="M78 150 L76 178" stroke="#f9a632" stroke-width="10" stroke-linecap="round"/><circle cx="74" cy="180" r="12" fill="#f9a632"/>
+      <path d="M130 150 L134 176" stroke="#f9a632" stroke-width="10" stroke-linecap="round"/><circle cx="136" cy="178" r="12" fill="#f9a632"/>
+      <circle cx="186" cy="20" r="6" fill="none" stroke="#1d1d1d" stroke-width="3"/>
+    </svg>
+  </div>
+
+  <header>
+    <h1><span class="l1" id="title1"></span><span class="l2" id="title2"></span></h1>
+  </header>
+
+  <main class="panel">
+    <div class="question" id="question"></div>
+    <div class="zones">
+      <section class="zone yes" data-zone="yes">
+        <div class="label"><small id="yesSub"></small><b>Yes!</b></div>
+        <div class="count" id="yesCount">0</div>
+        <div class="layer"></div>
+      </section>
+      <section class="zone no" data-zone="no">
+        <div class="label"><small id="noSub"></small><b>No!</b></div>
+        <div class="count" id="noCount">0</div>
+        <div class="layer"></div>
+      </section>
+    </div>
+    <div class="tray" id="tray">
+      <div class="hint">마음에 드는 스티커를 <em>꾹 눌러 끌어다</em> 붙여주세요 👉</div>
+    </div>
+  </main>
+
+  <footer id="footer">
+    <img src="logo.png" alt="" onerror="this.remove()">
+    <span id="orgName"></span>
+  </footer>
+</div>
+
+<!-- 관리자 메뉴: 하단 기관명을 3초 동안 길게 누르면 열림 -->
+<div class="admin-bg" id="adminBg">
+  <div class="admin">
+    <h2>관리자 메뉴 · 현재 결과</h2>
+    <div class="result">
+      <div class="y">그렇다 (Yes)<strong id="aYes">0</strong><span id="aYesPct">0%</span></div>
+      <div class="n">그렇지 않다 (No)<strong id="aNo">0</strong><span id="aNoPct">0%</span></div>
+    </div>
+    <div class="bar"><i id="aBar"></i></div>
+    <div class="btns">
+      <button id="btnCsv">결과 파일 저장 (엑셀용 CSV)</button>
+      <button id="btnUndo">마지막 스티커 1개 취소</button>
+      <button id="btnCount">화면 숫자 표시: 켜짐</button>
+      <button id="btnFull">전체 화면</button>
+      <button id="btnReset" class="danger">전체 초기화</button>
+      <button id="btnReload">화면 새로 고침</button>
+      <button id="btnClose" class="close">닫기</button>
+    </div>
+    <p class="tip">결과는 이 기기의 브라우저에 자동 저장되어 전원이 꺼지거나 새로 고침해도 유지됩니다.<br>행사가 끝나면 ‘결과 파일 저장’으로 기록을 받아 두세요.</p>
+  </div>
+</div>
+
+<script>
+// ===================== 설정 (행사마다 여기만 고치면 됩니다) =====================
+const CONFIG = {
+  title1: '2026년 감사의 밤',
+  title2: 'The Moment: 함께한 순간',
+  question: '이번 감사행사를 통해 앞으로도 자원봉사 또는 후원활동에<br>지속적으로 참여하고 싶은 마음이 높아졌습니까?',
+  yesSub: '그렇다.',
+  noSub: '그렇지 않다.',
+  orgName: '거제시종합사회복지관',
+  stickers: ['heart', 'pinkheart', 'star', 'smile', 'flower', 'thumb', 'clover', 'blueheart'],
+  thanks: ['참여해 주셔서 감사합니다! 💛', '고맙습니다! 😊', '소중한 마음 감사해요! 💖'],
+  showCount: true,       // 화면에 참여 숫자 표시 여부 (관리자 메뉴에서도 변경 가능)
+  maxSimultaneous: 10,   // 동시에 끌 수 있는 손가락 수
+  adminHoldMs: 3000,     // 관리자 메뉴 열기: 기관명 길게 누르는 시간
+  storageKey: 'thanks-night-survey-2026'
+};
+// ============================================================================
+
+const $ = id => document.getElementById(id);
+$('title1').textContent = CONFIG.title1;
+$('title2').textContent = CONFIG.title2;
+$('question').innerHTML = CONFIG.question;
+$('yesSub').textContent = CONFIG.yesSub;
+$('noSub').textContent = CONFIG.noSub;
+$('orgName').textContent = CONFIG.orgName;
+
+const svgFor = type => `<svg viewBox="0 0 100 100"><use href="#s-${type}"/></svg>`;
+const zones = [...document.querySelectorAll('.zone')];
+const zoneByName = Object.fromEntries(zones.map(z => [z.dataset.zone, z]));
+
+// ---------- 저장 ----------
+let state = { stickers: [], showCount: CONFIG.showCount };
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CONFIG.storageKey));
+    if (s && Array.isArray(s.stickers)) state = Object.assign(state, s);
+  } catch (e) {}
+}
+function save() {
+  try { localStorage.setItem(CONFIG.storageKey, JSON.stringify(state)); } catch (e) {}
+}
+
+// ---------- 붙은 스티커 그리기 ----------
+// 스티커가 많아질수록 조금씩 작게 붙여 칸이 넘치지 않게 함
+function placedSize(n) {
+  if (n < 60) return 8;
+  if (n < 140) return 6.5;
+  if (n < 260) return 5.2;
+  return 4.2;
+}
+function addPlaced(s, animate) {
+  const layer = zoneByName[s.zone].querySelector('.layer');
+  const el = document.createElement('div');
+  el.className = 'placed' + (animate ? ' pop' : '');
+  el.style.left = (s.x * 100) + '%';
+  el.style.top = (s.y * 100) + '%';
+  el.style.rotate = s.r + 'deg';
+  el.innerHTML = svgFor(s.type);
+  layer.appendChild(el);
+}
+function renderAll() {
+  zones.forEach(z => z.querySelector('.layer').innerHTML = '');
+  state.stickers.forEach(s => addPlaced(s, false));
+  updateCounts();
+}
+function updateCounts() {
+  const y = state.stickers.filter(s => s.zone === 'yes').length;
+  const n = state.stickers.length - y;
+  $('yesCount').textContent = y;
+  $('noCount').textContent = n;
+  zoneByName.yes.style.setProperty('--ps', placedSize(y) + 'vh');
+  zoneByName.no.style.setProperty('--ps', placedSize(n) + 'vh');
+  document.body.classList.toggle('hide-count', !state.showCount);
+  const total = y + n, yp = total ? Math.round(y / total * 100) : 0;
+  $('aYes').textContent = y; $('aNo').textContent = n;
+  $('aYesPct').textContent = (total ? yp : 0) + '%';
+  $('aNoPct').textContent = (total ? 100 - yp : 0) + '%';
+  $('aBar').style.width = (total ? yp : 50) + '%';
+  $('btnCount').textContent = '화면 숫자 표시: ' + (state.showCount ? '켜짐' : '꺼짐');
+}
+
+// ---------- 스티커 받침 ----------
+const tray = $('tray');
+CONFIG.stickers.forEach(type => {
+  const d = document.createElement('div');
+  d.className = 'src';
+  d.dataset.type = type;
+  d.innerHTML = svgFor(type);
+  tray.appendChild(d);
+});
+
+// ---------- 여러 손가락 동시 끌기 (Pointer Events) ----------
+const drags = new Map(); // pointerId -> { el, type, size, x, y, r }
+
+function zoneAt(x, y) {
+  for (const z of zones) {
+    const r = z.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return z;
+  }
+  return null;
+}
+function moveDrag(d, x, y) {
+  // 손가락에 가리지 않도록 스티커를 손가락보다 살짝 위에 띄움
+  d.x = x; d.y = y - d.size * 0.35;
+  d.el.style.transform = `translate(${d.x - d.size / 2}px, ${d.y - d.size / 2}px) rotate(${d.r}deg)`;
+}
+function refreshHover() {
+  const hovered = new Set();
+  drags.forEach(d => { const z = zoneAt(d.x, d.y); if (z) hovered.add(z); });
+  zones.forEach(z => z.classList.toggle('hover', hovered.has(z)));
+}
+
+tray.addEventListener('pointerdown', e => {
+  const src = e.target.closest('.src');
+  if (!src || drags.size >= CONFIG.maxSimultaneous) return;
+  e.preventDefault();
+  const size = src.getBoundingClientRect().width * 1.25;
+  const el = document.createElement('div');
+  el.className = 'sticker dragging';
+  el.style.width = el.style.height = size + 'px';
+  el.innerHTML = svgFor(src.dataset.type);
+  document.body.appendChild(el);
+  const d = { el, type: src.dataset.type, size, r: Math.round(Math.random() * 30 - 15) };
+  drags.set(e.pointerId, d);
+  try { src.setPointerCapture(e.pointerId); } catch (err) {}
+  moveDrag(d, e.clientX, e.clientY);
+});
+
+window.addEventListener('pointermove', e => {
+  const d = drags.get(e.pointerId);
+  if (!d) return;
+  e.preventDefault();
+  moveDrag(d, e.clientX, e.clientY);
+  refreshHover();
+}, { passive: false });
+
+function endDrag(e, cancelled) {
+  const d = drags.get(e.pointerId);
+  if (!d) return;
+  drags.delete(e.pointerId);
+  const z = cancelled ? null : zoneAt(d.x, d.y);
+  if (z) {
+    const lr = z.querySelector('.layer').getBoundingClientRect();
+    const zr = z.getBoundingClientRect();
+    // 이름표(Yes/No) 위에 놓아도 그 아래쪽 붙임 영역 안으로 맞춰 붙임
+    const half = placedSize(state.stickers.filter(s => s.zone === z.dataset.zone).length) * innerHeight / 200;
+    const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+    const px = clamp(d.x, lr.left + half, lr.right - half);
+    const py = clamp(d.y, lr.top + half, lr.bottom - half);
+    const s = {
+      type: d.type, zone: z.dataset.zone,
+      x: +((px - lr.left) / lr.width).toFixed(4),
+      y: +((py - lr.top) / lr.height).toFixed(4),
+      r: d.r, t: new Date().toISOString()
+    };
+    state.stickers.push(s);
+    save();
+    addPlaced(s, true);
+    updateCounts();
+    d.el.remove();
+    showToast(px, py - half, z.dataset.zone === 'yes' ? 'var(--yes-text)' : 'var(--no-text)');
+  } else {
+    d.el.classList.add('vanish');
+    d.el.style.transform += ' scale(0.3)';
+    setTimeout(() => d.el.remove(), 320);
+  }
+  refreshHover();
+}
+window.addEventListener('pointerup', e => endDrag(e, false));
+window.addEventListener('pointercancel', e => endDrag(e, true));
+
+function showToast(x, y, color) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.style.color = color;
+  t.textContent = CONFIG.thanks[Math.floor(Math.random() * CONFIG.thanks.length)];
+  document.body.appendChild(t);
+  const w = t.offsetWidth / 2 + 10;
+  t.style.left = Math.min(Math.max(x, w), innerWidth - w) + 'px';
+  t.style.top = Math.max(y, 80) + 'px';
+  setTimeout(() => t.remove(), 1700);
+}
+
+// 길게 누름 메뉴·두 손가락 확대·우클릭 등 브라우저 기본 동작 막기
+['contextmenu', 'gesturestart', 'dragstart', 'selectstart'].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault()));
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+// ---------- 관리자 메뉴 ----------
+const adminBg = $('adminBg');
+let holdTimer = null;
+$('footer').addEventListener('pointerdown', () => {
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => { updateCounts(); adminBg.classList.add('open'); }, CONFIG.adminHoldMs);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+  $('footer').addEventListener(ev, () => clearTimeout(holdTimer)));
+// 키보드가 연결되어 있으면 Ctrl+Shift+A 로도 열림
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') { updateCounts(); adminBg.classList.add('open'); }
+  if (e.key === 'Escape') adminBg.classList.remove('open');
+});
+
+$('btnClose').onclick = () => { adminBg.classList.remove('open'); disarmReset(); };
+$('btnCount').onclick = () => { state.showCount = !state.showCount; save(); updateCounts(); };
+$('btnReload').onclick = () => location.reload();
+$('btnFull').onclick = () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement) document.exitFullscreen();
+  else (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+};
+$('btnUndo').onclick = () => {
+  if (!state.stickers.length) return;
+  state.stickers.pop(); save(); renderAll();
+};
+
+let resetArmed = null;
+function disarmReset() {
+  clearTimeout(resetArmed); resetArmed = null;
+  $('btnReset').classList.remove('armed');
+  $('btnReset').textContent = '전체 초기화';
+}
+$('btnReset').onclick = () => {
+  if (!resetArmed) {
+    $('btnReset').classList.add('armed');
+    $('btnReset').textContent = '정말 지울까요? 한 번 더 누르세요';
+    resetArmed = setTimeout(disarmReset, 4000);
+    return;
+  }
+  disarmReset();
+  state.stickers = []; save(); renderAll();
+};
+
+$('btnCsv').onclick = () => {
+  const y = state.stickers.filter(s => s.zone === 'yes').length;
+  const n = state.stickers.length - y;
+  const total = y + n;
+  const pct = v => total ? (v / total * 100).toFixed(1) + '%' : '0%';
+  const rows = [
+    ['문항', CONFIG.question.replace(/<br\s*\/?>/g, ' ')],
+    [],
+    ['응답', '개수', '비율'],
+    ['그렇다 (Yes)', y, pct(y)],
+    ['그렇지 않다 (No)', n, pct(n)],
+    ['합계', total, total ? '100%' : '0%'],
+    [],
+    ['순번', '응답', '스티커', '시각']
+  ];
+  state.stickers.forEach((s, i) => rows.push([
+    i + 1, s.zone === 'yes' ? '그렇다' : '그렇지 않다', s.type,
+    s.t ? new Date(s.t).toLocaleString('ko-KR') : ''
+  ]));
+  const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const d = new Date();
+  a.download = `감사의밤_만족도조사_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+
+load();
+renderAll();
+</script>
+</body>
+</html>
