@@ -123,11 +123,11 @@
   .sticker.vanish { transition: opacity .3s, transform .3s; opacity: 0; }
   .placed {
     position: absolute; width: var(--ps, calc(8 * var(--u))); height: var(--ps, calc(8 * var(--u))); margin: calc(var(--ps, calc(8 * var(--u))) / -2) 0 0 calc(var(--ps, calc(8 * var(--u))) / -2);
-    pointer-events: none;
+    pointer-events: none; transform: rotate(var(--r, 0deg));
   }
   .placed svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 calc(.3 * var(--u)) calc(.2 * var(--u)) rgba(0,0,0,.15)); }
   .placed.pop { animation: pop .35s cubic-bezier(.3,1.6,.5,1); }
-  @keyframes pop { from { scale: 1.45; } to { scale: 1; } }
+  @keyframes pop { from { transform: rotate(var(--r, 0deg)) scale(1.45); } to { transform: rotate(var(--r, 0deg)) scale(1); } }
 
   .toast {
     position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, -100%);
@@ -143,7 +143,7 @@
   footer img { height: calc(4.6 * var(--u)); }
 
   /* ---------- 관리자 메뉴 ---------- */
-  .admin-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: none; align-items: center; justify-content: center; }
+  .admin-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.45); z-index: 100; display: none; align-items: center; justify-content: center; }
   .admin-bg.open { display: flex; }
   .admin {
     background: #fff; border-radius: calc(2.4 * var(--u)); padding: calc(3 * var(--u)) 2.6vw; width: min(92vw, calc(90 * var(--u)));
@@ -315,6 +315,7 @@
       <button id="btnClose" class="close">닫기</button>
     </div>
     <p class="tip">결과는 이 기기의 브라우저에 자동 저장되어 전원이 꺼지거나 새로 고침해도 유지됩니다.<br>행사가 끝나면 ‘결과 파일 저장’으로 기록을 받아 두세요.</p>
+    <p class="tip" id="diag"></p>
   </div>
 </div>
 
@@ -391,7 +392,7 @@ function addPlaced(s, animate) {
   el.className = 'placed' + (animate ? ' pop' : '');
   el.style.left = (s.x * 100) + '%';
   el.style.top = (s.y * 100) + '%';
-  el.style.rotate = s.r + 'deg';
+  el.style.setProperty('--r', s.r + 'deg');
   el.innerHTML = svgFor(s.type);
   layer.appendChild(el);
 }
@@ -447,10 +448,10 @@ function refreshHover() {
   zones.forEach(z => z.classList.toggle('hover', hovered.has(z)));
 }
 
-tray.addEventListener('pointerdown', e => {
-  const src = e.target.closest('.src');
-  if (!src || drags.size >= CONFIG.maxSimultaneous) return;
-  e.preventDefault();
+// 끌기 시작·이동·끝. id 는 손가락(또는 마우스)마다 다른 값
+function startDrag(id, target, x, y) {
+  const src = target && target.closest && target.closest('.src');
+  if (!src || drags.has(id) || drags.size >= CONFIG.maxSimultaneous) return false;
   const size = src.getBoundingClientRect().width * 1.25;
   const el = document.createElement('div');
   el.className = 'sticker dragging';
@@ -458,23 +459,22 @@ tray.addEventListener('pointerdown', e => {
   el.innerHTML = svgFor(src.dataset.type);
   document.body.appendChild(el);
   const d = { el, type: src.dataset.type, size, r: Math.round(Math.random() * 30 - 15) };
-  drags.set(e.pointerId, d);
-  try { src.setPointerCapture(e.pointerId); } catch (err) {}
-  moveDrag(d, e.clientX, e.clientY);
-});
-
-window.addEventListener('pointermove', e => {
-  const d = drags.get(e.pointerId);
-  if (!d) return;
-  e.preventDefault();
-  moveDrag(d, e.clientX, e.clientY);
+  drags.set(id, d);
+  moveDrag(d, x, y);
+  return true;
+}
+function dragMove(id, x, y) {
+  const d = drags.get(id);
+  if (!d) return false;
+  moveDrag(d, x, y);
   refreshHover();
-}, { passive: false });
+  return true;
+}
 
-function endDrag(e, cancelled) {
-  const d = drags.get(e.pointerId);
+function endDrag(id, cancelled) {
+  const d = drags.get(id);
   if (!d) return;
-  drags.delete(e.pointerId);
+  drags.delete(id);
   const z = cancelled ? null : zoneAt(d.x, d.y);
   if (z) {
     const lr = z.querySelector('.layer').getBoundingClientRect();
@@ -503,8 +503,51 @@ function endDrag(e, cancelled) {
   }
   refreshHover();
 }
-window.addEventListener('pointerup', e => endDrag(e, false));
-window.addEventListener('pointercancel', e => endDrag(e, true));
+
+// ---------- 입력 연결 ----------
+// 터치 화면 기기마다 브라우저가 터치를 넘겨주는 방식이 달라서 세 가지를 모두 받음.
+// 1) 터치 이벤트: 손가락은 항상 이것으로 처리 (여러 손가락 동시)
+// 2) 포인터 이벤트: 마우스·펜, 그리고 터치 이벤트가 없는 브라우저의 손가락
+// 3) 마우스 이벤트: 포인터 이벤트도 없는 오래된 브라우저
+const HAS_TOUCH = 'ontouchstart' in window;
+const HAS_POINTER = 'PointerEvent' in window;
+
+if (HAS_TOUCH) {
+  tray.addEventListener('touchstart', e => {
+    let started = false;
+    for (const t of e.changedTouches) {
+      if (startDrag('t' + t.identifier, document.elementFromPoint(t.clientX, t.clientY) || e.target, t.clientX, t.clientY)) started = true;
+    }
+    if (started) e.preventDefault(); // 터치 뒤에 따라오는 가짜 마우스 동작 막기
+  }, { passive: false });
+  window.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) dragMove('t' + t.identifier, t.clientX, t.clientY);
+  }, { passive: false });
+  window.addEventListener('touchend', e => { for (const t of e.changedTouches) endDrag('t' + t.identifier, false); });
+  window.addEventListener('touchcancel', e => { for (const t of e.changedTouches) endDrag('t' + t.identifier, true); });
+}
+
+if (HAS_POINTER) {
+  const skip = e => e.pointerType === 'touch' && HAS_TOUCH; // 손가락은 위의 터치 이벤트가 처리
+  tray.addEventListener('pointerdown', e => {
+    if (skip(e)) return;
+    if (startDrag('p' + e.pointerId, e.target, e.clientX, e.clientY)) {
+      e.preventDefault();
+      try { e.target.releasePointerCapture && e.target.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+  });
+  window.addEventListener('pointermove', e => {
+    if (!skip(e) && dragMove('p' + e.pointerId, e.clientX, e.clientY)) e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('pointerup', e => { if (!skip(e)) endDrag('p' + e.pointerId, false); });
+  // 브라우저가 화면 밀기로 착각해 끌기를 취소해도 스티커를 잃지 않도록, 취소 시점 위치에 놓은 것으로 처리
+  window.addEventListener('pointercancel', e => { if (!skip(e)) endDrag('p' + e.pointerId, false); });
+} else {
+  tray.addEventListener('mousedown', e => { if (startDrag('m', e.target, e.clientX, e.clientY)) e.preventDefault(); });
+  window.addEventListener('mousemove', e => dragMove('m', e.clientX, e.clientY));
+  window.addEventListener('mouseup', () => endDrag('m', false));
+}
 
 function showToast(x, y, color) {
   const t = document.createElement('div');
@@ -521,17 +564,17 @@ function showToast(x, y, color) {
 // 길게 누름 메뉴·두 손가락 확대·우클릭 등 브라우저 기본 동작 막기
 ['contextmenu', 'gesturestart', 'dragstart', 'selectstart'].forEach(ev =>
   document.addEventListener(ev, e => e.preventDefault()));
-document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
 // ---------- 관리자 메뉴 ----------
 const adminBg = $('adminBg');
 let holdTimer = null;
-$('footer').addEventListener('pointerdown', () => {
+function holdStart() {
   clearTimeout(holdTimer);
   holdTimer = setTimeout(() => { updateCounts(); adminBg.classList.add('open'); }, CONFIG.adminHoldMs);
-});
-['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
-  $('footer').addEventListener(ev, () => clearTimeout(holdTimer)));
+}
+function holdEnd() { clearTimeout(holdTimer); }
+['touchstart', 'mousedown'].forEach(ev => $('footer').addEventListener(ev, holdStart));
+['touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach(ev => $('footer').addEventListener(ev, holdEnd));
 // 키보드가 연결되어 있으면 Ctrl+Shift+A 로도 열림
 document.addEventListener('keydown', e => {
   if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') { updateCounts(); adminBg.classList.add('open'); }
@@ -597,6 +640,7 @@ $('btnCsv').onclick = () => {
 };
 
 window.addEventListener('resize', updateCounts);
+$('diag').textContent = `기기 정보 · 터치이벤트: ${HAS_TOUCH ? '있음' : '없음'} · 포인터이벤트: ${HAS_POINTER ? '있음' : '없음'} · 동시 터치: ${navigator.maxTouchPoints || 0} · ${navigator.userAgent}`;
 
 load();
 renderAll();
