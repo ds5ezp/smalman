@@ -268,6 +268,7 @@
         // ---------- 설정 ----------
         var DASHBOARD_REFRESH_MS = 60 * 1000;   // 공지·일정·날씨·뉴스·기관방문: 1분
         var SLIDE_REFRESH_MS = 5 * 60 * 1000;   // 상단 슬라이드(드라이브 파일): 5분
+        var PAGE_RELOAD_MS = 10 * 60 * 1000;    // 화면 전체 새로고침: 10분 (코드·화면 설정 변경 반영)
         var BOTTOM_HOLD_MS = 10 * 1000;         // 하단 패널 한 장면을 보여주는 시간
         var FADE_MS = 300;                      // 화면 전환 시 페이드 시간
         var HEADLINE_COUNT = 4;                 // 고정 헤드라인 개수
@@ -1297,6 +1298,9 @@
 
             setInterval(refreshDashboardData, DASHBOARD_REFRESH_MS);
             setInterval(refreshSlideData, SLIDE_REFRESH_MS);
+
+            // 화면을 10분마다 새로고침해서 코드·화면 설정 변경도 자동으로 반영 (TV 브라우저는 직접 새로고침하지 않음)
+            setTimeout(function () { location.reload(); }, PAGE_RELOAD_MS);
         })();
     </script>
 </body>
