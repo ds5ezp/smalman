@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap" rel="stylesheet">
 <style>
   :root {
+    --u: min(1vh, 1vw);
     --cream: #fdf0c4;
     --grid: #f6e3a6;
     --panel-edge: #d9d9d9;
@@ -33,7 +34,7 @@
     background-image:
       linear-gradient(var(--grid) 2px, transparent 2px),
       linear-gradient(90deg, var(--grid) 2px, transparent 2px);
-    background-size: 4.2vh 4.2vh;
+    background-size: calc(4.2 * var(--u)) calc(4.2 * var(--u));
     font-family: var(--body-font);
     color: var(--ink);
   }
@@ -41,129 +42,150 @@
   /* ---------- 전체 배치 ---------- */
   .stage {
     position: relative; height: 100vh; width: 100vw;
-    display: grid; grid-template-rows: 18.5vh 1fr 6vh; grid-template-columns: minmax(0, 1fr);
+    display: grid; grid-template-rows: calc(18.5 * var(--u)) 1fr calc(6 * var(--u)); grid-template-columns: minmax(0, 1fr);
     padding: 0 2.4vw;
   }
-  header { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 1vh; z-index: 2; }
+  header { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: calc(1 * var(--u)); z-index: 2; }
   header h1 {
     margin: 0; font-family: var(--title-font); font-weight: 400; line-height: 1.05; text-align: center;
-    font-size: 6.6vh; letter-spacing: -0.02em;
-    text-shadow: 0.35vh 0.35vh 0 #fff, -0.2vh -0.2vh 0 #fff;
+    font-size: calc(6.6 * var(--u)); letter-spacing: -0.02em;
+    text-shadow: calc(0.35 * var(--u)) calc(0.35 * var(--u)) 0 #fff, -calc(0.2 * var(--u)) -calc(0.2 * var(--u)) 0 #fff;
   }
   header h1 span { display: block; }
-  header h1 .l2 { font-size: 7.4vh; }
+  header h1 .l2 { font-size: calc(7.4 * var(--u)); }
 
   /* 캐릭터 */
   .char { position: absolute; z-index: 3; pointer-events: none; }
-  .char.blue { left: 1.2vw; top: 1vh; width: 19vw; max-width: 37vh; }
-  .char.orange { right: 0.4vw; top: 3vh; width: 18vw; max-width: 33vh; }
+  .char.blue { left: 1.2vw; top: calc(1 * var(--u)); width: 19vw; max-width: calc(37 * var(--u)); }
+  .char.orange { right: 0.4vw; top: calc(3 * var(--u)); width: 18vw; max-width: calc(33 * var(--u)); }
   .char svg { width: 100%; height: auto; display: block; overflow: visible; }
   .eye { animation: blink 5s infinite; transform-box: fill-box; transform-origin: center; }
   .char.orange .eye { animation-delay: 1.7s; }
   @keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
   .bob { animation: bob 3.2s ease-in-out infinite; }
   .char.orange .bob { animation-delay: .8s; }
-  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.8vh); } }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-calc(0.8 * var(--u))); } }
 
   /* 흰 판 */
   .panel {
     position: relative; z-index: 1; background: #fff;
-    border: 1.3vh solid var(--panel-edge); border-radius: 2.6vh;
-    display: grid; grid-template-rows: auto 1fr auto; gap: 1.6vh;
-    padding: 2vh 1.6vw 1.6vh; min-height: 0;
+    border: calc(1.3 * var(--u)) solid var(--panel-edge); border-radius: calc(2.6 * var(--u));
+    display: grid; grid-template-rows: auto 1fr auto; gap: calc(1.6 * var(--u));
+    padding: calc(2 * var(--u)) 1.6vw calc(1.6 * var(--u)); min-height: 0;
   }
   .question {
     background: var(--pill); border-radius: 999px; text-align: center;
-    padding: 1.4vh 4vw; font-size: 4.3vh; line-height: 1.35; word-break: keep-all;
+    padding: calc(1.4 * var(--u)) 4vw; font-size: calc(4.3 * var(--u)); line-height: 1.35; word-break: keep-all;
   }
   .zones { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4vw; min-height: 0; }
   .zone {
-    position: relative; border: 0.6vh solid; border-radius: 2.2vh; background: #fff;
+    position: relative; border: calc(0.6 * var(--u)) solid; border-radius: calc(2.2 * var(--u)); background: #fff;
     transition: background .15s, transform .15s, box-shadow .15s; overflow: hidden; min-height: 0;
   }
   .zone.yes { border-color: var(--yes); }
   .zone.no { border-color: var(--no); }
   .zone.hover { transform: scale(1.012); }
-  .zone.yes.hover { background: #fff3ee; box-shadow: 0 0 0 0.8vh rgba(247,137,107,.25); }
-  .zone.no.hover { background: #fff7ea; box-shadow: 0 0 0 0.8vh rgba(248,161,44,.25); }
-  .zone .label { position: absolute; left: 0; right: 0; top: 1.2vh; text-align: center; pointer-events: none; z-index: 1; }
-  .zone .label small { display: block; font-size: 3.4vh; color: #333; }
-  .zone .label b { display: block; font-family: 'Jua', var(--body-font); font-weight: 400; font-size: 9vh; line-height: 1; margin-top: .2vh; }
+  .zone.yes.hover { background: #fff3ee; box-shadow: 0 0 0 calc(0.8 * var(--u)) rgba(247,137,107,.25); }
+  .zone.no.hover { background: #fff7ea; box-shadow: 0 0 0 calc(0.8 * var(--u)) rgba(248,161,44,.25); }
+  .zone .label { position: absolute; left: 0; right: 0; top: calc(1.2 * var(--u)); text-align: center; pointer-events: none; z-index: 1; }
+  .zone .label small { display: block; font-size: calc(3.4 * var(--u)); color: #333; }
+  .zone .label b { display: block; font-family: 'Jua', var(--body-font); font-weight: 400; font-size: calc(9 * var(--u)); line-height: 1; margin-top: calc(.2 * var(--u)); }
   .zone.yes .label b { color: var(--yes-text); }
   .zone.no .label b { color: var(--no-text); }
   .zone .count {
-    position: absolute; right: 1.2vw; top: 1.4vh; z-index: 2; font-size: 3vh;
-    padding: .5vh 1.1vw; border-radius: 999px; color: #fff; pointer-events: none;
+    position: absolute; right: 1.2vw; top: calc(1.4 * var(--u)); z-index: 2; font-size: calc(3 * var(--u));
+    padding: calc(.5 * var(--u)) 1.1vw; border-radius: 999px; color: #fff; pointer-events: none;
   }
   .zone.yes .count { background: var(--yes); }
   .zone.no .count { background: var(--no); }
   body.hide-count .zone .count { display: none; }
-  .zone .layer { position: absolute; left: 1.5%; right: 1.5%; top: 15.5vh; bottom: 1.5%; }
+  .zone .layer { position: absolute; left: 1.5%; right: 1.5%; top: calc(15.5 * var(--u)); bottom: 1.5%; }
 
   /* 스티커 받침 */
   .tray {
     display: flex; align-items: center; justify-content: center; gap: 1.4vw; min-width: 0;
-    background: #fafafa; border: 0.4vh dashed #d4d4d4; border-radius: 2vh; padding: 0.8vh 1.5vw;
+    background: #fafafa; border: calc(0.4 * var(--u)) dashed #d4d4d4; border-radius: calc(2 * var(--u)); padding: calc(0.8 * var(--u)) 1.5vw;
   }
-  .tray .hint { font-size: 2.8vh; line-height: 1.3; color: #555; margin-right: .6vw; max-width: 15em; word-break: keep-all; }
+  .tray .hint { font-size: calc(2.8 * var(--u)); line-height: 1.3; color: #555; margin-right: .6vw; max-width: 15em; word-break: keep-all; }
   .tray .hint em { font-style: normal; color: var(--yes-text); }
-  .src { width: 10vh; height: 10vh; flex: 0 1 10vh; aspect-ratio: 1; cursor: grab; transition: transform .12s; }
+  .tray .hint .arrow::after { content: '👉'; }
+  @media (orientation: portrait) { .tray .hint .arrow::after { content: '👇'; } }
+  .src { width: calc(10 * var(--u)); height: calc(10 * var(--u)); flex: 0 1 calc(10 * var(--u)); aspect-ratio: 1; cursor: grab; transition: transform .12s; }
   .src:active { transform: scale(0.92); }
   .src svg, .sticker svg { width: 100%; height: 100%; display: block; pointer-events: none; }
-  .src svg { filter: drop-shadow(0 .4vh .3vh rgba(0,0,0,.18)); animation: wiggle 4s ease-in-out infinite; }
+  .src svg { filter: drop-shadow(0 calc(.4 * var(--u)) calc(.3 * var(--u)) rgba(0,0,0,.18)); animation: wiggle 4s ease-in-out infinite; }
   .src:nth-child(odd) svg { animation-delay: -2s; }
   @keyframes wiggle { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-9deg); } 96% { transform: rotate(9deg); } }
 
   /* 끌고 있는 스티커 / 붙은 스티커 */
   .sticker { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 50; will-change: transform; }
-  .sticker.dragging svg { filter: drop-shadow(0 1.4vh 1vh rgba(0,0,0,.28)); }
+  .sticker.dragging svg { filter: drop-shadow(0 calc(1.4 * var(--u)) calc(1 * var(--u)) rgba(0,0,0,.28)); }
   .sticker.vanish { transition: opacity .3s, transform .3s; opacity: 0; }
   .placed {
-    position: absolute; width: var(--ps, 8vh); height: var(--ps, 8vh); margin: calc(var(--ps, 8vh) / -2) 0 0 calc(var(--ps, 8vh) / -2);
+    position: absolute; width: var(--ps, calc(8 * var(--u))); height: var(--ps, calc(8 * var(--u))); margin: calc(var(--ps, calc(8 * var(--u))) / -2) 0 0 calc(var(--ps, calc(8 * var(--u))) / -2);
     pointer-events: none;
   }
-  .placed svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 .3vh .2vh rgba(0,0,0,.15)); }
+  .placed svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 calc(.3 * var(--u)) calc(.2 * var(--u)) rgba(0,0,0,.15)); }
   .placed.pop { animation: pop .35s cubic-bezier(.3,1.6,.5,1); }
   @keyframes pop { from { scale: 1.45; } to { scale: 1; } }
 
   .toast {
     position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, -100%);
-    background: #fff; border: .4vh solid currentColor; border-radius: 999px;
-    padding: .8vh 1.6vw; font-size: 3.2vh; white-space: nowrap;
+    background: #fff; border: calc(.4 * var(--u)) solid currentColor; border-radius: 999px;
+    padding: calc(.8 * var(--u)) 1.6vw; font-size: calc(3.2 * var(--u)); white-space: nowrap;
     animation: floatup 1.6s ease-out forwards;
   }
   @keyframes floatup {
-    0% { opacity: 0; margin-top: 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; margin-top: -8vh; }
+    0% { opacity: 0; margin-top: 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; margin-top: -calc(8 * var(--u)); }
   }
 
-  footer { display: flex; align-items: center; justify-content: center; gap: .8vw; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 2.6vh; color: #333; }
-  footer img { height: 4.6vh; }
+  footer { display: flex; align-items: center; justify-content: center; gap: .8vw; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: calc(2.6 * var(--u)); color: #333; }
+  footer img { height: calc(4.6 * var(--u)); }
 
   /* ---------- 관리자 메뉴 ---------- */
   .admin-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: none; align-items: center; justify-content: center; }
   .admin-bg.open { display: flex; }
   .admin {
-    background: #fff; border-radius: 2.4vh; padding: 3vh 2.6vw; width: min(92vw, 90vh);
-    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; box-shadow: 0 2vh 6vh rgba(0,0,0,.3);
+    background: #fff; border-radius: calc(2.4 * var(--u)); padding: calc(3 * var(--u)) 2.6vw; width: min(92vw, calc(90 * var(--u)));
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; box-shadow: 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(0,0,0,.3);
   }
-  .admin h2 { margin: 0 0 2vh; font-size: 3.4vh; }
-  .admin .result { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4vw; margin-bottom: 2.4vh; }
-  .admin .result div { border-radius: 1.6vh; padding: 2vh; text-align: center; font-size: 2.6vh; }
+  .admin h2 { margin: 0 0 calc(2 * var(--u)); font-size: calc(3.4 * var(--u)); }
+  .admin .result { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4vw; margin-bottom: calc(2.4 * var(--u)); }
+  .admin .result div { border-radius: calc(1.6 * var(--u)); padding: calc(2 * var(--u)); text-align: center; font-size: calc(2.6 * var(--u)); }
   .admin .result .y { background: #fff1ec; color: #c8461a; }
   .admin .result .n { background: #fff5e4; color: #b86e05; }
-  .admin .result strong { display: block; font-size: 6vh; }
-  .admin .bar { height: 2.4vh; border-radius: 999px; background: var(--no); overflow: hidden; margin-bottom: 3vh; }
+  .admin .result strong { display: block; font-size: calc(6 * var(--u)); }
+  .admin .bar { height: calc(2.4 * var(--u)); border-radius: 999px; background: var(--no); overflow: hidden; margin-bottom: calc(3 * var(--u)); }
   .admin .bar i { display: block; height: 100%; background: var(--yes); width: 50%; transition: width .3s; }
-  .admin .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2vh 1.2vw; }
+  .admin .btns { display: grid; grid-template-columns: 1fr 1fr; gap: calc(1.2 * var(--u)) 1.2vw; }
   .admin button {
-    font: inherit; font-size: 2.5vh; padding: 2vh 1vw; border-radius: 1.4vh; border: 0;
+    font: inherit; font-size: calc(2.5 * var(--u)); padding: calc(2 * var(--u)) 1vw; border-radius: calc(1.4 * var(--u)); border: 0;
     background: #f1f1f1; color: #222; cursor: pointer;
   }
   .admin button:active { background: #e0e0e0; }
   .admin button.danger { background: #ffe5e5; color: #c62828; }
   .admin button.danger.armed { background: #c62828; color: #fff; }
   .admin button.close { grid-column: 1 / -1; background: #222; color: #fff; }
-  .admin p.tip { margin: 2vh 0 0; font-size: 1.9vh; color: #777; line-height: 1.5; }
+  .admin p.tip { margin: calc(2 * var(--u)) 0 0; font-size: calc(1.9 * var(--u)); color: #777; line-height: 1.5; }
+
+  /* ---------- 세로형 화면 ---------- */
+  @media (orientation: portrait) {
+    .stage { grid-template-rows: calc(50 * var(--u)) 1fr calc(6 * var(--u)); padding: 0 3vw; }
+    header { justify-content: flex-start; padding-top: calc(4 * var(--u)); }
+    header h1 { font-size: calc(7.4 * var(--u)); }
+    header h1 .l2 { font-size: calc(7.8 * var(--u)); }
+    .char.blue { left: 3vw; top: calc(25 * var(--u)); width: 36vw; max-width: none; }
+    .char.orange { right: 2vw; top: calc(19 * var(--u)); width: 33vw; max-width: none; }
+    .question { font-size: calc(3.7 * var(--u)); padding: calc(1.6 * var(--u)) 3vw; }
+    .zones { gap: 2.4vw; }
+    .zone .count { right: 2vw; }
+    .tray {
+      display: grid; grid-template-columns: repeat(4, auto); justify-content: space-evenly;
+      row-gap: calc(1.4 * var(--u)); padding: calc(1.4 * var(--u)) 2vw;
+    }
+    .tray .hint { grid-column: 1 / -1; max-width: none; text-align: center; font-size: calc(3.2 * var(--u)); margin: 0; }
+    .src { width: calc(12 * var(--u)); height: calc(12 * var(--u)); }
+  }
 </style>
 </head>
 <body>
@@ -264,7 +286,7 @@
       </section>
     </div>
     <div class="tray" id="tray">
-      <div class="hint">마음에 드는 스티커를 <em>꾹 눌러 끌어다</em> 붙여주세요 👉</div>
+      <div class="hint">마음에 드는 스티커를 <em>꾹 눌러 끌어다</em> 붙여주세요 <span class="arrow"></span></div>
     </div>
   </main>
 
@@ -366,8 +388,8 @@ function updateCounts() {
   const n = state.stickers.length - y;
   $('yesCount').textContent = y;
   $('noCount').textContent = n;
-  zoneByName.yes.style.setProperty('--ps', placedSize(y) + 'vh');
-  zoneByName.no.style.setProperty('--ps', placedSize(n) + 'vh');
+  zoneByName.yes.style.setProperty('--ps', `calc(${placedSize(y)} * var(--u))`);
+  zoneByName.no.style.setProperty('--ps', `calc(${placedSize(n)} * var(--u))`);
   document.body.classList.toggle('hide-count', !state.showCount);
   const total = y + n, yp = total ? Math.round(y / total * 100) : 0;
   $('aYes').textContent = y; $('aNo').textContent = n;
@@ -441,7 +463,7 @@ function endDrag(e, cancelled) {
     const lr = z.querySelector('.layer').getBoundingClientRect();
     const zr = z.getBoundingClientRect();
     // 이름표(Yes/No) 위에 놓아도 그 아래쪽 붙임 영역 안으로 맞춰 붙임
-    const half = placedSize(state.stickers.filter(s => s.zone === z.dataset.zone).length) * innerHeight / 200;
+    const half = placedSize(state.stickers.filter(s => s.zone === z.dataset.zone).length) * Math.min(innerWidth, innerHeight) / 200;
     const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
     const px = clamp(d.x, lr.left + half, lr.right - half);
     const py = clamp(d.y, lr.top + half, lr.bottom - half);
