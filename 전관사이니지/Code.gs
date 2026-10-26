@@ -15,6 +15,9 @@ function doGet() {
 // 구글 캘린더 ID
 const CALENDAR_ID = "calendar@geojecwc.kr";
 
+// 행사 사진 폴더 (viewer 계정의 '행사 사진'). 사무실 PC의 수집 스크립트가 날짜_제목 폴더로 사진을 넣음
+const EVENT_PHOTO_FOLDER_ID = '1ZeYDJIHaJ_NJBY5kYKtbZ2eNe-wNbMUV';
+
 // ★ [설정] 행사 소식 게시글 본문 글자 수 제한 (650자)
 const EVENT_DESC_LIMIT = 650;
 
@@ -556,6 +559,45 @@ function markFetchBlocked_(key) {
   CacheService.getScriptCache().put('blocked:' + key, '1', FETCH_COOLDOWN_SEC);
 }
 
+// 수집 스크립트와 같은 규칙으로 폴더 이름 만들기 (폴더 이름 = '날짜_' + 이 이름)
+function eventFolderSafeName_(title) {
+  const safe = String(title || '').replace(/[\\\/:*?"<>|]/g, '').trim();
+  return safe.length > 60 ? safe.substring(0, 60).trim() : safe;
+}
+
+// 행사 제목과 같은 이름(날짜_제목)의 드라이브 폴더에서 사진 주소를 찾음. 없거나 읽지 못하면 빈 목록
+function eventPhotosFromDrive_(title) {
+  const safe = eventFolderSafeName_(title);
+  if (!safe) return [];
+  const cache = CacheService.getScriptCache();
+  const key = 'eventphotos:' + safe;
+  const cached = cache.get(key);
+  if (cached) return JSON.parse(cached);
+  const ids = [];
+  try {
+    const folders = DriveApp.getFolderById(EVENT_PHOTO_FOLDER_ID).getFolders();
+    while (folders.hasNext()) {
+      const folder = folders.next();
+      const name = folder.getName();
+      if (name.length <= 11 || name.substring(11) !== safe) continue;
+      const files = folder.getFiles();
+      const found = [];
+      while (files.hasNext()) {
+        const file = files.next();
+        if (String(file.getMimeType()).indexOf('image/') === 0) found.push({ name: file.getName(), id: file.getId() });
+      }
+      found.sort((a, b) => a.name.localeCompare(b.name));
+      found.forEach(f => ids.push(f.id));
+      break;
+    }
+  } catch (e) {
+    console.error('행사 사진 폴더 읽기 실패: ' + e.message);
+  }
+  const urls = ids.slice(0, 30).map(id => driveFileUrl(id, false));
+  if (urls.length) cache.put(key, JSON.stringify(urls), 600);
+  return urls;
+}
+
 // 행사 게시판 RSS(kboard rss.php)를 서버에서 직접 읽음. 본문 안의 사진 주소가 그대로 들어 있음
 // 읽지 못하면 기존 시트(홈페이지행사)에서 가져옴
 function fetchEventFeed_(limit) {
@@ -655,10 +697,14 @@ function getEventBoardSlides() {
 
       // 시트(L열)에 사진 주소(http로 시작하는 값)가 없으면 서버가 글 페이지를 직접 받아서 찾음
       const imgUrls = [];
+      // 사진 출처 순서: 드라이브 '행사 사진' 폴더 → 시트/RSS의 사진 주소 → 글 페이지
       const sheetImgs = item.images.filter(src => /^https?:\/\//i.test(src));
-      const srcs = sheetImgs.length ? sheetImgs : fetchPostImages_(uid);
-      srcs.filter(isEventPhoto).forEach(src => {
-        const url = toDisplayImageUrl(getCleanWpImageUrl(src));
+      const drivePhotos = eventPhotosFromDrive_(title);
+      const srcs = drivePhotos.length
+        ? drivePhotos
+        : (sheetImgs.length ? sheetImgs : fetchPostImages_(uid)).filter(isEventPhoto);
+      srcs.forEach(src => {
+        const url = drivePhotos.length ? src : toDisplayImageUrl(getCleanWpImageUrl(src));
         if (url && imgUrls.indexOf(url) === -1) {
           imgUrls.push(url);
         }
