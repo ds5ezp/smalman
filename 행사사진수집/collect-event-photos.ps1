@@ -39,13 +39,13 @@ try {
   Write-Log ("RSS 글 {0}개 확인" -f $items.Count)
 
   foreach ($item in $items) {
-    $title = [string]$item.title
+    $title = $item.title.InnerText
     $date = [datetime]::Parse([string]$item.pubDate).ToString('yyyy-MM-dd')
     $folderName = Get-SafeName ("{0}_{1}" -f $date, $title)
     $folder = Join-Path $DestRoot $folderName
 
     # 본문 속 사진 주소 (복지관 업로드 경로의 jpg, png, gif, webp만)
-    $html = [string]$item.description
+    $html = $item.description.InnerText
     $urls = @()
     foreach ($m in [regex]::Matches($html, '<img[^>]+src=["'']([^"'']+)["'']', 'IgnoreCase')) {
       $u = $m.Groups[1].Value
