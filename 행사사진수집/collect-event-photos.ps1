@@ -7,8 +7,8 @@
 param(
   # 구글 드라이브 데스크톱 동기화 폴더 (PC마다 다를 수 있으니 확인해서 고치세요)
   [string]$DestRoot = 'G:\내 드라이브\행사 사진',
-  # 최근 행사 글 몇 개까지 볼지
-  [int]$MaxItems = 10
+  # 확인할 행사 글 개수 (게시판의 글을 넉넉히 확인)
+  [int]$MaxItems = 50
 )
 
 $ErrorActionPreference = 'Stop'
