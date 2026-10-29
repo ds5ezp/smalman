@@ -989,7 +989,7 @@
         }
 
         // 웹진: 지금 페이지가 왼쪽 책등을 축으로 넘어가고, 다음 페이지가 드러남
-        var PAGE_TURN_MS = 1200;
+        var PAGE_TURN_MS = 1600;
         function pageTurn(container, fill) {
             container.style.opacity = '1';
             var hadContent = container.childNodes.length > 0;
@@ -1025,20 +1025,24 @@
             nextPage.appendChild(shade);
 
             // 넘어가는 페이지: 살짝 떠올랐다가 뒤로 넘어감, 그림자도 함께 커졌다 사라짐
-            var easing = 'cubic-bezier(0.55, 0, 0.2, 1)';
+            // 넘어가는 페이지: 들려 올라와 휘면서 넘어감 (앞부분은 천천히, 뒷부분은 빠르게)
             var turn = oldPage.animate([
-                { transform: 'perspective(2200px) rotateY(0deg) translateZ(0px)', boxShadow: '0 0 0 rgba(0,0,0,0)' },
-                { transform: 'perspective(2200px) rotateY(-70deg) translateZ(70px)', boxShadow: '-30px 20px 60px rgba(0,0,0,0.7)', offset: 0.5 },
-                { transform: 'perspective(2200px) rotateY(-180deg) translateZ(0px)', boxShadow: '0 0 0 rgba(0,0,0,0)' }
-            ], { duration: PAGE_TURN_MS, easing: easing, fill: 'forwards' });
+                { transform: 'perspective(1400px) rotateY(0deg) translateZ(0px) scale(1)', boxShadow: '0 0 0 rgba(0,0,0,0)', offset: 0 },
+                { transform: 'perspective(1400px) rotateY(-25deg) translateZ(60px) scale(1.04)', boxShadow: '-20px 20px 50px rgba(0,0,0,0.5)', offset: 0.25 },
+                { transform: 'perspective(1400px) rotateY(-100deg) translateZ(140px) scale(1.08)', boxShadow: '-60px 30px 90px rgba(0,0,0,0.85)', offset: 0.55 },
+                { transform: 'perspective(1400px) rotateY(-165deg) translateZ(50px) scale(1.02)', boxShadow: '-30px 20px 60px rgba(0,0,0,0.6)', offset: 0.85 },
+                { transform: 'perspective(1400px) rotateY(-180deg) translateZ(0px) scale(1)', boxShadow: '0 0 0 rgba(0,0,0,0)', offset: 1 }
+            ], { duration: PAGE_TURN_MS, easing: 'cubic-bezier(0.6, 0, 0.3, 1)', fill: 'forwards' });
 
-            // 다음 페이지 그림자: 넘어가는 중간에 가장 진함
-            shade.animate([{ opacity: 0 }, { opacity: 1, offset: 0.5 }, { opacity: 0 }],
+            // 다음 페이지 그림자: 넘어가는 동안 진하게 드리워졌다가 걷힘
+            shade.animate([{ opacity: 0 }, { opacity: 1, offset: 0.55 }, { opacity: 0 }],
                 { duration: PAGE_TURN_MS, easing: 'ease-in-out' });
 
-            // 다음 페이지는 살짝 어두웠다가 밝아지며 자리를 잡음
+            // 다음 페이지: 살짝 확대된 상태에서 어두웠다가 밝아지며 자리를 잡음
             nextPage.animate(
-                [{ filter: 'brightness(0.7)', transform: 'scale(0.98)' }, { filter: 'brightness(1)', transform: 'scale(1)' }],
+                [{ filter: 'brightness(0.55)', transform: 'scale(1.04)' },
+                 { filter: 'brightness(0.9)', transform: 'scale(1.01)', offset: 0.6 },
+                 { filter: 'brightness(1)', transform: 'scale(1)' }],
                 { duration: PAGE_TURN_MS, easing: 'ease-out' }
             );
 

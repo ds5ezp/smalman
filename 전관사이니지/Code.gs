@@ -829,7 +829,7 @@ function getWebzineSlides() {
       type: 'WEBZINE',
       title: monthTitle,
       path: driveFileUrl(f.id, false),
-      duration: 6000,
+      duration: 8000,   // 한 장당 8초 (넘김 효과 후 충분히 보이도록)
       qr: '',
       priority: 'N'
     }));
