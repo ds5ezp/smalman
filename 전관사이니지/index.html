@@ -904,6 +904,8 @@
         }
 
         // ---------- 상단 미디어 ----------
+        var VIDEO_MAX_MS = 10 * 60 * 1000;   // 영상이 끝나지 않을 때를 대비한 최대 시간
+
         function showCurrentSlide() {
             clearTimeout(state.slideTimer);
 
@@ -930,7 +932,8 @@
                 renderMediaSlide(slide, type, durationMs);
             }
 
-            state.slideTimer = setTimeout(nextSlide, durationMs);
+            // 영상은 끝까지 재생된 뒤 넘어감 (영상 쪽에서 nextSlide 호출). 혹시 못 끝나면 10분 뒤 넘어감
+            state.slideTimer = setTimeout(nextSlide, type === 'VIDEO' ? VIDEO_MAX_MS : durationMs);
         }
 
         function renderFullscreenSlide(slide, durationMs) {
@@ -952,10 +955,15 @@
             var rawPath = String(slide.path || '').trim();
 
             mediaCounter.innerText = (state.slideIndex + 1) + ' / ' + state.slides.length;
-            triggerProgressBar(document.getElementById('progressBar'), durationMs / 1000);
+            var isVideo = (type === 'VIDEO');
+            var progressWrap = document.getElementById('progressBar').parentNode;
+            progressWrap.classList.toggle('hidden', isVideo);
+            document.getElementById('mediaBadge').classList.toggle('hidden', isVideo);
+            mediaCounter.classList.toggle('hidden', isVideo);
+            if (!isVideo) triggerProgressBar(document.getElementById('progressBar'), durationMs / 1000);
 
             // 행사·로고 화면은 자체 안내가 있어서 우측 상단 QR을 띄우지 않음
-            if (type !== 'EVENT_POST' && type !== 'LOGO_SLIDE' && slide.qr && slide.qr !== '(선택)' && slide.qr.length > 5) {
+            if (!isVideo && type !== 'EVENT_POST' && type !== 'LOGO_SLIDE' && slide.qr && slide.qr !== '(선택)' && slide.qr.length > 5) {
                 slideQrImg.src = qrImageUrl(slide.qr, 150);
                 slideQrBox.classList.remove('hidden');
             } else {
@@ -1427,10 +1435,16 @@
             video.autoplay = true;
             video.muted = true;
             video.playsInline = true;
-            video.loop = true;
+            video.loop = false;
             video.className = 'max-w-full max-h-full object-contain';
-            video.onerror = function() {
+            video.onended = function () {
+                clearTimeout(state.slideTimer);
+                nextSlide();
+            };
+            video.onerror = function () {
                 console.error('동영상 재생 실패 주소:', src);
+                clearTimeout(state.slideTimer);
+                state.slideTimer = setTimeout(nextSlide, 3000);
             };
             el.appendChild(video);
             video.play().catch(function(e) {
