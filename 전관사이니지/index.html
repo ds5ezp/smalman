@@ -1111,7 +1111,7 @@
                         fitSentences(descEl, slide.desc || '');
                     } else {
                         // 사진이 충분히 크면 한 장씩 커졌다 돌아오는 효과
-                        playPhotoSpotlight(photoCol, imgList, ratios);
+                        playPhotoSpotlight(photoCol, wrapper, imgList, ratios);
                     }
                 });
             }
@@ -1232,30 +1232,45 @@
             };
         }
 
-        // 사진을 한 장씩: 원래 칸에서 사진 칸 전체로 커졌다가, 다시 원래 칸으로 줄어듦
-        function playPhotoSpotlight(photoCol, urls, ratios) {
+        // 사진을 한 장씩: 원래 칸에서 행사 소식 전체 영역으로 커졌다가, 다시 원래 칸으로 줄어듦
+        // 뒤에는 지금 사진을 흐리게 깔아서 배경이 잘 보이게 함
+        function playPhotoSpotlight(photoCol, frame, urls, ratios) {
             clearSpotlights();
             var tiles = photoCol.querySelectorAll('.relative.overflow-hidden');
             if (tiles.length === 0) return;
 
             var run = spotRun;
-            var colRect = photoCol.getBoundingClientRect();
+            var frameRect = frame.getBoundingClientRect();
             var steps = [];
             for (var i = 0; i < tiles.length && i < urls.length; i++) {
                 steps.push({
                     url: urls[i],
                     from: fitBox(tiles[i].getBoundingClientRect(), ratios[i]),
-                    to: fitBox(colRect, ratios[i])
+                    to: fitBox(frameRect, ratios[i])
                 });
             }
 
+            var bg = document.createElement('img');
+            bg.style.cssText = 'position:fixed;z-index:55;pointer-events:none;object-fit:cover;opacity:0;' +
+                'filter:blur(18px) brightness(0.85);' +
+                'left:' + frameRect.left + 'px;top:' + frameRect.top + 'px;' +
+                'width:' + frameRect.width + 'px;height:' + frameRect.height + 'px;';
+            document.body.appendChild(bg);
+            spotNodes.push(bg);
+
             function showOne(index) {
-                if (run !== spotRun || index >= steps.length) return;
+                if (run !== spotRun) return;
+                if (index >= steps.length) {
+                    if (bg.parentNode) bg.parentNode.removeChild(bg);
+                    return;
+                }
                 var step = steps[index];
                 var dx = step.from.left - step.to.left;
                 var dy = step.from.top - step.to.top;
                 var k = step.from.width / step.to.width;
                 var start = 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
+
+                bg.src = step.url;
 
                 var el = document.createElement('img');
                 el.src = step.url;
@@ -1266,12 +1281,17 @@
                 document.body.appendChild(el);
                 spotNodes.push(el);
 
+                bg.animate([{ opacity: 0 }, { opacity: 0.75 }],
+                    { duration: SPOT_GROW_MS, easing: 'ease-out', fill: 'forwards' });
+
                 el.animate([{ transform: start }, { transform: 'none' }],
                     { duration: SPOT_GROW_MS, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'forwards' })
                     .finished
                     .then(function () { return wait(SPOT_HOLD_MS); })
                     .then(function () {
                         if (run !== spotRun) return;
+                        bg.animate([{ opacity: 0.75 }, { opacity: 0 }],
+                            { duration: SPOT_SHRINK_MS, easing: 'ease-in', fill: 'forwards' });
                         return el.animate([{ transform: 'none' }, { transform: start }],
                             { duration: SPOT_SHRINK_MS, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }).finished;
                     })
