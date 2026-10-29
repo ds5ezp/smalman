@@ -835,13 +835,31 @@ function getWebzineSlides() {
     }));
 }
 
+// 영상 길이(밀리초). 편집기 '서비스'에서 Drive API를 켜야 읽을 수 있음. 못 읽으면 0
+function videoDurationMs_(fileId) {
+  try {
+    if (typeof Drive === 'undefined') return 0;
+    const meta = Drive.Files.get(fileId, { fields: 'videoMediaMetadata' });
+    return meta.videoMediaMetadata ? (Number(meta.videoMediaMetadata.durationMillis) || 0) : 0;
+  } catch (e) {
+    console.error('영상 길이 읽기 실패: ' + e.message);
+    return 0;
+  }
+}
+
+// 영상 한 건의 보여주는 시간: 실제 길이 + 1.5초, 길이를 못 읽으면 10초
+function videoSlideMs_(fileId) {
+  const ms = videoDurationMs_(fileId);
+  return ms > 0 ? ms + 1500 : 10000;
+}
+
 // 일반 이미지/영상 폴더 (기간 필터링 적용)
 function getMainMediaSlides() {
   return listActiveFiles(FOLDER_ID).reduce((acc, f) => {
     if (f.mime.startsWith('image/')) {
       acc.push({ type: 'IMAGE', title: '프로그램 안내', path: driveFileUrl(f.id, false), duration: 5000, qr: '', priority: 'N' });
     } else if (f.mime.startsWith('video/')) {
-      acc.push({ type: 'VIDEO', title: '홍보 영상', path: driveFileUrl(f.id, true), duration: 10000, qr: '', priority: 'N' });
+      acc.push({ type: 'VIDEO', title: '홍보 영상', path: driveFileUrl(f.id, true), duration: videoSlideMs_(f.id), qr: '', priority: 'N' });
     }
     return acc;
   }, []);
@@ -858,7 +876,7 @@ function getFullscreenSlides() {
         type: 'FULLSCREEN',
         title: '특별 안내',
         path: driveFileUrl(f.id, isVid),
-        duration: isVid ? 10000 : 6000,
+        duration: isVid ? videoSlideMs_(f.id) : 5000,
         qr: '',
         priority: 'N'
       };
