@@ -964,7 +964,7 @@
 
             if (!container) return;
 
-            fadeSwap(container, function (el) {
+            var fillSlide = function (el) {
                 if (type === 'LOGO_SLIDE') {
                     mediaTypeLabel.innerText = '기관 소개';
                     renderLogoSlide(el, rawPath);
@@ -982,7 +982,53 @@
                     mediaTypeLabel.innerText = (type === 'WEBZINE' || type === 'IMAGE') ? (slide.title || type) : 'IMAGE';
                     appendImagePair(el, rawPath, MEDIA_BG, MEDIA_FG);
                 }
+            };
+            // 웹진은 신문을 넘기듯, 나머지 화면은 페이드로 바뀜
+            if (type === 'WEBZINE') pageTurn(container, fillSlide);
+            else fadeSwap(container, fillSlide);
+        }
+
+        // 웹진: 지금 페이지가 왼쪽 책등을 축으로 넘어가고, 다음 페이지가 드러남
+        var PAGE_TURN_MS = 900;
+        function pageTurn(container, fill) {
+            container.style.opacity = '1';
+            var hadContent = container.childNodes.length > 0;
+
+            // 지금 보이던 내용을 한 장짜리 페이지로 묶음
+            var oldPage = null;
+            if (hadContent) {
+                oldPage = document.createElement('div');
+                oldPage.className = 'absolute inset-0 flex items-center justify-center';
+                while (container.firstChild) oldPage.appendChild(container.firstChild);
+                container.appendChild(oldPage);
+            }
+
+            // 다음 페이지는 뒤에 깔아 둠
+            var nextPage = document.createElement('div');
+            nextPage.className = 'absolute inset-0 flex items-center justify-center';
+            container.appendChild(nextPage);
+            fill(nextPage);
+
+            container.style.perspective = '2200px';
+            if (!oldPage) return;
+
+            oldPage.style.zIndex = '2';
+            oldPage.style.transformOrigin = 'left center';
+            oldPage.style.backfaceVisibility = 'hidden';
+            oldPage.style.boxShadow = '0 0 40px rgba(0, 0, 0, 0.6)';
+            nextPage.style.zIndex = '1';
+
+            oldPage.animate(
+                [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(-180deg)' }],
+                { duration: PAGE_TURN_MS, easing: 'cubic-bezier(0.45, 0, 0.25, 1)', fill: 'forwards' }
+            ).finished.then(function () {
+                if (oldPage.parentNode) oldPage.parentNode.removeChild(oldPage);
             });
+
+            nextPage.animate(
+                [{ filter: 'brightness(0.6)' }, { filter: 'brightness(1)' }],
+                { duration: PAGE_TURN_MS, easing: 'ease-out' }
+            );
         }
 
         function renderLogoSlide(el, src) {
