@@ -989,7 +989,7 @@
         }
 
         // 웹진: 지금 페이지가 왼쪽 책등을 축으로 넘어가고, 다음 페이지가 드러남
-        var PAGE_TURN_MS = 900;
+        var PAGE_TURN_MS = 1200;
         function pageTurn(container, fill) {
             container.style.opacity = '1';
             var hadContent = container.childNodes.length > 0;
@@ -1015,20 +1015,36 @@
             oldPage.style.zIndex = '2';
             oldPage.style.transformOrigin = 'left center';
             oldPage.style.backfaceVisibility = 'hidden';
-            oldPage.style.boxShadow = '0 0 40px rgba(0, 0, 0, 0.6)';
             nextPage.style.zIndex = '1';
 
-            oldPage.animate(
-                [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(-180deg)' }],
-                { duration: PAGE_TURN_MS, easing: 'cubic-bezier(0.45, 0, 0.25, 1)', fill: 'forwards' }
-            ).finished.then(function () {
-                if (oldPage.parentNode) oldPage.parentNode.removeChild(oldPage);
-            });
+            // 다음 페이지 위에 넘어가는 페이지의 그림자 (넘어갈 때 진해졌다가 사라짐)
+            var shade = document.createElement('div');
+            shade.className = 'absolute inset-0 pointer-events-none';
+            shade.style.background = 'linear-gradient(to right, rgba(0,0,0,0.75), rgba(0,0,0,0.1) 70%, rgba(0,0,0,0))';
+            shade.style.opacity = '0';
+            nextPage.appendChild(shade);
 
+            // 넘어가는 페이지: 살짝 떠올랐다가 뒤로 넘어감, 그림자도 함께 커졌다 사라짐
+            var easing = 'cubic-bezier(0.55, 0, 0.2, 1)';
+            var turn = oldPage.animate([
+                { transform: 'perspective(2200px) rotateY(0deg) translateZ(0px)', boxShadow: '0 0 0 rgba(0,0,0,0)' },
+                { transform: 'perspective(2200px) rotateY(-70deg) translateZ(70px)', boxShadow: '-30px 20px 60px rgba(0,0,0,0.7)', offset: 0.5 },
+                { transform: 'perspective(2200px) rotateY(-180deg) translateZ(0px)', boxShadow: '0 0 0 rgba(0,0,0,0)' }
+            ], { duration: PAGE_TURN_MS, easing: easing, fill: 'forwards' });
+
+            // 다음 페이지 그림자: 넘어가는 중간에 가장 진함
+            shade.animate([{ opacity: 0 }, { opacity: 1, offset: 0.5 }, { opacity: 0 }],
+                { duration: PAGE_TURN_MS, easing: 'ease-in-out' });
+
+            // 다음 페이지는 살짝 어두웠다가 밝아지며 자리를 잡음
             nextPage.animate(
-                [{ filter: 'brightness(0.6)' }, { filter: 'brightness(1)' }],
+                [{ filter: 'brightness(0.7)', transform: 'scale(0.98)' }, { filter: 'brightness(1)', transform: 'scale(1)' }],
                 { duration: PAGE_TURN_MS, easing: 'ease-out' }
             );
+
+            turn.finished.then(function () {
+                if (oldPage.parentNode) oldPage.parentNode.removeChild(oldPage);
+            });
         }
 
         function renderLogoSlide(el, src) {
