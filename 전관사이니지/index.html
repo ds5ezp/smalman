@@ -943,6 +943,7 @@
         }
 
         function renderMediaSlide(slide, type, durationMs) {
+            clearSpotlights();
             var container = document.getElementById('slide-display');
             var mediaCounter = document.getElementById('mediaCounter');
             var mediaTypeLabel = document.getElementById('mediaTypeLabel');
@@ -1091,6 +1092,7 @@
             fitSentences(descEl, slide.desc || '');
             if (imgList.length > 0) {
                 loadRatios(imgList).then(function (ratios) {
+                    if (!photoCol.isConnected) return;   // 그 사이 다른 화면으로 넘어갔으면 무시
                     var fill = layoutEventPhotos(photoCol, imgList, ratios);
                     if (fill < 0.6) {
                         // 가로 사진이 옆 칸에 작게 들어가면: 사진을 화면 위쪽 가로 띠에 두고 글은 아래에 둠 (사진이 빠지지 않게)
@@ -1107,6 +1109,9 @@
                         // 칸이 짧을 때 제목이 잘리지 않도록 글자를 줄이고 두 줄까지만 보여줌
                         titleEl.className = 'text-4xl font-black text-amber-300 leading-snug mt-1 shrink-0 line-clamp-2';
                         fitSentences(descEl, slide.desc || '');
+                    } else {
+                        // 사진이 충분히 크면 한 장씩 커졌다 돌아오는 효과
+                        playPhotoSpotlight(photoCol, imgList, ratios);
                     }
                 });
             }
@@ -1193,6 +1198,91 @@
             });
             container.appendChild(stack);
             return fill;
+        }
+
+        // 사진 한 장씩 커졌다 돌아오는 효과 (원래 자리 → 사진 칸 크게 → 원래 자리)
+        var SPOT_GROW_MS = 600;
+        var SPOT_HOLD_MS = 2200;
+        var SPOT_SHRINK_MS = 600;
+        var spotNodes = [];
+        var spotRun = 0;
+
+        function wait(ms) {
+            return new Promise(function (resolve) { setTimeout(resolve, ms); });
+        }
+
+        // 지금 돌고 있는 사진 효과를 모두 멈추고 지움 (다른 화면으로 넘어갈 때)
+        function clearSpotlights() {
+            spotRun++;
+            spotNodes.forEach(function (node) {
+                if (node.parentNode) node.parentNode.removeChild(node);
+            });
+            spotNodes = [];
+        }
+
+        // 비율(가로÷세로)에 맞춰 box 안에 들어가는 가장 큰 사각형
+        function fitBox(box, ratio) {
+            var w = Math.min(box.width, box.height * ratio);
+            var h = w / ratio;
+            return {
+                left: box.left + (box.width - w) / 2,
+                top: box.top + (box.height - h) / 2,
+                width: w,
+                height: h
+            };
+        }
+
+        // 사진을 한 장씩: 원래 칸에서 사진 칸 전체로 커졌다가, 다시 원래 칸으로 줄어듦
+        function playPhotoSpotlight(photoCol, urls, ratios) {
+            clearSpotlights();
+            var tiles = photoCol.querySelectorAll('.relative.overflow-hidden');
+            if (tiles.length === 0) return;
+
+            var run = spotRun;
+            var colRect = photoCol.getBoundingClientRect();
+            var steps = [];
+            for (var i = 0; i < tiles.length && i < urls.length; i++) {
+                steps.push({
+                    url: urls[i],
+                    from: fitBox(tiles[i].getBoundingClientRect(), ratios[i]),
+                    to: fitBox(colRect, ratios[i])
+                });
+            }
+
+            function showOne(index) {
+                if (run !== spotRun || index >= steps.length) return;
+                var step = steps[index];
+                var dx = step.from.left - step.to.left;
+                var dy = step.from.top - step.to.top;
+                var k = step.from.width / step.to.width;
+                var start = 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
+
+                var el = document.createElement('img');
+                el.src = step.url;
+                el.style.cssText = 'position:fixed;z-index:60;pointer-events:none;object-fit:contain;' +
+                    'border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.6);transform-origin:0 0;' +
+                    'left:' + step.to.left + 'px;top:' + step.to.top + 'px;' +
+                    'width:' + step.to.width + 'px;height:' + step.to.height + 'px;';
+                document.body.appendChild(el);
+                spotNodes.push(el);
+
+                el.animate([{ transform: start }, { transform: 'none' }],
+                    { duration: SPOT_GROW_MS, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'forwards' })
+                    .finished
+                    .then(function () { return wait(SPOT_HOLD_MS); })
+                    .then(function () {
+                        if (run !== spotRun) return;
+                        return el.animate([{ transform: 'none' }, { transform: start }],
+                            { duration: SPOT_SHRINK_MS, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }).finished;
+                    })
+                    .then(function () {
+                        if (run !== spotRun) return;
+                        if (el.parentNode) el.parentNode.removeChild(el);
+                        showOne(index + 1);
+                    });
+            }
+
+            showOne(0);
         }
 
         // 본문이 칸을 넘으면 문장 단위로 줄여서, 문장 중간에서 잘리지 않게 함
