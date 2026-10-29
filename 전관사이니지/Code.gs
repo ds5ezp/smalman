@@ -5,8 +5,12 @@
  *  - OPENWEATHER_KEY : OpenWeather API 키
  */
 
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('index')
+// ?mode=desk 를 주소에 붙이면 접수 데스크용 화면 (동영상 등 데스크에 맞지 않는 화면은 제외)
+function doGet(e) {
+  const mode = (e && e.parameter && e.parameter.mode) ? String(e.parameter.mode) : 'lobby';
+  const template = HtmlService.createTemplateFromFile('index');
+  template.mode = mode;
+  return template.evaluate()
     .setTitle('거제시종합사회복지관 스마트 사이니지')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -750,7 +754,7 @@ function getEventBoardSlides() {
 
 // 4. 슬라이드 데이터 통합 (화면에서 5분마다 호출)
 // 상단 슬라이드 순서: 수동 슬라이드 → 행사 → 로고 → 웹진 → 프로그램 폴더 → 전체화면
-function getSlideData() {
+function getSlideData(mode) {
   const logoSlide = {
     type: 'LOGO_SLIDE',
     title: '거제시종합사회복지관',
@@ -760,12 +764,15 @@ function getSlideData() {
     priority: 'N'
   };
 
-  return getManualSlides()
+  const all = getManualSlides()
     .concat(getEventBoardSlides())
     .concat([logoSlide])
     .concat(getWebzineSlides())
     .concat(getMainMediaSlides())
     .concat(getFullscreenSlides());
+  // 접수 데스크용: 동영상은 빼고 나머지(사진·행사·웹진·안내)만 보여줌
+  if (mode === 'desk') return all.filter(sl => sl.type !== 'VIDEO' && !(sl.type === 'FULLSCREEN' && String(sl.path).indexOf('/preview') !== -1));
+  return all;
 }
 
 // '슬라이드설정' 시트의 수동 슬라이드 (우선순위 Y는 앞으로)

@@ -266,6 +266,8 @@
 
     <script>
         // ---------- 설정 ----------
+        // 화면 종류: lobby(기본), desk(접수 데스크: 동영상 제외). 주소의 ?mode=desk 로 정해짐
+        var SIGNAGE_MODE = <?!= JSON.stringify(mode || 'lobby') ?>;
         var DASHBOARD_REFRESH_MS = 60 * 1000;   // 공지·일정·날씨·뉴스·기관방문: 1분
         var SLIDE_REFRESH_MS = 5 * 60 * 1000;   // 상단 슬라이드(드라이브 파일): 5분
         var BOTTOM_HOLD_MS = 10 * 1000;         // 하단 패널 한 장면을 보여주는 시간
@@ -480,7 +482,7 @@
                         console.error('슬라이드 데이터 연동 에러:', err);
                         updateOnlineStatus(false);
                     })
-                    .getSlideData();
+                    .getSlideData(SIGNAGE_MODE);
             }
         }
 
