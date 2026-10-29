@@ -732,9 +732,9 @@ function getEventBoardSlides() {
         pairs.push(imgUrls.slice(i, i + 3));
       }
       pairs.forEach((pair, idx) => {
-        // 사진 한 장당 약 4초 (커졌다 돌아오는 시간 + 보는 시간), 글 읽는 시간 3초를 더함
+        // 내용 4초 → 사진 한 장당 약 3.4초 → 마지막 내용 4초
         eventSlides.push(Object.assign({}, base, {
-          duration: Math.max(9000, pair.length * 4000 + 3000),
+          duration: Math.max(9000, pair.length * 3400 + 8000),
           images: pair,
           path: pair[0],
           imgIndex: idx + 1,

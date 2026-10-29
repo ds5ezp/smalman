@@ -1204,8 +1204,10 @@
         var SPOT_GROW_MS = 600;
         var SPOT_HOLD_MS = 2200;
         var SPOT_SHRINK_MS = 600;
+        var SPOT_INTRO_MS = 4000;   // 처음에 내용(글+작은 사진)을 먼저 보여주는 시간
         var spotNodes = [];
         var spotRun = 0;
+        var spotIntroTimer = null;
 
         function wait(ms) {
             return new Promise(function (resolve) { setTimeout(resolve, ms); });
@@ -1214,6 +1216,8 @@
         // 지금 돌고 있는 사진 효과를 모두 멈추고 지움 (다른 화면으로 넘어갈 때)
         function clearSpotlights() {
             spotRun++;
+            clearTimeout(spotIntroTimer);
+            spotIntroTimer = null;
             spotNodes.forEach(function (node) {
                 if (node.parentNode) node.parentNode.removeChild(node);
             });
@@ -1258,6 +1262,13 @@
             document.body.appendChild(bg);
             spotNodes.push(bg);
 
+            // 처음에는 내용을 먼저 보여주고, 그다음 사진을 한 장씩 크게 보여줌
+            spotIntroTimer = setTimeout(function () {
+                spotIntroTimer = null;
+                if (run !== spotRun) return;
+                showOne(0);
+            }, SPOT_INTRO_MS);
+
             function showOne(index) {
                 if (run !== spotRun) return;
                 if (index >= steps.length) {
@@ -1301,8 +1312,6 @@
                         showOne(index + 1);
                     });
             }
-
-            showOne(0);
         }
 
         // 본문이 칸을 넘으면 문장 단위로 줄여서, 문장 중간에서 잘리지 않게 함
