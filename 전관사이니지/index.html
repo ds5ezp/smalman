@@ -1426,7 +1426,24 @@
         // 영상: 드라이브 파일은 구글 미리보기 창으로 재생 (직접 주소는 구글이 막아서 재생 안 됨)
         // 드라이브 영상은 끝 시점을 알 수 없으므로 서버가 준 길이만큼 보여주고 넘어감
         // 드라이브가 아닌 영상(직접 주소)은 끝나면 바로 넘어감
+        // 유튜브 주소에서 영상 번호 찾기 (watch?v=, youtu.be/, shorts/ 형식 모두)
+        function getYouTubeId(url) {
+            var m = String(url).match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
+            return m ? m[1] : '';
+        }
+
         function renderVideo(el, rawPath) {
+            // 유튜브: 소리 없이 자동 재생. 끝나는 시점을 알 수 없으므로 '보여줄 시간'(초)만큼 보여주고 넘어감
+            var ytId = getYouTubeId(rawPath);
+            if (ytId) {
+                var yt = document.createElement('iframe');
+                yt.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=' + ytId;
+                yt.className = 'w-full h-full border-none';
+                yt.allow = 'autoplay; encrypted-media';
+                el.appendChild(yt);
+                return;
+            }
+
             var isDrive = (rawPath.indexOf('drive.google.com') !== -1 || rawPath.indexOf('googleusercontent.com') !== -1);
             var fileId = isDrive ? getDriveFileId(rawPath) : '';
 
