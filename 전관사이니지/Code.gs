@@ -813,9 +813,13 @@ function getManualSlides() {
 
 // 수동 입력 주소를 재생 가능한 주소로 변환 (드라이브 영상 링크 → 미리보기 주소)
 function normalizeManualPath(rawPath, typeStr) {
-  const isDriveLink = typeStr === 'VIDEO' || rawPath.indexOf('drive.google.com') !== -1;
+  // 구글 드라이브 주소나 드라이브 파일 ID가 아니면 (시놀로지, 직접 영상 주소 등) 그대로 사용
+  const isBareDriveId = /^[-\w]{25,}$/.test(rawPath);
+  const isDriveAddress = rawPath.indexOf('drive.google.com') !== -1 || rawPath.indexOf('googleusercontent.com') !== -1;
+  if (isBareDriveId) return "https://drive.google.com/file/d/" + rawPath + "/preview";
+  if (!isDriveAddress) return rawPath;
   const isPlayable = rawPath.indexOf('/preview') !== -1 || rawPath.indexOf('youtube.com') !== -1 || rawPath.indexOf('youtu.be') !== -1;
-  if (!isDriveLink || isPlayable) return rawPath;
+  if (isPlayable) return rawPath;
 
   let fileId = "";
   if (rawPath.indexOf('id=') !== -1) {
