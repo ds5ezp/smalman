@@ -1437,7 +1437,7 @@
             var ytId = getYouTubeId(rawPath);
             if (ytId) {
                 var yt = document.createElement('iframe');
-                yt.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=' + ytId;
+                yt.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=' + ytId;
                 yt.className = 'w-full h-full border-none';
                 yt.allow = 'autoplay; encrypted-media';
                 // 유튜브가 재생 허용 여부를 확인할 수 있도록 주소 정보(리퍼러)를 보냄
@@ -1461,7 +1461,8 @@
             var video = document.createElement('video');
             video.src = rawPath;
             video.autoplay = true;
-            video.muted = true;
+            video.muted = false;
+            video.volume = 0.5;   // 볼륨 50%
             video.playsInline = true;
             video.loop = false;
             video.className = 'max-w-full max-h-full object-contain';
@@ -1475,8 +1476,13 @@
                 state.slideTimer = setTimeout(nextSlide, 3000);
             };
             el.appendChild(video);
+            // 소리 있는 자동 재생이 막히면 음소거로 다시 재생 (화면은 계속 나오도록)
             video.play().catch(function (e) {
-                console.warn('자동재생 실패:', e);
+                console.warn('소리 있는 자동재생 실패, 음소거로 재생:', e);
+                video.muted = true;
+                video.play().catch(function (e2) {
+                    console.warn('자동재생 실패:', e2);
+                });
             });
         }
 
