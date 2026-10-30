@@ -1440,6 +1440,8 @@
                 yt.src = 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=' + ytId;
                 yt.className = 'w-full h-full border-none';
                 yt.allow = 'autoplay; encrypted-media';
+                // 유튜브가 재생 허용 여부를 확인할 수 있도록 주소 정보(리퍼러)를 보냄
+                yt.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
                 el.appendChild(yt);
                 return;
             }
