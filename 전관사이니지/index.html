@@ -422,6 +422,11 @@
                 clearTimeout(welcomeState.timer);
                 clearTimeout(bottom.timer);
                 clearSpotlights();
+                // 전체 화면 슬라이드(FULLSCREEN)가 떠 있으면 숨기고 내용도 비움
+                var fsOverlayEl = document.getElementById('fullscreen-overlay');
+                var fsDisplayEl = document.getElementById('fullscreen-display');
+                if (fsOverlayEl) fsOverlayEl.classList.add('hidden');
+                if (fsDisplayEl) fsDisplayEl.innerHTML = '';
                 document.querySelectorAll('video').forEach(function (v) { v.pause(); });
                 if (document.getAnimations) {
                     document.getAnimations().forEach(function (a) { a.cancel(); });
