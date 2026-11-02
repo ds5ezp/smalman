@@ -408,12 +408,42 @@
             }
         }
 
+        // 절전(운영시간 외) 상태 여부. 절전 중에는 슬라이드·하단 순환·사진 애니메이션을 멈춤
+        var savingActive = false;
+
+        function setSavingActive(on) {
+            if (on === savingActive) return;
+            savingActive = on;
+
+            if (on) {
+                // 절전 시작: 떠 있는 타이머와 애니메이션, 영상을 모두 멈춤
+                clearTimeout(state.slideTimer);
+                state.slideTimer = null;
+                clearTimeout(welcomeState.timer);
+                clearTimeout(bottom.timer);
+                clearSpotlights();
+                document.querySelectorAll('video').forEach(function (v) { v.pause(); });
+                if (document.getAnimations) {
+                    document.getAnimations().forEach(function (a) { a.cancel(); });
+                }
+            } else {
+                // 절전 해제: 멈췄던 화면을 다시 시작
+                if (welcomeState.isWelcome) {
+                    renderWelcomeSlides();
+                } else {
+                    showCurrentSlide();
+                }
+                stepBottom();
+            }
+        }
+
         function checkSavingMode() {
             var savingOverlay = document.getElementById('saving-overlay');
             var savingTimeText = document.getElementById('saving-time-text');
             var emergencyOverlay = document.getElementById('emergency-overlay');
 
             if (state.systemMode === 'emergency') {
+                setSavingActive(false);
                 if (savingOverlay) savingOverlay.style.display = 'none';
                 if (emergencyOverlay) emergencyOverlay.style.display = 'flex';
                 return;
@@ -435,6 +465,7 @@
             var endMinutes = parseInt(endParts[0], 10) * 60 + parseInt(endParts[1] || 0, 10);
 
             if (curMinutes < startMinutes || curMinutes >= endMinutes) {
+                setSavingActive(true);
                 if (savingOverlay) {
                     savingOverlay.style.display = 'flex';
                     if (savingTimeText) {
@@ -442,6 +473,7 @@
                     }
                 }
             } else {
+                setSavingActive(false);
                 if (savingOverlay) savingOverlay.style.display = 'none';
             }
         }
@@ -596,6 +628,7 @@
         // ---------- 기관방문 환영 (전체 화면) ----------
         function renderWelcomeSlides() {
             clearTimeout(welcomeState.timer);
+            if (savingActive) return;
 
             var fsOverlay = document.getElementById('fullscreen-overlay');
             var fsContainer = document.getElementById('fullscreen-display');
@@ -853,6 +886,7 @@
             box.style.opacity = '0';
             box.style.transform = 'translateY(14px)';
             setTimeout(function () {
+                if (savingActive) return;   // 절전 중이면 새 내용을 그리지 않음
                 render();
                 box.style.transition = 'none';
                 box.style.transform = 'translateY(-14px)';
@@ -870,6 +904,7 @@
 
         // 지금 패널의 현재 페이지를 그리고, 다음 페이지 또는 다음 패널로 넘어가는 시간을 맞춤
         function stepBottom() {
+            if (savingActive) return;
             BOTTOM_PANELS.forEach(function (p, i) {
                 setPanelVisible(document.getElementById(p.id), i === bottom.index);
             });
@@ -909,7 +944,7 @@
         function showCurrentSlide() {
             clearTimeout(state.slideTimer);
 
-            if (welcomeState.isWelcome) return;
+            if (savingActive || welcomeState.isWelcome) return;
 
             var container = document.getElementById('slide-display');
             var fsOverlay = document.getElementById('fullscreen-overlay');
@@ -1314,6 +1349,7 @@
         // 뒤에는 지금 사진을 흐리게 깔아서 배경이 잘 보이게 함
         function playPhotoSpotlight(photoCol, frame, urls, ratios) {
             clearSpotlights();
+            if (savingActive) return;
             var tiles = photoCol.querySelectorAll('.relative.overflow-hidden');
             if (tiles.length === 0) return;
 
@@ -1487,7 +1523,7 @@
         }
 
         function nextSlide() {
-            if (state.slides.length === 0) return;
+            if (savingActive || state.slides.length === 0) return;
             state.slideIndex = (state.slideIndex + 1) % state.slides.length;
             showCurrentSlide();
         }
