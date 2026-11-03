@@ -1993,6 +1993,18 @@ function deleteRepair(no) {
   });
 }
 
+// 파일이 시설보수 사진 폴더 안에 있는지 확인 (바로 아래, 또는 보수 건별 폴더 한 단계 안)
+function isInRepairFolder_(file, rootId) {
+  const parents = file.getParents();
+  while (parents.hasNext()) {
+    const p = parents.next();
+    if (p.getId() === rootId) return true;
+    const grand = p.getParents();
+    while (grand.hasNext()) { if (grand.next().getId() === rootId) return true; }
+  }
+  return false;
+}
+
 // 보수 사진을 화면에 보여줄 이미지 데이터로 돌려줌
 // 대시보드 화면은 구글의 별도 주소 안에서 열려 drive.google.com 미리보기 주소가 로그인 문제로 막히므로 서버에서 읽어 보냄
 // thumb=true 면 작은 미리보기(드라이브 썸네일), 아니면 원본(입력할 때 이미 1600px로 줄여 둔 사진)
@@ -2002,11 +2014,8 @@ function getRepairPhotoData(url, thumb) {
   if (!m) throw new Error('사진 주소를 확인할 수 없습니다.');
   const file = DriveApp.getFileById(m[1]);
   // 시설보수 사진 폴더의 파일만 보여줌 (다른 드라이브 파일을 읽는 데 쓰이지 않도록)
-  const folderId = repairFolder_().getId();
-  let inFolder = false;
-  const parents = file.getParents();
-  while (parents.hasNext()) { if (parents.next().getId() === folderId) { inFolder = true; break; } }
-  if (!inFolder) throw new Error('시설보수 사진이 아닙니다.');
+  // 사진은 '시설보수 사진' 폴더 바로 아래(이전 기록)나 그 안의 '날짜_분야_위치' 폴더 안에 있음
+  if (!isInRepairFolder_(file, repairFolder_().getId())) throw new Error('시설보수 사진이 아닙니다.');
   let blob = null;
   if (thumb) { try { blob = file.getThumbnail(); } catch (e) { blob = null; } }
   if (!blob) blob = file.getBlob();
