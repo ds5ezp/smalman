@@ -1500,6 +1500,16 @@ function createLearnFinalLists() {
   return '★전체마감명단';
 }
 
+// 부서: 직장 정보(조직 정보)의 부서를 먼저 쓰고, 없으면 조직 단위(OU) 마지막 이름을 씀
+// 예) 조직 단위 '/거제시종합사회복지관/5.사례관리팀' → '5.사례관리팀'
+function deptOf_(user, org) {
+  if (org && org.department) return String(org.department);
+  const path = String(user.orgUnitPath || '').replace(/^\/+|\/+$/g, '');
+  if (!path) return '';
+  const parts = path.split('/');
+  return parts[parts.length - 1];
+}
+
 // 직원 목록: 정지되었거나 보관된 계정은 뺌. 이름 순으로 정렬됨
 function getStaffList() {
   requireUser_();
@@ -1520,7 +1530,7 @@ function getStaffList() {
       users.push({
         email: String(u.primaryEmail || '').toLowerCase(),
         name: (u.name && u.name.fullName) || u.primaryEmail,
-        dept: org.department || '',
+        dept: deptOf_(u, org),
         title: org.title || ''
       });
     });
@@ -1542,7 +1552,7 @@ function userProfile_(email) {
     const u = AdminDirectory.Users.get(email, { projection: 'full' });
     const orgs = u.organizations || [];
     const org = orgs.find(o => o.primary) || orgs[0] || {};
-    profile = { name: (u.name && u.name.fullName) || '', dept: org.department || '', title: org.title || '' };
+    profile = { name: (u.name && u.name.fullName) || '', dept: deptOf_(u, org), title: org.title || '' };
     cache.put(key, JSON.stringify(profile), 21600);
   } catch (e) {
     Logger.log('사용자 정보 조회 실패 (' + email + '): ' + e.message);
