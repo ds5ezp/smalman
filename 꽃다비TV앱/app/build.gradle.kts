@@ -19,7 +19,7 @@ android {
         buildConfigField(
             "String",
             "SIGNAGE_URL",
-            "\"https://script.google.com/macros/s/여기에_꽃다비_배포ID/exec\""
+            "\"https://script.google.com/macros/s/AKfycbzZAWFaJQh-P6q4rvz_TL1qwqASWZQ4pjZNwYOk4D9kzF1beFSHmoSFH3FLpHD4JOMb/exec\""
         )
     }
 
