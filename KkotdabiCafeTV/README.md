@@ -1,7 +1,7 @@
 # 꽃다비 카페 사이니지 안드로이드 TV 앱
 
 꽃다비 카페 사이니지 웹페이지를 구글 TV(안드로이드 TV)에서 전체 화면으로 띄우는 앱입니다.
-구글 TV 사이니지 앱(`구글TV사이니지/`)과 같은 구조이며, 별도 앱으로 설치되어 둘이 서로 간섭하지 않습니다.
+구글 TV 사이니지 앱(`GoogleTVSignage/`)과 같은 구조이며, 별도 앱으로 설치되어 둘이 서로 간섭하지 않습니다.
 
 ## 동작
 - 전체 화면, 화면 꺼짐 방지
@@ -19,7 +19,7 @@ buildConfigField("String", "SIGNAGE_URL", "\"https://script.google.com/macros/s/
 ```
 
 ## 2. 빌드
-1. Android Studio에서 이 `꽃다비TV앱` 폴더를 엽니다.
+1. Android Studio에서 이 `KkotdabiCafeTV` 폴더를 엽니다.
 2. Gradle 동기화가 끝나면 **Build > Build APK(s)** 를 누릅니다.
 3. `app/build/outputs/apk/debug/app-debug.apk` 가 만들어집니다.
 

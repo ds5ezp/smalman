@@ -16,7 +16,7 @@ buildConfigField("String", "SIGNAGE_URL", "\"https://script.google.com/macros/s/
 
 ## 2. 빌드
 
-1. Android Studio를 설치하고 이 `구글TV사이니지` 폴더를 엽니다.
+1. Android Studio를 설치하고 이 `GoogleTVSignage` 폴더를 엽니다.
 2. 처음 열면 Gradle 동기화가 자동으로 돕니다 (인터넷 필요).
 3. 메뉴 **Build > Build APK(s)** 를 누르면 `app/build/outputs/apk/debug/app-debug.apk` 가 만들어집니다.
 
