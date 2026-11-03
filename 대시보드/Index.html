@@ -52,6 +52,7 @@
           <a class="module" href="#" data-module="meeting" onclick="showModule('meeting'); return false;"><i class="bi bi-journal-text"></i>월례회 자료</a>
           <a class="module" href="#" data-module="learn" onclick="showModule('learn'); return false;"><i class="bi bi-mortarboard"></i>배움터 접수</a>
           <a class="module" href="#" data-module="staff" onclick="showModule('staff'); return false;"><i class="bi bi-people"></i>직원 목록</a>
+          <a class="module" href="#" onclick="openTicketPanel(); return false;"><i class="bi bi-ticket-perforated"></i>발권시스템</a>
           <a class="module" href="#" data-module="submit" onclick="showModule('submit'); return false;"><i class="bi bi-send-check"></i>제출 자료</a>
           <a class="module" href="#" data-module="business" onclick="showModule('business'); return false;"><i class="bi bi-kanban"></i>사업 관리</a>
         </div>
@@ -952,6 +953,7 @@
           <button class="btn btn-sm btn-primary" onclick="showModule('learn')"><i class="bi bi-mortarboard me-1"></i>배움터 접수</button>
           <button class="btn btn-sm btn-primary" onclick="showModule('shuttle')"><i class="bi bi-bus-front me-1"></i>셔틀 운행 현황</button>
           <button class="btn btn-sm btn-primary" onclick="showModule('staff')"><i class="bi bi-people me-1"></i>직원 목록</button>
+          <button class="btn btn-sm btn-primary" onclick="openTicketPanel()"><i class="bi bi-ticket-perforated me-1"></i>발권시스템</button>
         </div>
       </div>
       <div class="card p-3">
@@ -3839,6 +3841,33 @@
       });
       showTab('status');
     }).catch(fail);
+  </script>
+
+  <!-- 발권시스템 오른쪽 패널 (홈의 '발권시스템' 버튼으로 열림) -->
+  <div id="ticketPanel" style="display:none;position:fixed;top:0;right:0;height:100vh;width:min(560px,100vw);z-index:1060;background:#fff;box-shadow:-8px 0 24px rgba(0,0,0,.25);flex-direction:column;">
+    <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+      <div class="fw-bold">발권시스템</div>
+      <div class="d-flex gap-2">
+        <a href="https://selfdesk.e-ncom.co.kr/" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">새 창으로 열기</a>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="closeTicketPanel()" aria-label="닫기"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </div>
+    <iframe id="ticketFrame" title="발권시스템" style="flex:1 1 auto;width:100%;border:0;"></iframe>
+  </div>
+  <script>
+    const TICKET_URL = 'https://selfdesk.e-ncom.co.kr/';
+    function openTicketPanel() {
+      const frame = document.getElementById('ticketFrame');
+      // 처음 열 때만 주소를 넣음 (닫았다 다시 열어도 로그인 상태 유지)
+      if (!frame.getAttribute('src')) frame.setAttribute('src', TICKET_URL);
+      document.getElementById('ticketPanel').style.display = 'flex';
+    }
+    function closeTicketPanel() {
+      document.getElementById('ticketPanel').style.display = 'none';
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeTicketPanel();
+    });
   </script>
 </body>
 </html>
