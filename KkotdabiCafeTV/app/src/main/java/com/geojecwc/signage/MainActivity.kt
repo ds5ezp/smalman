@@ -49,6 +49,8 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             // 소리 있는 영상을 클릭 없이 자동 재생
             mediaPlaybackRequiresUserGesture = false
+            // TV의 글꼴 크기 설정을 무시하고 항상 100%로 표시 (글자 크기는 웹 운영설정에서 조절)
+            textZoom = 100
             // https 페이지에서 http 자원은 차단 (보안 기본값 유지)
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             loadWithOverviewMode = true

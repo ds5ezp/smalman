@@ -420,6 +420,10 @@
             if (data.operationalHours) {
                 state.operationalHours = data.operationalHours;
             }
+            // 글자 크기: 운영설정 시트 B8 값(%)으로 화면 전체를 줄이거나 키움
+            if (data.fontScale) {
+                document.body.style.zoom = (Number(data.fontScale) / 100);
+            }
 
             if (data.weather) {
                 state.latestWeather = data.weather;

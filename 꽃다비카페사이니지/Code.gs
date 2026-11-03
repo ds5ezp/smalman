@@ -125,7 +125,8 @@ function fetchImageAsBase64(url) {
 function getDashboardData() {
   let systemMode = "normal";
   let emergencyMsg = "";
-  let operationalHours = "09:00 - 18:00"; 
+  let operationalHours = "09:00 - 18:00";
+  let fontScale = 100;
   let noticeData = [];
 
   try {
@@ -138,6 +139,9 @@ function getDashboardData() {
         emergencyMsg = settingSheet.getRange('B4').getValue() || "비상 상황 발생 - 안내에 따라 대피하십시오.";
         const hoursValue = settingSheet.getRange('B6').getValue();
         if (hoursValue) operationalHours = String(hoursValue).trim();
+        // B8: 글자 크기(%). 비워두면 100. 50~150 사이에서만 적용
+        const scaleValue = Number(settingSheet.getRange('B8').getValue());
+        if (scaleValue >= 50 && scaleValue <= 150) fontScale = scaleValue;
       }
     }
   } catch(e) {}
@@ -178,7 +182,8 @@ function getDashboardData() {
     schedule: getTodaySchedule(),
     news: getRealtimeNews(),
     operationalHours: operationalHours,
-    welcomeInfo: checkWelcomeMode()
+    welcomeInfo: checkWelcomeMode(),
+    fontScale: fontScale
   };
 }
 
