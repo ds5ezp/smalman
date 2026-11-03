@@ -5,8 +5,23 @@
 
 const CAFE = {
   SHEET_ID: '1duKVFid02qGZYLDuW74b6WiwX8C6CO3P6t9RZ2w1nkQ',
+  // 카페 화면 웹앱 주소 (미리보기와 TV 앱이 같은 주소를 씀)
+  DISPLAY_URL: 'https://script.google.com/macros/s/AKfycbzZAWFaJQh-P6q4rvz_TL1qwqASWZQ4pjZNwYOk4D9kzF1beFSHmoSFH3FLpHD4JOMb/exec',
   SLIDE_TYPES: ['IMAGE', 'VIDEO', 'FULLSCREEN', 'SLIDES'],
   SLIDE_MAX_ROWS: 200
+};
+
+// 카페 사이니지 Code.gs의 폴더 ID와 같아야 합니다.
+// 사진 관리 탭에서 올리고 지울 수 있는 폴더
+const CAFE_FOLDERS = {
+  cafeMenu: {
+    id: '1GLppM_b3WpWzhFjWiCYp1h7RMn2-jlnn', name: '카페 메뉴', images: true, videos: false,
+    note: '카페 화면에서 메뉴 사진이 중간중간 번갈아 나옵니다. 이미지만 나옵니다.'
+  },
+  cafeFullscreen: {
+    id: '1PiLEOtZwiECWb2A_Um7N4ZIW1RYpDIER', name: '카페 전체 화면', images: true, videos: true,
+    note: '화면 전체를 덮어서 나옵니다. 영상은 소리와 함께 재생됩니다.'
+  }
 };
 
 function cafeSs_() {
@@ -30,7 +45,8 @@ function getCafeSettings() {
     emergencyMsg: String(s.getRange('B4').getDisplayValue() || ''),
     hours: String(s.getRange('B6').getDisplayValue() || '').trim(),
     fontScale: (scale >= 50 && scale <= 150) ? scale : 100,
-    slides: readCafeSlides_()
+    slides: readCafeSlides_(),
+    displayUrl: CAFE.DISPLAY_URL
   };
 }
 

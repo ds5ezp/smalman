@@ -912,7 +912,20 @@
           <a class="btn btn-sm btn-outline-secondary" href="https://docs.google.com/spreadsheets/d/1duKVFid02qGZYLDuW74b6WiwX8C6CO3P6t9RZ2w1nkQ/edit" target="_blank"><i class="bi bi-table me-1"></i>구글 시트</a>
         </div>
       </div>
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><button class="nav-link" data-tab="cafeSettings">운영·슬라이드</button></li>
+        <li class="nav-item"><button class="nav-link" data-tab="cafeFiles">사진 관리</button></li>
+      </ul>
       <section data-panel="cafeSettings" class="d-none">
+        <div class="card p-3 mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">미리보기</h6>
+            <button class="btn btn-sm btn-outline-primary" id="btnCafePreview" onclick="toggleCafePreview()">미리보기 켜기</button>
+          </div>
+          <div class="preview-wrap" id="cafePreviewWrap" data-w="1920" data-h="1080" style="height:45vh">
+            <div class="preview-placeholder small">미리보기 켜기를 누르면 실제 카페 화면이 여기에 나옵니다. (설정을 저장한 뒤 확인하세요)</div>
+          </div>
+        </div>
         <div class="card p-3 mb-3">
           <h6 class="fw-bold mb-3">운영 설정</h6>
           <div class="form-check form-switch mb-3">
@@ -951,6 +964,49 @@
             </table>
           </div>
           <div class="text-end"><button class="btn btn-primary btn-sm" onclick="saveCafeSlidesUI()"><i class="bi bi-save me-1"></i>슬라이드 저장</button></div>
+        </div>
+      </section>
+
+      <section data-panel="cafeFiles" class="d-none">
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-3">사진·영상 올리기</h6>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-bold" for="cafeUpFolder">어디에 올릴까요</label>
+              <select class="form-select" id="cafeUpFolder">
+                <option value="cafeMenu">카페 메뉴 (중간중간 번갈아 나옴)</option>
+                <option value="cafeFullscreen">카페 전체 화면 (화면 가득)</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label small fw-bold" for="cafeUpFile">파일</label>
+              <input class="form-control" type="file" id="cafeUpFile" accept="image/*,video/*">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small fw-bold" for="cafeUpStart">노출 시작</label>
+              <input class="form-control" type="date" id="cafeUpStart">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small fw-bold" for="cafeUpEnd">노출 종료</label>
+              <input class="form-control" type="date" id="cafeUpEnd">
+            </div>
+            <div class="col-12 col-md-1">
+              <button class="btn btn-primary w-100" onclick="uploadCafeFile()">올리기</button>
+            </div>
+          </div>
+          <div class="small text-muted mt-2">기간을 비워 두면 상시 나옵니다. 기간을 정하면 그 날짜 동안만 나옵니다. 한 파일당 20MB 이하.</div>
+        </div>
+
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-1">카페 메뉴 <span class="small text-muted fw-normal" id="cafeCountCafeMenu"></span></h6>
+          <div class="small text-muted mb-2">카페 메뉴 폴더의 사진입니다. 지우면 휴지통으로 갑니다.</div>
+          <div id="cafeListCafeMenu" class="row g-2"></div>
+        </div>
+
+        <div class="card p-3">
+          <h6 class="fw-bold mb-1">카페 전체 화면 <span class="small text-muted fw-normal" id="cafeCountCafeFullscreen"></span></h6>
+          <div class="small text-muted mb-2">화면 전체를 덮어서 나오는 사진과 영상입니다.</div>
+          <div id="cafeListCafeFullscreen" class="row g-2"></div>
         </div>
       </section>
      </div>
@@ -1499,10 +1555,11 @@
       eList: loadLed, eSetup: loadLed,
       hStatus: loadHvac, hSetup: loadHvacSetup,
       acStatus: () => loadAirCon(),
-      cafeSettings: loadCafe
+      cafeSettings: loadCafe,
+      cafeFiles: loadCafeFiles
     };
     // 열 때마다 새로 읽는 탭
-    const ALWAYS_RELOAD = ['status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings'];
+    const ALWAYS_RELOAD = ['status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings', 'cafeFiles'];
     const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus', cafe: 'cafeSettings' };
 
     function moduleOfTab(tab) {
@@ -2576,6 +2633,89 @@
         renderCafeSlides();
         toast('슬라이드를 저장했습니다. 카페 화면에 1분 안에 반영됩니다.');
       }).catch(fail);
+    }
+
+    // ---------- 꽃다비 카페 사이니지: 미리보기와 사진 관리 ----------
+    function toggleCafePreview() {
+      const wrap = document.getElementById('cafePreviewWrap');
+      const btn = document.getElementById('btnCafePreview');
+      if (wrap.querySelector('iframe')) {
+        wrap.innerHTML = '<div class="preview-placeholder small">미리보기 켜기를 누르면 실제 카페 화면이 여기에 나옵니다. (설정을 저장한 뒤 확인하세요)</div>';
+        btn.textContent = '미리보기 켜기';
+        return;
+      }
+      run('getCafeSettings').then(s => {
+        wrap.innerHTML = '<iframe src="' + esc(s.displayUrl) + '"></iframe>';
+        btn.textContent = '미리보기 끄기';
+        fitPreview();
+      }).catch(fail);
+    }
+
+    function cafeCap_(key) {
+      return key.charAt(0).toUpperCase() + key.slice(1);
+    }
+
+    function loadCafeFiles() {
+      ['cafeMenu', 'cafeFullscreen'].forEach(key => {
+        run('getFolderFiles', key).then(list => renderCafeFileList(key, list)).catch(fail);
+      });
+    }
+
+    function renderCafeFileList(key, list) {
+      document.getElementById('cafeCount' + cafeCap_(key)).textContent = list.length + '개';
+      const box = document.getElementById('cafeList' + cafeCap_(key));
+      const badges = {
+        always: '<span class="badge text-bg-secondary">상시</span>',
+        active: '<span class="badge text-bg-success">나오는 중</span>',
+        scheduled: '<span class="badge text-bg-info">예정</span>',
+        expired: '<span class="badge text-bg-dark">기간 지남</span>'
+      };
+      box.innerHTML = list.length ? list.map(f => {
+        const period = f.period
+          ? f.period.start + (f.period.end && f.period.end !== f.period.start ? ' ~ ' + f.period.end : '')
+          : '';
+        const thumb = f.isVideo
+          ? '<div class="d-flex align-items-center justify-content-center bg-dark text-white" style="height:110px"><i class="bi bi-play-circle fs-2"></i></div>'
+          : '<img src="' + esc(f.thumb) + '" style="width:100%;height:110px;object-fit:cover" alt="">';
+        return '<div class="col-6 col-md-3 col-xl-2"><div class="card h-100">' + thumb +
+          '<div class="p-2">' +
+            '<div class="small fw-bold text-truncate" title="' + esc(f.name) + '">' + esc(f.title) + '</div>' +
+            '<div class="small text-muted">' + esc(period) + '</div>' +
+            '<div class="d-flex justify-content-between align-items-center mt-1">' + (badges[f.status] || '') +
+              '<button class="btn btn-sm btn-outline-danger" onclick="trashCafeFile(\'' + key + '\', \'' + esc(f.id) + '\', \'' + esc(f.title) + '\')"><i class="bi bi-trash"></i></button>' +
+            '</div>' +
+          '</div></div></div>';
+      }).join('') : '<div class="text-muted small">아직 올라간 파일이 없습니다.</div>';
+    }
+
+    function trashCafeFile(key, id, title) {
+      if (!confirm('"' + title + '" 파일을 휴지통으로 옮길까요?\n(드라이브 휴지통에서 30일 안에 되돌릴 수 있습니다)')) return;
+      save('trashFile', key, id).then(() => {
+        toast('휴지통으로 옮겼습니다. 카페 화면에서는 곧 빠집니다.');
+        loadCafeFiles();
+      }).catch(fail);
+    }
+
+    function uploadCafeFile() {
+      const key = document.getElementById('cafeUpFolder').value;
+      const input = document.getElementById('cafeUpFile');
+      const file = input.files && input.files[0];
+      if (!file) return fail(new Error('올릴 파일을 골라 주세요.'));
+      if (file.size > 20 * 1024 * 1024) return fail(new Error('파일이 너무 큽니다. 20MB 이하로 올려 주세요.'));
+      const start = document.getElementById('cafeUpStart').value;
+      const end = document.getElementById('cafeUpEnd').value;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const data = String(reader.result).split(',')[1] || '';
+        const period = start ? { start: start, end: end || start, startTime: '', endTime: '' } : null;
+        save('uploadFile', key, { name: file.name, mime: file.type, data: data, period: period }).then(() => {
+          toast('올렸습니다. 카페 화면에 1분 안에 나옵니다.');
+          input.value = '';
+          loadCafeFiles();
+        }).catch(fail);
+      };
+      reader.onerror = () => fail(new Error('파일을 읽지 못했습니다.'));
+      reader.readAsDataURL(file);
     }
 
     // ---------- 현황 ----------

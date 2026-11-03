@@ -501,7 +501,7 @@ const PERIOD_12 = /(\d{12})-(\d{12})/;
 const PERIOD_8 = /(\d{8})-(\d{8})/;
 
 function folderDef_(key) {
-  const f = LOBBY_FOLDERS[key] || ROOM_FOLDERS[key];
+  const f = LOBBY_FOLDERS[key] || ROOM_FOLDERS[key] || CAFE_FOLDERS[key];
   if (!f) throw new Error('알 수 없는 폴더입니다.');
   return f;
 }
