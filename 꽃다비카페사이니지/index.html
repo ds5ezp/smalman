@@ -785,12 +785,13 @@
                 } else if (slideType === 'CAFE_MENU') {
                     if (slideQrBox) slideQrBox.classList.add('hidden');
                     var cafeWrapper = document.createElement('div');
-                    cafeWrapper.className = 'w-full h-full flex items-center justify-center bg-black relative p-2';
+                    cafeWrapper.className = 'w-full h-full bg-black relative overflow-hidden';
                     var bgCafe = document.createElement('img');
                     bgCafe.className = 'absolute inset-0 w-full h-full object-cover filter blur-2xl opacity-40 scale-110 pointer-events-none';
                     bgCafe.src = rawPath;
                     var cafeImg = document.createElement('img');
-                    cafeImg.className = 'relative z-10 w-auto h-full max-w-full max-h-full object-contain p-2 shadow-2xl';
+                    // 화면 전체를 채움 (가장자리가 조금 잘릴 수 있음)
+                    cafeImg.className = 'absolute inset-0 w-full h-full object-cover z-10';
                     cafeImg.src = rawPath;
                     cafeWrapper.appendChild(bgCafe);
                     cafeWrapper.appendChild(cafeImg);
