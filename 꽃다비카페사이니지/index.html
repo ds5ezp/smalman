@@ -425,9 +425,9 @@
             if (data.operationalHours) {
                 state.operationalHours = data.operationalHours;
             }
-            // 글자 크기: 운영설정 시트 B8 값(%)으로 화면 전체를 줄이거나 키움
+            // 글자 크기: 운영설정 시트 B8 값(%)으로 글자 크기만 바꿈 (화면 전체가 줄어들지 않게 root 글자 크기 사용)
             if (data.fontScale) {
-                document.body.style.zoom = (Number(data.fontScale) / 100);
+                document.documentElement.style.fontSize = (16 * Number(data.fontScale) / 100) + 'px';
             }
 
             if (data.weather) {
