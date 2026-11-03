@@ -354,7 +354,8 @@ function getSlideData() {
         cafeSlides.push({
           type: 'CAFE_MENU',
           title: '꽃다비카페 메뉴',
-          path: "https://lh3.googleusercontent.com/d/" + file.getId(),
+          // 썸네일 주소: 로그인 쿠키 없이도 열리는 형식 (각실 사이니지와 동일)
+          path: "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w1920",
           duration: 20000,
           qr: '',
           priority: 'N'
