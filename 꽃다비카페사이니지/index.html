@@ -148,15 +148,15 @@
     </div>
 
     <!-- [2. 최하단 통합 위젯 바] -->
-    <div id="widgetOverlay" class="w-full border-t border-gray-800 px-6 flex items-center justify-between z-30 shadow-2xl shrink-0" style="height: 10vh; background-color: rgba(15, 23, 42, 0.98);">
+    <div id="widgetOverlay" class="w-full border-t border-gray-800 px-6 flex items-center justify-between gap-4 z-30 shadow-2xl shrink-0 overflow-hidden whitespace-nowrap" style="height: 10vh; background-color: rgba(15, 23, 42, 0.98);">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-blue-400 border border-gray-700 shadow-inner shrink-0">
                 <i class="fa-regular fa-clock text-2xl"></i>
             </div>
             <div class="flex items-center gap-3">
-                <span id="clockDate" class="text-2xl text-gray-300 font-black">월 일 (요일)</span>
-                <span class="text-2xl text-yellow-400 font-bold">|</span>
-                <span id="clock-display" class="text-3xl font-black text-yellow-300 font-mono leading-none tracking-wider">오전 00시 00분 00초</span>
+                <span id="clockDate" class="text-lg text-gray-300 font-black whitespace-nowrap">월 일 (요일)</span>
+                <span class="text-lg text-yellow-400 font-bold">|</span>
+                <span id="clock-display" class="text-2xl font-black text-yellow-300 font-mono leading-none tracking-wider whitespace-nowrap">오전 00시 00분 00초</span>
             </div>
         </div>
 
@@ -168,17 +168,17 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <div id="weather-display" class="flex items-center gap-3 bg-slate-900/80 px-4 py-2 rounded-xl border border-gray-800">
-                <i id="weatherIcon" class="fa-solid fa-sun text-yellow-400 text-3xl"></i>
-                <div class="flex items-center gap-3">
-                    <span id="weatherStatus" class="text-2xl text-gray-300 font-bold">거제시 | 맑음</span>
-                    <span id="weatherTemp" class="text-3xl font-black text-white">--°C</span>
+            <div id="weather-display" class="flex items-center gap-3 bg-slate-900/80 px-3 py-1 rounded-xl border border-gray-800 whitespace-nowrap">
+                <i id="weatherIcon" class="fa-solid fa-sun text-yellow-400 text-2xl"></i>
+                <div class="flex items-center gap-2">
+                    <span id="weatherStatus" class="text-lg text-gray-300 font-bold whitespace-nowrap">거제시 | 맑음</span>
+                    <span id="weatherTemp" class="text-2xl font-black text-white whitespace-nowrap">--°C</span>
                 </div>
             </div>
-            <span id="dustBadge" class="text-2xl font-black px-4 py-2 rounded-xl bg-blue-500/30 text-blue-300 border border-blue-400/50">
+            <span id="dustBadge" class="text-lg font-black px-3 py-1 whitespace-nowrap rounded-xl bg-blue-500/30 text-blue-300 border border-blue-400/50">
                 미세 보통
             </span>
-            <div class="flex items-center gap-2.5 text-gray-200 text-xl font-black bg-gray-800 px-4 py-2 rounded-xl border border-gray-700">
+            <div class="flex items-center gap-2 text-gray-200 text-base font-black bg-gray-800 px-3 py-1 rounded-xl border border-gray-700 whitespace-nowrap">
                 <span id="statusDot" class="w-4 h-4 rounded-full bg-green-400"></span>
                 <span id="syncStatus">온라인</span>
             </div>
@@ -442,7 +442,7 @@
                 var weatherTempEl = document.getElementById('weatherTemp');
                 var dustBadgeEl = document.getElementById('dustBadge');
 
-                if (weatherIconEl) weatherIconEl.className = getWeatherIconClass(iconCode) + ' text-3xl';
+                if (weatherIconEl) weatherIconEl.className = getWeatherIconClass(iconCode) + ' text-2xl';
                 if (weatherStatusEl) weatherStatusEl.innerText = '거제시 | ' + statusText;
                 if (weatherTempEl) weatherTempEl.innerText = tempStr;
 
@@ -452,7 +452,7 @@
                     else if (dustText === '보통') dustClass = 'bg-green-500/30 text-green-300 border-green-400/50';
                     else if (dustText === '나쁨') dustClass = 'bg-amber-500/30 text-amber-300 border-amber-400/50';
                     else if (dustText === '매우나쁨') dustClass = 'bg-red-500/30 text-red-300 border-red-400/50';
-                    dustBadgeEl.className = 'text-2xl font-black px-4 py-2 rounded-xl border ' + dustClass;
+                    dustBadgeEl.className = 'text-lg font-black px-3 py-1 whitespace-nowrap rounded-xl border ' + dustClass;
                     dustBadgeEl.innerText = '미세 ' + dustText;
                 }
             }
