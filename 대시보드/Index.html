@@ -920,6 +920,30 @@
         </div>
         <div id="homeShuttle" class="small text-muted">불러오는 중…</div>
       </div>
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">에어컨 상태</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="showModule('aircon')">에어컨 제어</button>
+          </div>
+          <div id="homeAircon" class="small text-muted">불러오는 중…</div>
+        </div></div>
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">공유트럭 처리할 일</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="showModule('truck')">트럭 관리</button>
+          </div>
+          <div id="homeTruck" class="small text-muted">불러오는 중…</div>
+        </div></div>
+      </div>
+      <div class="card p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-bold mb-0">시설보수 현황</h6>
+          <button class="btn btn-sm btn-outline-primary" onclick="showModule('repair')">시설보수대장</button>
+        </div>
+        <div id="homeRepairCost" class="small text-muted mb-3">불러오는 중…</div>
+        <div id="homeRepairChart"></div>
+      </div>
       <div class="card p-3 mb-3">
         <h6 class="fw-bold mb-3">업무 바로 가기</h6>
         <div class="d-flex flex-wrap gap-2">
@@ -2317,7 +2341,59 @@
     }
 
     // ---------- 홈 (업무포털) ----------
+    // 홈 카드 한 칸 (라벨 + 값)
+    function homeStat_(label, value, cls) {
+      return '<div class="col-4"><div class="small text-muted">' + label + '</div><div class="fw-bold fs-5 ' + (cls || '') + '">' + value + '</div></div>';
+    }
+
     function loadHome() {
+      run('getHomeAircon').then(a => {
+        document.getElementById('homeAircon').innerHTML =
+          '<div class="row g-2">' +
+            homeStat_('켜짐', a.on + ' / ' + a.total + '대') +
+            homeStat_('연결 안 됨', a.offline + '대', a.offline ? 'text-danger' : '') +
+            homeStat_('실패한 예약', a.failed + '건', a.failed ? 'text-danger' : '') +
+          '</div><div class="text-muted mt-2">' + esc(a.checkedAt) + ' 기준</div>';
+      }).catch(err => {
+        document.getElementById('homeAircon').textContent = '에어컨 상태를 불러오지 못했습니다: ' + ((err && err.message) || err);
+      });
+
+      run('getTruckSummary').then(t => {
+        const el = document.getElementById('homeTruck');
+        if (!t.ready) { el.textContent = t.message; return; }
+        const c = t.counts;
+        const next = (t.todo || []).slice(0, 3).map(x =>
+          '<li>' + esc(x.agency) + ' · ' + esc(x.status) + ' · ' + esc(x.start) + '</li>').join('');
+        el.innerHTML =
+          '<div class="row g-2">' +
+            homeStat_('접수 대기', c.pending + '건', c.pending ? 'text-primary' : '') +
+            homeStat_('반납 검토', c.returnReview + '건', c.returnReview ? 'text-primary' : '') +
+            homeStat_('반납 지연', c.overdue + '건', c.overdue ? 'text-danger' : '') +
+          '</div>' +
+          (next ? '<ul class="mt-2 mb-0 ps-3">' + next + '</ul>' : '<div class="mt-2 text-muted">처리할 예약이 없습니다.</div>') +
+          '<div class="text-muted mt-2">이번 달 사용 ' + c.thisMonth + '건 · ' + esc(t.checkedAt) + ' 기준</div>';
+      }).catch(err => {
+        document.getElementById('homeTruck').textContent = '공유트럭 상태를 불러오지 못했습니다: ' + ((err && err.message) || err);
+      });
+
+      run('getRepairTrend').then(r => {
+        document.getElementById('homeRepairCost').innerHTML =
+          '이번 달 보수 비용 <b>' + Number(r.thisMonthCost).toLocaleString() + '원</b>' +
+          ' · 올해 조치 후 사진이 없는 기록 <b class="' + (r.noAfter ? 'text-danger' : '') + '">' + r.noAfter + '건</b>';
+        const max = Math.max(1, ...r.trend.map(t => t.cost));
+        document.getElementById('homeRepairChart').innerHTML =
+          '<div class="d-flex align-items-end gap-2" style="height:170px">' +
+          r.trend.map(t =>
+            '<div class="flex-fill text-center" style="min-width:0">' +
+              '<div class="small fw-bold text-truncate">' + Number(t.cost).toLocaleString() + '</div>' +
+              '<div class="bg-primary rounded-top mx-auto" style="width:70%;height:' + Math.max(2, Math.round(t.cost / max * 110)) + 'px"></div>' +
+              '<div class="small text-muted mt-1">' + Number(t.month.slice(5)) + '월 · ' + t.count + '건</div>' +
+            '</div>').join('') +
+          '</div>';
+      }).catch(err => {
+        document.getElementById('homeRepairCost').textContent = '시설보수 현황을 불러오지 못했습니다: ' + ((err && err.message) || err);
+      });
+
       // 셔틀 상태는 따로 불러옴: 셔틀 쪽이 실패해도 홈의 나머지는 그대로 나오게
       run('getShuttleSummary').then(sh => {
         const el = document.getElementById('homeShuttle');

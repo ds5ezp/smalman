@@ -2112,6 +2112,24 @@ function getHomeSummary() {
   };
 }
 
+// 홈: 최근 6개월 시설보수 건수·비용, 이번 달 비용, 올해 '조치 전 사진만 있는' 기록 수
+// (예전 방식으로 올린 기록은 조치 전·후 구분이 없어서 세지 않음)
+function getRepairTrend() {
+  requireUser_();
+  const now = new Date();
+  const months = [];
+  for (let i = 5; i >= 0; i--) months.push(fmt_(new Date(now.getFullYear(), now.getMonth() - i, 1), 'yyyy-MM'));
+  const rows = repairRows_();
+  const toNumber = v => Number(String(v || '').replace(/[^0-9.-]/g, '')) || 0;
+  const trend = months.map(m => {
+    const hit = rows.filter(r => r.date.indexOf(m) === 0);
+    return { month: m, count: hit.length, cost: hit.reduce((sum, r) => sum + toNumber(r.cost), 0) };
+  });
+  const year = fmt_(now, 'yyyy');
+  const noAfter = rows.filter(r => r.date.indexOf(year) === 0 && r.before.length > 0 && r.after.length === 0).length;
+  return { trend: trend, thisMonthCost: trend[trend.length - 1].cost, noAfter: noAfter };
+}
+
 // =====================================================================
 // 제출 자료 센터: 월별 제출 현황 점검 + 시설보수 목록 엑셀용 시트
 // (월례회 자료 엑셀은 exportMeetingMonth 를 그대로 사용)
