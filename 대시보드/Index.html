@@ -36,6 +36,7 @@
         <div class="menu-items">
           <a class="module" href="#" data-module="lobby" onclick="showModule('lobby'); return false;"><i class="bi bi-display"></i>로비 사이니지</a>
           <a class="module" href="#" data-module="rooms" onclick="showModule('rooms'); return false;"><i class="bi bi-tablet"></i>각 실 사이니지</a>
+          <a class="module" href="#" data-module="cafe" onclick="showModule('cafe'); return false;"><i class="bi bi-cup-hot"></i>꽃다비 카페 사이니지</a>
           <a class="module" href="#" data-module="led" onclick="showModule('led'); return false;"><i class="bi bi-easel"></i>전광판 관리</a>
         </div>
       </div>
@@ -903,6 +904,57 @@
       </div>
      </div>
 
+     <!-- ===================== 꽃다비 카페 사이니지 ===================== -->
+     <div data-module-view="cafe" class="d-none">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h4 class="mb-0">꽃다비 카페 사이니지</h4>
+        <div class="d-flex gap-2">
+          <a class="btn btn-sm btn-outline-secondary" href="https://docs.google.com/spreadsheets/d/1duKVFid02qGZYLDuW74b6WiwX8C6CO3P6t9RZ2w1nkQ/edit" target="_blank"><i class="bi bi-table me-1"></i>구글 시트</a>
+        </div>
+      </div>
+      <section data-panel="cafeSettings" class="d-none">
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-3">운영 설정</h6>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="cafeEmergency">
+            <label class="form-check-label fw-bold" for="cafeEmergency">비상모드 (켜면 카페 화면에 비상 안내가 뜹니다)</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold" for="cafeEmergencyMsg">비상 안내 문구</label>
+            <textarea class="form-control" id="cafeEmergencyMsg" rows="2"></textarea>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold" for="cafeHours">운영시간</label>
+              <input class="form-control" id="cafeHours" placeholder="09:00 - 18:00">
+              <div class="form-text">이 시간 밖에는 절전 화면이 나오고 슬라이드가 멈춥니다.</div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold" for="cafeFontScale">글자 크기 (%)</label>
+              <input class="form-control" id="cafeFontScale" type="number" min="50" max="150" step="5">
+              <div class="form-text">50~150 사이. 비우면 100%입니다.</div>
+            </div>
+          </div>
+          <div class="text-end"><button class="btn btn-primary btn-sm" onclick="saveCafeSettingsUI()"><i class="bi bi-save me-1"></i>운영 설정 저장</button></div>
+        </div>
+
+        <div class="card p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">슬라이드 목록 <span class="small text-muted fw-normal" id="cafeSlideCount"></span></h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="addCafeSlideRow()"><i class="bi bi-plus-lg me-1"></i>슬라이드 추가</button>
+          </div>
+          <div class="small text-muted mb-2">위에서부터 순서대로 보입니다. 종류: IMAGE(사진), VIDEO(영상), FULLSCREEN(전체 화면), SLIDES(구글 슬라이드). 주소는 https로 시작해야 합니다.</div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-2">
+              <thead><tr><th>제목</th><th>종류</th><th>주소</th><th>초</th><th>QR 주소</th><th>우선</th><th></th></tr></thead>
+              <tbody id="cafeSlideRows"></tbody>
+            </table>
+          </div>
+          <div class="text-end"><button class="btn btn-primary btn-sm" onclick="saveCafeSlidesUI()"><i class="bi bi-save me-1"></i>슬라이드 저장</button></div>
+        </div>
+      </section>
+     </div>
+
      <!-- ===================== 홈 (업무포털) ===================== -->
      <div data-module-view="home" class="d-none">
       <div class="mb-3">
@@ -1446,11 +1498,12 @@
       vRepair: loadRepairList,
       eList: loadLed, eSetup: loadLed,
       hStatus: loadHvac, hSetup: loadHvacSetup,
-      acStatus: () => loadAirCon()
+      acStatus: () => loadAirCon(),
+      cafeSettings: loadCafe
     };
     // 열 때마다 새로 읽는 탭
-    const ALWAYS_RELOAD = ['status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus'];
-    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus' };
+    const ALWAYS_RELOAD = ['status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings'];
+    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus', cafe: 'cafeSettings' };
 
     function moduleOfTab(tab) {
       if (/^r[A-Z]/.test(tab)) return 'rooms';
@@ -1463,6 +1516,7 @@
       if (/^e[A-Z]/.test(tab)) return 'led';
       if (/^h[A-Z]/.test(tab)) return 'hvac';
       if (/^ac[A-Z]/.test(tab)) return 'aircon';
+      if (/^cafe[A-Z]/.test(tab)) return 'cafe';
       return 'lobby';
     }
 
@@ -2432,6 +2486,95 @@
           groups[g].map(l => '<a class="btn btn-sm btn-outline-secondary" href="' + esc(l.url) + '" target="_blank" title="' + esc(l.desc) + '">' + esc(l.name) + ' <i class="bi bi-box-arrow-up-right"></i></a>').join('') +
           '</div></div>'
         ).join('') : '<span class="text-muted small">표시할 바로가기가 없습니다. 바로가기 탭에 주소를 입력해 주세요.</span>';
+      }).catch(fail);
+    }
+
+    // ---------- 꽃다비 카페 사이니지 ----------
+    var cafeSlides = [];
+    var CAFE_TYPES = ['IMAGE', 'VIDEO', 'FULLSCREEN', 'SLIDES'];
+
+    function loadCafe() {
+      run('getCafeSettings').then(s => {
+        document.getElementById('cafeEmergency').checked = !!s.emergency;
+        document.getElementById('cafeEmergencyMsg').value = s.emergencyMsg || '';
+        document.getElementById('cafeHours').value = s.hours || '';
+        document.getElementById('cafeFontScale').value = s.fontScale || 100;
+        cafeSlides = s.slides || [];
+        renderCafeSlides();
+      }).catch(fail);
+    }
+
+    function cafeTypeOptions(selected) {
+      return CAFE_TYPES.map(t => '<option' + (t === selected ? ' selected' : '') + '>' + t + '</option>').join('');
+    }
+
+    function renderCafeSlides() {
+      document.getElementById('cafeSlideCount').textContent = cafeSlides.length + '개';
+      const tbody = document.getElementById('cafeSlideRows');
+      tbody.innerHTML = cafeSlides.map((s, i) =>
+        '<tr>' +
+          '<td><input class="form-control form-control-sm cafe-f" data-i="' + i + '" data-k="title" value="' + esc(s.title) + '"></td>' +
+          '<td><select class="form-select form-select-sm cafe-f" data-i="' + i + '" data-k="type">' + cafeTypeOptions(s.type) + '</select></td>' +
+          '<td><input class="form-control form-control-sm cafe-f" data-i="' + i + '" data-k="path" value="' + esc(s.path) + '"></td>' +
+          '<td style="width:70px"><input class="form-control form-control-sm cafe-f" data-i="' + i + '" data-k="seconds" type="number" min="1" max="600" value="' + esc(s.seconds) + '"></td>' +
+          '<td><input class="form-control form-control-sm cafe-f" data-i="' + i + '" data-k="qr" value="' + esc(s.qr) + '"></td>' +
+          '<td style="width:70px"><select class="form-select form-select-sm cafe-f" data-i="' + i + '" data-k="priority"><option' + (s.priority !== 'Y' ? ' selected' : '') + '>N</option><option' + (s.priority === 'Y' ? ' selected' : '') + '>Y</option></select></td>' +
+          '<td class="text-nowrap">' +
+            '<button class="btn btn-sm btn-outline-secondary" onclick="moveCafeSlide(' + i + ', -1)" ' + (i === 0 ? 'disabled' : '') + '><i class="bi bi-arrow-up"></i></button> ' +
+            '<button class="btn btn-sm btn-outline-secondary" onclick="moveCafeSlide(' + i + ', 1)" ' + (i === cafeSlides.length - 1 ? 'disabled' : '') + '><i class="bi bi-arrow-down"></i></button> ' +
+            '<button class="btn btn-sm btn-outline-danger" onclick="removeCafeSlide(' + i + ')"><i class="bi bi-trash"></i></button>' +
+          '</td>' +
+        '</tr>'
+      ).join('') || '<tr><td colspan="7" class="text-muted small">슬라이드가 없습니다. 추가해 주세요.</td></tr>';
+      // 입력한 값을 목록에 보관 (위/아래 이동이나 삭제 전에 반영)
+      tbody.querySelectorAll('.cafe-f').forEach(el => {
+        el.addEventListener('change', () => { cafeSlides[+el.dataset.i][el.dataset.k] = el.value; });
+      });
+    }
+
+    function collectCafeSlides() {
+      document.querySelectorAll('#cafeSlideRows .cafe-f').forEach(el => {
+        const row = cafeSlides[+el.dataset.i];
+        if (row) row[el.dataset.k] = el.value;
+      });
+      return cafeSlides;
+    }
+
+    function addCafeSlideRow() {
+      collectCafeSlides();
+      cafeSlides.push({ title: '', type: 'IMAGE', path: '', seconds: '10', qr: '', priority: 'N' });
+      renderCafeSlides();
+    }
+
+    function removeCafeSlide(i) {
+      collectCafeSlides();
+      cafeSlides.splice(i, 1);
+      renderCafeSlides();
+    }
+
+    function moveCafeSlide(i, dir) {
+      collectCafeSlides();
+      const j = i + dir;
+      if (j < 0 || j >= cafeSlides.length) return;
+      const t = cafeSlides[i]; cafeSlides[i] = cafeSlides[j]; cafeSlides[j] = t;
+      renderCafeSlides();
+    }
+
+    function saveCafeSettingsUI() {
+      const scaleRaw = document.getElementById('cafeFontScale').value;
+      save('saveCafeSettings', {
+        emergency: document.getElementById('cafeEmergency').checked,
+        emergencyMsg: document.getElementById('cafeEmergencyMsg').value,
+        hours: document.getElementById('cafeHours').value,
+        fontScale: scaleRaw === '' ? '' : Number(scaleRaw)
+      }).then(s => { toast('운영 설정을 저장했습니다. 카페 화면에 1분 안에 반영됩니다.'); loadCafe(); }).catch(fail);
+    }
+
+    function saveCafeSlidesUI() {
+      save('saveCafeSlides', collectCafeSlides()).then(rows => {
+        cafeSlides = rows;
+        renderCafeSlides();
+        toast('슬라이드를 저장했습니다. 카페 화면에 1분 안에 반영됩니다.');
       }).catch(fail);
     }
 

@@ -313,7 +313,11 @@
                     emergencyOverlay.classList.remove('flex');
                 }
             } else {
+                // 비상모드: 대시보드에서 켠 비상 안내를 화면에 띄움 (운영시간과 상관없이)
                 setSavingActive(false);
+                emergencyOverlay.classList.remove('hidden');
+                emergencyOverlay.classList.add('flex');
+                emergencyText.innerText = state.emergencyMsg || "비상 상황 발생 - 안내에 따라 대피하십시오.";
             }
         }
 
@@ -417,6 +421,7 @@
 
             updateOnlineStatus(true);
             state.systemMode = data.systemMode || 'normal';
+            state.emergencyMsg = data.emergencyMsg || '';
             if (data.operationalHours) {
                 state.operationalHours = data.operationalHours;
             }
