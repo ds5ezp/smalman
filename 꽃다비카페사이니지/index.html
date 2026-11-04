@@ -881,7 +881,8 @@
         }
 
         function buildWeatherScreen_(w) {
-            w = w || { status: '맑음', temp: '20°C', feels_like: '19°C', icon: '01d', dust: '보통' };
+            // 날씨를 아직 못 받았으면 가짜 숫자 대신 '--'로 표시 (받은 뒤 다음 화면부터 실제 값)
+            w = w || { status: '날씨 확인 중', temp: '--°C', feels_like: '--°C', icon: '01d', dust: '--' };
             var t = weatherTheme_(w.icon);
             var now = new Date();
             var days = ['일', '월', '화', '수', '목', '금', '토'];
