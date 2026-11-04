@@ -41,7 +41,7 @@
     },
     "publish": {
       "provider": "generic",
-      "url": "https://여기에_업데이트_파일_주소/"
+      "url": "https://example.com/update/"
     }
   },
   "dependencies": {
