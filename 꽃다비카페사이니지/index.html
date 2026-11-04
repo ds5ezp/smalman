@@ -148,9 +148,10 @@
         /* 하단 바와 공지 글씨 크기를 같은 기준(화면 높이 비율)으로 맞춤 */
         #weatherTemp { font-size: 2.6vh !important; }
         #weatherStatus, #clockDate, #clock-display { font-size: 2.2vh !important; }
-        #notice-list .text-sky-200 { font-size: 2.0vh !important; line-height: 1.3 !important; }
+        #notice-list .text-sky-200 { font-size: 2.8vh !important; line-height: 1.3 !important; }
         #notice-list .text-gray-300, #notice-list .text-yellow-300, #notice-list .text-gray-200,
         #notice-list .text-base { font-size: 1.8vh !important; }
+        #notice-list .notice-desc, #notice-list .notice-date { font-size: 2.3vh !important; }
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -558,7 +559,7 @@
                 var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(notice.link || 'http://gjcw.or.kr');
                 
                 var card = document.createElement('div');
-                card.className = 'w-full border-2 border-gray-700 p-6 rounded-2xl flex items-center justify-between gap-6 shadow-xl shrink-0';
+                card.className = 'w-full border-2 border-gray-700 p-6 rounded-2xl flex flex-col gap-3 shadow-xl shrink-0';
                 card.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
 
                 var contentBox = document.createElement('div');
@@ -569,11 +570,11 @@
                 titleSpan.innerText = notice.title || '';
 
                 var descEl = document.createElement('div');
-                descEl.className = 'text-lg text-gray-300 leading-snug mb-3 line-clamp-4';
+                descEl.className = 'text-lg text-gray-300 leading-snug line-clamp-4 notice-desc';
                 descEl.innerText = notice.desc || '';
 
                 var dateSpanEl = document.createElement('div');
-                dateSpanEl.className = 'text-lg text-yellow-300 font-extrabold';
+                dateSpanEl.className = 'text-lg text-yellow-300 font-extrabold notice-date';
                 dateSpanEl.innerHTML = '<i class="fa-regular fa-calendar-check mr-2"></i>' + (notice.date || '');
 
                 contentBox.appendChild(titleSpan);
@@ -581,15 +582,15 @@
                 contentBox.appendChild(dateSpanEl);
 
                 var qrBox = document.createElement('div');
-                qrBox.className = 'flex flex-col items-center justify-center bg-white p-3 rounded-xl shrink-0 border border-gray-300 shadow';
+                qrBox.className = 'flex flex-row items-center gap-2 bg-white p-2 rounded-xl self-end';
 
                 var qrImg = document.createElement('img');
                 qrImg.src = qrUrl;
                 qrImg.alt = 'Notice QR';
-                qrImg.className = 'w-24 h-24 object-contain';
+                qrImg.className = 'w-16 h-16 object-contain';
 
                 var qrLabel = document.createElement('span');
-                qrLabel.className = 'text-base text-gray-900 font-black mt-2';
+                qrLabel.className = 'text-sm text-gray-900 font-black';
                 qrLabel.innerText = '상세보기';
 
                 qrBox.appendChild(qrImg);
