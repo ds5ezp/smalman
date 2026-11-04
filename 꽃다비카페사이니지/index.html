@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
     
     <style>
         body, html {
@@ -22,7 +23,7 @@
             color: #ffffff;
             user-select: none;
             -webkit-user-select: none;
-            font-family: 'Noto Sans KR', sans-serif;
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
         }
 
         .logo-glow {
@@ -109,6 +110,40 @@
         @keyframes wxFall { from { transform: translateY(0); } to { transform: translateY(130vh); } }
         @keyframes wxSnow { from { transform: translateY(0) translateX(0); } 50% { transform: translateY(65vh) translateX(30px); } to { transform: translateY(130vh) translateX(-20px); } }
         @keyframes wxDrift { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 400px)); } }
+        /* ===== 토스 스타일 테마 (대시보드와 같은 색) ===== */
+        :root {
+            --t-bg: #f2f4f6; --t-card: #ffffff; --t-text: #191f28; --t-text2: #4e5968;
+            --t-text3: #8b95a1; --t-line: #e5e8eb; --t-blue: #3182f6; --t-blue-weak: #e8f3ff;
+        }
+        #rightContainer { background-color: var(--t-bg) !important; border-left: 1px solid var(--t-line); }
+        #rightContainer span.border-yellow-500 {
+            background: var(--t-blue-weak) !important; border: none !important; color: var(--t-blue) !important;
+            border-radius: 999px !important; padding: 10px 20px !important; font-weight: 800 !important;
+        }
+        #notice-list > div {
+            background: var(--t-card) !important; border: none !important; border-radius: 20px !important;
+            box-shadow: 0 6px 20px rgba(25, 31, 40, .07) !important; padding: 26px !important;
+        }
+        #notice-list .text-sky-200, #notice-list .text-gray-200 { color: var(--t-text) !important; }
+        #notice-list .text-gray-300, #notice-list .text-gray-400 { color: var(--t-text2) !important; }
+        #notice-list .text-yellow-300 { color: var(--t-blue) !important; }
+        #notice-list .border-gray-800 { border-color: var(--t-line) !important; }
+        #notice-list .bg-white { border-radius: 16px !important; border: 1px solid var(--t-line) !important; }
+        #widgetOverlay {
+            background: var(--t-card) !important; border-top: 1px solid var(--t-line) !important;
+            box-shadow: 0 -4px 16px rgba(25, 31, 40, .05) !important;
+        }
+        #widgetOverlay .text-white, #widgetOverlay .text-yellow-300, #widgetOverlay .text-yellow-400 { color: var(--t-text) !important; }
+        #widgetOverlay .text-gray-200, #widgetOverlay .text-gray-300, #widgetOverlay .text-gray-400 { color: var(--t-text2) !important; }
+        #widgetOverlay .bg-gray-800, #widgetOverlay .bg-slate-900\/80 {
+            background: var(--t-bg) !important; border: none !important; border-radius: 16px !important;
+        }
+        #widgetOverlay .text-blue-400 { color: var(--t-blue) !important; }
+        #dustBadge { background: var(--t-bg) !important; border: none !important; border-radius: 16px !important; }
+        #weatherStatus { color: var(--t-text2) !important; }
+        #weatherTemp { color: var(--t-text) !important; font-weight: 800 !important; }
+        #syncStatus { color: var(--t-text) !important; font-weight: 700 !important; }
+        #clock-display, #clockDate { color: var(--t-text) !important; }
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
