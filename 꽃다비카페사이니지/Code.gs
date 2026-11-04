@@ -516,3 +516,26 @@ function checkWelcomeMode() {
   } catch(e) {}
   return { isWelcome: isWelcome, slides: welcomeSlides };
 }
+
+// 배경음악: BGM 폴더의 첫 번째 mp3를 페이지에 넘김.
+// 운영설정 B9가 ON 일 때만 재생 (OFF거나 비어 있으면 재생하지 않음)
+const BGM_FOLDER_ID = '1fmFp82rpfVCRrOA3cSaqo4xDjOJ3x5ax';
+
+function getBgmDataUrl() {
+  try {
+    const setting = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('운영설정');
+    if (!setting || String(setting.getRange('B9').getValue()).trim().toUpperCase() !== 'ON') return '';
+    const it = DriveApp.getFolderById(BGM_FOLDER_ID).getFiles();
+    while (it.hasNext()) {
+      const f = it.next();
+      if (/\.mp3$/i.test(f.getName()) || f.getMimeType() === 'audio/mpeg') {
+        const bytes = f.getBlob().getBytes();
+        if (bytes.length > 8 * 1024 * 1024) return '';   // 8MB를 넘으면 너무 큼
+        return 'data:audio/mpeg;base64,' + Utilities.base64Encode(bytes);
+      }
+    }
+  } catch (e) {
+    console.error('BGM 읽기 실패: ' + e.toString());
+  }
+  return '';
+}

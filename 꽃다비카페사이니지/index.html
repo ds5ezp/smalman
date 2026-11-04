@@ -326,10 +326,14 @@
                 var fsEl = document.getElementById('fullscreen-overlay');
                 if (fsEl) { fsEl.classList.add('hidden'); fsEl.innerHTML = ''; }
                 document.querySelectorAll('video').forEach(function (v) { v.pause(); });
+                var bgmEl = document.getElementById('bgmAudio');
+                if (bgmEl) bgmEl.pause();
                 if (document.getAnimations) {
                     document.getAnimations().forEach(function (a) { a.cancel(); });
                 }
             } else {
+                var bgmResume = document.getElementById('bgmAudio');
+                if (bgmResume && bgmResume.src) bgmResume.play().catch(function () {});
                 if (welcomeState.isWelcome) {
                     renderWelcomeSlides();
                 } else {
@@ -1008,15 +1012,34 @@
             setInterval(updateClock, 1000);
         }
 
+        // 배경음악: 서버에서 mp3를 받아 재생 (소리 볼륨은 30%)
+        function loadBgm() {
+            if (typeof google === 'undefined' || !google.script || !google.script.run) return;
+            google.script.run
+                .withSuccessHandler(function (url) {
+                    if (!url) return;
+                    var audio = document.getElementById('bgmAudio');
+                    if (!audio) return;
+                    audio.src = url;
+                    audio.volume = 0.3;
+                    audio.loop = true;
+                    if (!savingActive) audio.play().catch(function () {});
+                })
+                .withFailureHandler(function (err) { console.error('배경음악 로드 실패:', err); })
+                .getBgmDataUrl();
+        }
+
         (function initSignage() {
             startClock();
             window.addEventListener('online', function() { updateOnlineStatus(true); });
             window.addEventListener('offline', function() { updateOnlineStatus(false); });
             refreshDashboardData();
             refreshSlideData();
+            loadBgm();
             setInterval(refreshDashboardData, 60000);
             setInterval(refreshSlideData, 60000); // 1분 주기로 최신 슬라이드 목록 동기화
         })();
     </script>
+    <audio id="bgmAudio" loop preload="auto"></audio>
 </body>
 </html>
