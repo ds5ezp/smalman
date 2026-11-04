@@ -123,7 +123,7 @@
         }
         #notice-list > div {
             background: var(--t-card) !important; border: none !important; border-radius: 20px !important;
-            box-shadow: 0 6px 20px rgba(25, 31, 40, .07) !important; padding: 26px !important;
+            box-shadow: 0 6px 20px rgba(25, 31, 40, .07) !important; padding: 18px !important;
         }
         #notice-list .text-sky-200, #notice-list .text-gray-200 { color: var(--t-text) !important; }
         #notice-list .text-gray-300, #notice-list .text-gray-400 { color: var(--t-text2) !important; }
@@ -559,15 +559,15 @@
                 contentBox.className = 'flex-1 flex flex-col justify-center min-w-0';
 
                 var titleSpan = document.createElement('div');
-                titleSpan.className = 'text-sky-200 font-black text-4xl mb-3 leading-snug break-all';
+                titleSpan.className = 'text-sky-200 font-black text-2xl mb-2 leading-snug break-all';
                 titleSpan.innerText = notice.title || '';
 
                 var descEl = document.createElement('div');
-                descEl.className = 'text-2xl text-gray-300 leading-relaxed mb-4 line-clamp-6';
+                descEl.className = 'text-lg text-gray-300 leading-snug mb-3 line-clamp-4';
                 descEl.innerText = notice.desc || '';
 
                 var dateSpanEl = document.createElement('div');
-                dateSpanEl.className = 'text-2xl text-yellow-300 font-extrabold';
+                dateSpanEl.className = 'text-lg text-yellow-300 font-extrabold';
                 dateSpanEl.innerHTML = '<i class="fa-regular fa-calendar-check mr-2"></i>' + (notice.date || '');
 
                 contentBox.appendChild(titleSpan);
@@ -580,7 +580,7 @@
                 var qrImg = document.createElement('img');
                 qrImg.src = qrUrl;
                 qrImg.alt = 'Notice QR';
-                qrImg.className = 'w-36 h-36 object-contain';
+                qrImg.className = 'w-24 h-24 object-contain';
 
                 var qrLabel = document.createElement('span');
                 qrLabel.className = 'text-base text-gray-900 font-black mt-2';
@@ -598,17 +598,17 @@
             var list = document.createElement('div');
             list.className = 'mt-4 flex flex-col';
             var listHead = document.createElement('div');
-            listHead.className = 'text-xl text-gray-400 font-bold mb-2';
+            listHead.className = 'text-base text-gray-400 font-bold mb-2';
             listHead.innerText = '최근 공지';
             list.appendChild(listHead);
             (state.notices.slice(0, state.noticeListCount || 5)).forEach(function(n) {
                 var row = document.createElement('div');
-                row.className = 'flex justify-between items-center gap-3 border-b border-gray-800 py-3';
+                row.className = 'flex justify-between items-center gap-3 border-b border-gray-800 py-2';
                 var t = document.createElement('span');
-                t.className = 'text-2xl text-gray-200 truncate';
+                t.className = 'text-lg text-gray-200 truncate';
                 t.innerText = n.title || '';
                 var d = document.createElement('span');
-                d.className = 'text-xl text-yellow-300 shrink-0';
+                d.className = 'text-base text-yellow-300 shrink-0';
                 d.innerText = n.date || '';
                 row.appendChild(t);
                 row.appendChild(d);
