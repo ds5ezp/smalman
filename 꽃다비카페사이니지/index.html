@@ -87,6 +87,28 @@
         .anim-cloud { animation: float-slow 5s ease-in-out infinite; display: inline-block; }
         .anim-rain { animation: rain-fall 2s linear infinite; display: inline-block; }
 
+        /* 날씨 화면 */
+        .wx-screen { position: relative; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .wx-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+        .wx-card { position: relative; z-index: 2; text-align: center; color: #fff; padding: 24px; animation: wxUp .9s ease-out both; }
+        .wx-date { font-size: 26px; opacity: .85; letter-spacing: .05em; margin-bottom: 6px; }
+        .wx-icon { font-size: 140px; line-height: 1.1; animation: wxBob 3s ease-in-out infinite; filter: drop-shadow(0 12px 24px rgba(0,0,0,.25)); }
+        .wx-status { font-size: 44px; font-weight: 700; margin-top: 4px; }
+        .wx-temp { font-size: 150px; font-weight: 200; line-height: 1; margin: 6px 0; text-shadow: 0 8px 30px rgba(0,0,0,.25); font-variant-numeric: tabular-nums; }
+        .wx-sub { font-size: 26px; opacity: .85; }
+        .wx-pill { display: inline-flex; align-items: center; gap: 10px; margin-top: 22px; padding: 12px 26px; border-radius: 999px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); font-size: 26px; font-weight: 600; }
+        .wx-dot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 12px currentColor; animation: wxPulse 1.6s ease-in-out infinite; }
+        .wx-msg { margin-top: 26px; font-size: 30px; font-style: italic; opacity: .92; }
+        .wx-drop { position: absolute; top: -80px; width: 2px; height: 70px; background: linear-gradient(transparent, rgba(255,255,255,.75)); animation-name: wxFall; animation-timing-function: linear; animation-iteration-count: infinite; }
+        .wx-flake { position: absolute; top: -40px; color: #fff; opacity: .9; font-style: normal; animation-name: wxSnow; animation-timing-function: linear; animation-iteration-count: infinite; }
+        .wx-cloud { position: absolute; left: -220px; font-size: 120px; opacity: .35; animation-name: wxDrift; animation-timing-function: linear; animation-iteration-count: infinite; }
+        .wx-sun { position: absolute; top: -140px; right: -140px; width: 460px; height: 460px; border-radius: 50%; background: radial-gradient(circle, rgba(255,236,160,.9), rgba(255,236,160,0) 70%); animation: wxPulse 4s ease-in-out infinite; }
+        @keyframes wxUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
+        @keyframes wxBob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-14px) rotate(3deg); } }
+        @keyframes wxPulse { 0%, 100% { opacity: .6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+        @keyframes wxFall { from { transform: translateY(0); } to { transform: translateY(130vh); } }
+        @keyframes wxSnow { from { transform: translateY(0) translateX(0); } 50% { transform: translateY(65vh) translateX(30px); } to { transform: translateY(130vh) translateX(-20px); } }
+        @keyframes wxDrift { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 400px)); } }
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -627,46 +649,8 @@
 
                 if (slideType === 'WEATHER_SLIDE') {
                     if (slideQrBox) slideQrBox.classList.add('hidden');
-
-                    let w = state.latestWeather || { status: '맑음', temp: '20°C', feels_like: '19°C', icon: '01d', dust: '보통' };
-                    let wIcon = '☀️', wAnim = 'anim-sun', wMsg = "햇살 가득한 좋은 날입니다.";
-                    let codePrefix = String(w.icon).substring(0, 2);
-                    if (codePrefix === '02') { wIcon = '⛅'; wAnim = 'anim-cloud'; wMsg = "포근한 구름이 덮인 하루네요."; }
-                    else if (codePrefix === '03' || codePrefix === '04') { wIcon = '☁️'; wAnim = 'anim-cloud'; wMsg = "흐린 하늘이지만 편안한 하루 보내세요."; }
-                    else if (codePrefix === '09' || codePrefix === '10' || codePrefix === '11') { wIcon = '🌧️'; wAnim = 'anim-rain'; wMsg = "빗소리 들으며 따뜻한 차 한 잔 어떠세요?"; }
-                    else if (codePrefix === '13') { wIcon = '❄️'; wAnim = 'anim-cloud'; wMsg = "눈길 조심하시고 따뜻하게 입으세요."; }
-
-                    var now = new Date();
-                    var days = ['일','월','화','수','목','금','토'];
-                    var dateStr = `${now.getMonth()+1}월 ${now.getDate()}일 ${days[now.getDay()]}요일`;
-
-                    var weatherCardHtml = `
-                        <div class="glass-card p-14 rounded-[3.5rem] w-full max-w-4xl text-center shadow-2xl flex flex-col items-center justify-center mx-auto my-auto" style="background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(25px);">
-                            <div class="text-[12rem] mb-6 h-52 flex items-center justify-center"><span class="${wAnim}">${wIcon}</span></div>
-                            <h1 class="text-7xl font-light mb-4 text-white tracking-wide">${w.status}</h1>
-                            <p class="text-3xl opacity-60 mb-12">${dateStr}</p>
-                            
-                            <div class="flex justify-center gap-20 mb-12 w-full">
-                                <div>
-                                    <p class="text-lg opacity-40 mb-3 uppercase tracking-widest font-bold">현재 기온</p>
-                                    <div class="text-8xl font-thin text-white">${w.temp}</div>
-                                </div>
-                                <div class="w-px bg-white/20"></div>
-                                <div>
-                                    <p class="text-lg opacity-40 mb-3 uppercase tracking-widest font-bold">체감 온도</p>
-                                    <div class="text-8xl font-thin opacity-70 text-white">${w.feels_like || w.temp}</div>
-                                </div>
-                            </div>
-
-                            <div class="inline-block px-10 py-4 rounded-full bg-white/10 border border-white/20 mb-8">
-                                <span class="text-2xl tracking-wide font-medium">미세먼지 : ${w.dust}</span>
-                            </div>
-
-                            <p class="text-4xl font-light italic opacity-90 leading-relaxed">"${wMsg}"</p>
-                        </div>
-                    `;
-                    container.innerHTML = weatherCardHtml;
-
+                    container.innerHTML = buildWeatherScreen_(state.latestWeather);
+                    animateWeatherTemp_();
                 } else if (slideType === 'LOGO_SLIDE') {
                     if (slideQrBox) slideQrBox.classList.add('hidden');
                     var logoWrapper = document.createElement('div');
@@ -876,6 +860,80 @@
             }, 50);
 
             state.slideTimer = setTimeout(nextSlide, durationMs);
+        }
+
+        // ---------- 날씨 화면 ----------
+        function wxEsc_(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
+        // 날씨 코드(아이콘 번호)에 따라 배경, 아이콘, 움직이는 효과, 안내 문구를 고름
+        function weatherTheme_(icon) {
+            var c = String(icon || '01d').substring(0, 2);
+            if (c === '01') return { bg: 'linear-gradient(135deg,#f59e0b,#f97316 55%,#ea580c)', emoji: '☀️', fx: 'sun', msg: '햇살 가득한 좋은 날입니다.' };
+            if (c === '02') return { bg: 'linear-gradient(135deg,#38bdf8,#0ea5e9 55%,#0369a1)', emoji: '⛅', fx: 'cloud', msg: '포근한 구름이 덮인 하루네요.' };
+            if (c === '03' || c === '04') return { bg: 'linear-gradient(135deg,#64748b,#334155 60%,#1e293b)', emoji: '☁️', fx: 'cloud', msg: '흐린 하늘이지만 편안한 하루 보내세요.' };
+            if (c === '09' || c === '10' || c === '11') return { bg: 'linear-gradient(135deg,#334155,#1e3a8a 60%,#0f172a)', emoji: '🌧️', fx: 'rain', msg: '빗소리 들으며 따뜻한 차 한 잔 어떠세요?' };
+            if (c === '13') return { bg: 'linear-gradient(135deg,#bae6fd,#38bdf8 45%,#1e3a8a)', emoji: '❄️', fx: 'snow', msg: '눈길 조심하시고 따뜻하게 입으세요.' };
+            return { bg: 'linear-gradient(135deg,#0ea5e9,#1e3a8a)', emoji: '🌤️', fx: 'cloud', msg: '오늘도 좋은 하루 보내세요.' };
+        }
+
+        function buildWeatherScreen_(w) {
+            w = w || { status: '맑음', temp: '20°C', feels_like: '19°C', icon: '01d', dust: '보통' };
+            var t = weatherTheme_(w.icon);
+            var now = new Date();
+            var days = ['일', '월', '화', '수', '목', '금', '토'];
+            var dateStr = (now.getMonth() + 1) + '월 ' + now.getDate() + '일 ' + days[now.getDay()] + '요일';
+            var dustColor = { '좋음': '#38bdf8', '보통': '#4ade80', '나쁨': '#fbbf24', '매우나쁨': '#f87171' }[w.dust] || '#4ade80';
+            var fx = '';
+            var i;
+            if (t.fx === 'rain') {
+                for (i = 0; i < 60; i++) {
+                    fx += '<i class="wx-drop" style="left:' + (Math.random() * 100).toFixed(1) + '%;animation-delay:' + (Math.random() * 2).toFixed(2) + 's;animation-duration:' + (0.7 + Math.random() * 0.6).toFixed(2) + 's"></i>';
+                }
+            }
+            if (t.fx === 'snow') {
+                for (i = 0; i < 40; i++) {
+                    fx += '<i class="wx-flake" style="left:' + (Math.random() * 100).toFixed(1) + '%;animation-delay:' + (Math.random() * 6).toFixed(2) + 's;animation-duration:' + (5 + Math.random() * 5).toFixed(2) + 's;font-size:' + (10 + Math.random() * 16).toFixed(0) + 'px">❄</i>';
+                }
+            }
+            if (t.fx === 'cloud') {
+                fx += '<span class="wx-cloud" style="top:12%;animation-duration:38s">☁️</span><span class="wx-cloud" style="top:55%;animation-duration:52s;animation-delay:-20s;font-size:90px">☁️</span>';
+            }
+            if (t.fx === 'sun') {
+                fx += '<span class="wx-sun"></span>';
+            }
+            return '<div class="wx-screen" style="background:' + t.bg + '">' +
+                '<div class="wx-fx">' + fx + '</div>' +
+                '<div class="wx-card">' +
+                    '<div class="wx-date">' + wxEsc_(dateStr) + '</div>' +
+                    '<div class="wx-icon">' + t.emoji + '</div>' +
+                    '<div class="wx-status">' + wxEsc_(w.status) + '</div>' +
+                    '<div class="wx-temp" id="wxTemp" data-target="' + wxEsc_(w.temp) + '">' + wxEsc_(w.temp) + '</div>' +
+                    '<div class="wx-sub">체감 ' + wxEsc_(w.feels_like || w.temp) + '</div>' +
+                    '<div class="wx-pill"><span class="wx-dot" style="background:' + dustColor + ';color:' + dustColor + '"></span>미세먼지 ' + wxEsc_(w.dust) + '</div>' +
+                    '<div class="wx-msg">"' + t.msg + '"</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        // 기온 숫자가 0도에서 올라가는 효과
+        function animateWeatherTemp_() {
+            var el = document.getElementById('wxTemp');
+            if (!el) return;
+            var target = parseInt(String(el.getAttribute('data-target')).replace(/[^0-9-]/g, ''), 10);
+            if (isNaN(target)) return;
+            var startTs = null, dur = 1200;
+            function step(ts) {
+                if (startTs === null) startTs = ts;
+                var p = Math.min(1, (ts - startTs) / dur);
+                var v = Math.round(target * (1 - Math.pow(1 - p, 3)));
+                el.innerText = v + '°C';
+                if (p < 1 && document.getElementById('wxTemp') === el) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
         }
 
         function nextSlide() {
