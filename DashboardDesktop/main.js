@@ -219,6 +219,13 @@ function createMainWindow() {
     installMenuHook(wc);
   });
 
+  // 왼쪽 메뉴 영역(사이드바)을 클릭하면 발권 화면을 닫음 (메뉴 항목을 찾지 않고 위치로 판단)
+  wc.on('input-event', (event, input) => {
+    if (input.type === 'mouseDown' && ticketView && input.x < SIDEBAR_W && input.y > HEADER_H) {
+      closeTicket();
+    }
+  });
+
   // 메뉴 클릭 신호 받기 (안쪽 화면의 콘솔 메시지)
   wc.on('console-message', (event, level, message) => {
     const msg = message || (event && event.message);
