@@ -26,16 +26,25 @@
       "settings-page.js",
       "settings.html",
       "offline.html",
+      "assets/**/*",
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "assets/icon.png"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "https://여기에_업데이트_파일_주소/"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   }
 }

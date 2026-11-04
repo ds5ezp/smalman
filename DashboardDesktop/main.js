@@ -3,7 +3,7 @@
 // - 구글 로그인은 이 프로그램 안에 저장되므로 한 번 로그인하면 계속 유지됨
 // - 인터넷이 끊기면 안내 화면을 보여 주고 10초마다 다시 시도
 
-const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, shell, Tray, nativeImage, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -20,6 +20,9 @@ const DEFAULT_CONFIG = { url: '', autoStart: true };
 let mainWin = null;
 let settingsWin = null;
 let retryTimer = null;
+let tray = null;
+let autoUpdater = null;
+let manualUpdateCheck = false;
 
 // ---------- 설정 저장 ----------
 function configPath() {
@@ -124,6 +127,14 @@ function createMainWindow() {
 
   mainWin.loadURL(cfg.url);
 
+  // X 버튼을 누르면 끄지 않고 트레이로 숨김 (트레이 메뉴 '종료'를 눌러야 완전히 꺼짐)
+  mainWin.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWin.hide();
+    }
+  });
+
   mainWin.on('closed', () => {
     mainWin = null;
     if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
@@ -210,6 +221,72 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// ---------- 트레이 아이콘 ----------
+function showMainWindow() {
+  if (!mainWin) {
+    createMainWindow();
+    return;
+  }
+  mainWin.show();
+  mainWin.focus();
+}
+
+function createTray() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray.png'));
+  tray = new Tray(icon);
+  tray.setToolTip('복지관 통합 대시보드');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: '열기', click: showMainWindow },
+    { label: '새로고침', click: () => { if (mainWin) mainWin.reload(); } },
+    { label: '설정', click: () => openSettings() },
+    { label: '업데이트 확인', click: () => checkForUpdates(true) },
+    { type: 'separator' },
+    { label: '종료', click: () => { app.isQuitting = true; app.quit(); } }
+  ]));
+  tray.on('click', showMainWindow);
+}
+
+// ---------- 자동 업데이트 ----------
+// 프로그램을 실행하면 새 버전이 있는지 확인하고, 있으면 받아 두었다가 다음 실행 때 설치
+function setupAutoUpdate() {
+  if (!app.isPackaged) return;   // 개발 중(npm start)에는 업데이트 확인을 하지 않음
+  autoUpdater = require('electron-updater').autoUpdater;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    if (tray) tray.displayBalloon({ title: '업데이트 있음', content: '새 버전 ' + info.version + '을 받고 있습니다.' });
+  });
+  autoUpdater.on('update-downloaded', (info) => {
+    if (tray) tray.displayBalloon({ title: '업데이트 준비 완료', content: '다음에 프로그램을 켤 때 새 버전으로 바뀝니다.' });
+  });
+  autoUpdater.on('update-not-available', () => {
+    if (manualUpdateCheck) {
+      dialog.showMessageBox({ type: 'info', message: '이미 최신 버전입니다.' });
+    }
+    manualUpdateCheck = false;
+  });
+  autoUpdater.on('error', (err) => {
+    console.error('업데이트 오류: ' + err);
+    if (manualUpdateCheck) {
+      dialog.showErrorBox('업데이트 확인 실패', String(err && err.message ? err.message : err));
+    }
+    manualUpdateCheck = false;
+  });
+
+  checkForUpdates(false);
+  setInterval(() => checkForUpdates(false), 6 * 60 * 60 * 1000);   // 6시간마다 확인
+}
+
+function checkForUpdates(manual) {
+  if (!autoUpdater) {
+    if (manual) dialog.showMessageBox({ type: 'info', message: '업데이트 확인은 설치된 프로그램에서만 할 수 있습니다.' });
+    return;
+  }
+  manualUpdateCheck = !!manual;
+  autoUpdater.checkForUpdates().catch(() => {});
+}
+
 // ---------- 시작 ----------
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -222,9 +299,15 @@ if (!gotLock) {
     }
   });
 
+  app.on('before-quit', () => {
+    app.isQuitting = true;
+  });
+
   app.whenReady().then(() => {
     buildMenu();
     applyAutoStart(loadConfig().autoStart);
+    createTray();
+    setupAutoUpdate();
     createMainWindow();
 
     app.on('activate', () => {
@@ -232,7 +315,5 @@ if (!gotLock) {
     });
   });
 
-  app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
-  });
+  // 창을 닫아도 트레이에 남아 있으므로 여기서 끄지 않음 (종료는 트레이 메뉴에서)
 }
