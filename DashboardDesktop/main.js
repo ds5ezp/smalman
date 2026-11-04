@@ -196,15 +196,18 @@ function createMainWindow() {
         window.__gjcwMenuHook = true;
         document.addEventListener('click', function (e) {
           var a = e.target && e.target.closest ? e.target.closest('.sidebar .module') : null;
-          if (a && !/발권시스템/.test(a.textContent)) console.log('__GJCW_MENU_CLICK__');
+          if (a && !/발권시스템/.test(a.textContent)) document.title = '__GJCW_MENU__' + Date.now();
         }, true);
       }
     `).catch(() => {});
   });
 
-  // 대시보드 페이지에서 보낸 신호 받기
-  wc.on('console-message', (event, level, message) => {
-    if (message === '__GJCW_MENU_CLICK__') closeTicket();
+  // 대시보드 페이지에서 보낸 신호 받기 (제목 변경을 신호로 사용, 창 제목은 바뀌지 않게 막음)
+  wc.on('page-title-updated', (event, title) => {
+    if (String(title).indexOf('__GJCW_MENU__') === 0) {
+      event.preventDefault();
+      closeTicket();
+    }
   });
 
   mainWin.on('resize', layout);
