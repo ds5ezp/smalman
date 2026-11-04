@@ -2569,6 +2569,7 @@
 
     // ---------- 꽃다비 카페 사이니지 ----------
     var cafeSlides = [];
+    var cafeFileLists = {};
     var CAFE_TYPES = ['IMAGE', 'VIDEO', 'FULLSCREEN', 'SLIDES'];
 
     function loadCafe() {
@@ -2688,7 +2689,18 @@
       });
     }
 
+    function openCafePeriod(key, idx) {
+      const f = cafeFileLists[key][idx];
+      state.periodTarget = { view: null, key: key, file: f, after: loadCafeFiles };
+      document.getElementById('periodFileName').textContent = f.name;
+      document.getElementById('periodEditor').innerHTML = periodEditorHtml('pm', f.period);
+      syncPeriodFields('pm');
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('periodModal')).show();
+    }
+
     function renderCafeFileList(key, list) {
+      cafeFileLists[key] = list;
+      cafeFileLists[key] = list;
       document.getElementById('cafeCount' + cafeCap_(key)).textContent = list.length + '개';
       const box = document.getElementById('cafeList' + cafeCap_(key));
       const badges = {
@@ -2697,7 +2709,7 @@
         scheduled: '<span class="badge text-bg-info">예정</span>',
         expired: '<span class="badge text-bg-dark">기간 지남</span>'
       };
-      box.innerHTML = list.length ? list.map(f => {
+      box.innerHTML = list.length ? list.map((f, i) => {
         const period = f.period
           ? f.period.start + (f.period.end && f.period.end !== f.period.start ? ' ~ ' + f.period.end : '')
           : '';
@@ -2709,7 +2721,8 @@
             '<div class="small fw-bold text-truncate" title="' + esc(f.name) + '">' + esc(f.title) + '</div>' +
             '<div class="small text-muted">' + esc(period) + '</div>' +
             '<div class="d-flex justify-content-between align-items-center mt-1">' + (badges[f.status] || '') +
-              '<button class="btn btn-sm btn-outline-danger" onclick="trashCafeFile(\'' + key + '\', \'' + esc(f.id) + '\', \'' + esc(f.title) + '\')"><i class="bi bi-trash"></i></button>' +
+              '<span class="d-flex gap-1"><button class="btn btn-sm btn-outline-secondary" onclick="openCafePeriod(\'' + key + '\', ' + i + ')"><i class="bi bi-calendar-event"></i> 기간</button>' +
+              '<button class="btn btn-sm btn-outline-danger" onclick="trashCafeFile(\'' + key + '\', \'' + esc(f.id) + '\', \'' + esc(f.title) + '\')"><i class="bi bi-trash"></i></button></span>' +
             '</div>' +
           '</div></div></div>';
       }).join('') : '<div class="text-muted small">아직 올라간 파일이 없습니다.</div>';
@@ -3170,7 +3183,7 @@
       save('setFilePeriod', t.key, t.file.id, readPeriod('pm')).then(() => {
         bootstrap.Modal.getOrCreateInstance(document.getElementById('periodModal')).hide();
         toast('노출 기간을 바꿨습니다.');
-        loadFiles(t.view);
+        if (t.after) t.after(); else loadFiles(t.view);
       }).catch(fail);
     }
 
