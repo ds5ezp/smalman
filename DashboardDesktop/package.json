@@ -27,7 +27,9 @@
       "settings.html",
       "offline.html",
       "assets/**/*",
-      "package.json"
+      "package.json",
+      "ticket-bar.html",
+      "ticket-bar-preload.js"
     ],
     "win": {
       "target": "nsis",

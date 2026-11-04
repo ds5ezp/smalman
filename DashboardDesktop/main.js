@@ -26,6 +26,7 @@ const DEFAULT_CONFIG = { url: '', autoStart: true };
 let mainWin = null;         // 창 (안에 대시보드와 발권 화면을 나란히 넣음)
 let dashView = null;        // 왼쪽: 대시보드
 let ticketView = null;      // 오른쪽: 발권시스템 (열렸을 때만 있음)
+let barView = null;         // 발권 화면 위의 막대 (닫기 버튼)
 let settingsWin = null;
 let retryTimer = null;
 let tray = null;
@@ -84,19 +85,30 @@ function applyAutoStart(on) {
 // 오른쪽 내용 영역 전체를 발권 화면이 덮음. 발권을 닫으면 다시 대시보드 내용이 보임.
 const SIDEBAR_W = 232;
 const HEADER_H = 60;
+const BAR_H = 36;
 
 function layout() {
   if (!mainWin || !dashView) return;
   const [w, h] = mainWin.getContentSize();
   dashView.setBounds({ x: 0, y: 0, width: w, height: h });
+  if (barView) {
+    barView.setBounds({ x: SIDEBAR_W, y: HEADER_H, width: Math.max(0, w - SIDEBAR_W), height: BAR_H });
+  }
   if (ticketView) {
-    ticketView.setBounds({ x: SIDEBAR_W, y: HEADER_H, width: Math.max(0, w - SIDEBAR_W), height: Math.max(0, h - HEADER_H) });
+    ticketView.setBounds({ x: SIDEBAR_W, y: HEADER_H + BAR_H, width: Math.max(0, w - SIDEBAR_W), height: Math.max(0, h - HEADER_H - BAR_H) });
   }
 }
 
 // ---------- 발권시스템 패널 ----------
 function openTicket(url) {
   if (!mainWin) return;
+  if (!barView) {
+    barView = new WebContentsView({
+      webPreferences: { preload: path.join(__dirname, 'ticket-bar-preload.js'), contextIsolation: true, nodeIntegration: false }
+    });
+    barView.webContents.loadFile(path.join(__dirname, 'ticket-bar.html'));
+    mainWin.contentView.addChildView(barView);
+  }
   if (!ticketView) {
     ticketView = new WebContentsView({
       webPreferences: { partition: 'persist:ticket', contextIsolation: true, nodeIntegration: false }
@@ -116,12 +128,22 @@ function openTicket(url) {
 }
 
 function closeTicket() {
-  if (!ticketView || !mainWin) return;
-  mainWin.contentView.removeChildView(ticketView);
-  ticketView.webContents.close();
-  ticketView = null;
+  if (!mainWin) return;
+  if (barView) {
+    mainWin.contentView.removeChildView(barView);
+    barView.webContents.close();
+    barView = null;
+  }
+  if (ticketView) {
+    mainWin.contentView.removeChildView(ticketView);
+    ticketView.webContents.close();
+    ticketView = null;
+  }
   layout();
 }
+
+// 발권 막대의 닫기 버튼
+ipcMain.on('ticket:close', () => closeTicket());
 
 function toggleTicket() {
   if (ticketView) closeTicket();
@@ -219,12 +241,6 @@ function createMainWindow() {
     installMenuHook(wc);
   });
 
-  // 왼쪽 메뉴 영역(사이드바)을 클릭하면 발권 화면을 닫음 (메뉴 항목을 찾지 않고 위치로 판단)
-  wc.on('input-event', (event, input) => {
-    if (input.type === 'mouseDown' && ticketView && input.x < SIDEBAR_W && input.y > HEADER_H) {
-      closeTicket();
-    }
-  });
 
   // 메뉴 클릭 신호 받기 (안쪽 화면의 콘솔 메시지)
   wc.on('console-message', (event, level, message) => {
