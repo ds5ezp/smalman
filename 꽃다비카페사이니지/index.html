@@ -478,7 +478,10 @@
                 return;
             }
 
-            var displayNotices = state.notices.slice(state.noticePageIndex, state.noticePageIndex + 2);
+            // 최근 공지 2개를 한 화면에 하나씩 10초마다 번갈아 보여 줌
+            var recentNotices = state.notices.slice(0, 2);
+            if (state.noticePageIndex >= recentNotices.length) state.noticePageIndex = 0;
+            var displayNotices = [recentNotices[state.noticePageIndex]];
             noticeContainer.innerHTML = '';
 
             displayNotices.forEach(function(notice) {
@@ -492,14 +495,19 @@
                 contentBox.className = 'flex-1 flex flex-col justify-center min-w-0';
 
                 var titleSpan = document.createElement('div');
-                titleSpan.className = 'text-sky-200 font-black text-4xl mb-4 leading-snug break-all';
+                titleSpan.className = 'text-sky-200 font-black text-3xl mb-2 leading-snug break-all';
                 titleSpan.innerText = notice.title || '';
 
+                var descEl = document.createElement('div');
+                descEl.className = 'text-xl text-gray-300 leading-snug mb-2 line-clamp-3';
+                descEl.innerText = notice.desc || '';
+
                 var dateSpanEl = document.createElement('div');
-                dateSpanEl.className = 'text-3xl text-yellow-300 font-extrabold';
+                dateSpanEl.className = 'text-2xl text-yellow-300 font-extrabold';
                 dateSpanEl.innerHTML = '<i class="fa-regular fa-calendar-check mr-2"></i>' + (notice.date || '');
 
                 contentBox.appendChild(titleSpan);
+                contentBox.appendChild(descEl);
                 contentBox.appendChild(dateSpanEl);
 
                 var qrBox = document.createElement('div');
@@ -508,7 +516,7 @@
                 var qrImg = document.createElement('img');
                 qrImg.src = qrUrl;
                 qrImg.alt = 'Notice QR';
-                qrImg.className = 'w-36 h-36 object-contain';
+                qrImg.className = 'w-28 h-28 object-contain';
 
                 var qrLabel = document.createElement('span');
                 qrLabel.className = 'text-base text-gray-900 font-black mt-2';
@@ -522,12 +530,10 @@
                 noticeContainer.appendChild(card);
             });
 
-            state.noticePageIndex += 2;
-            if (state.noticePageIndex >= state.notices.length) {
-                state.noticePageIndex = 0;
-            }
-
+            // 다음 공지로 넘어가는 타이머 (2개가 번갈아 나옴)
+            state.noticePageIndex = (state.noticePageIndex + 1) % recentNotices.length;
             state.noticeTimer = setTimeout(renderNotices, 10000);
+
         }
 
         function showCurrentSlide() {

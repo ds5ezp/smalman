@@ -429,6 +429,7 @@ function readNoticeFeedSheet_(limit) {
   if (cTitle === -1) throw new Error("'홈페이지RSS' 탭 1행에 제목 머리글이 없습니다. setupNoticeFeedSheet 함수를 다시 실행해 주세요.");
   const cLink = find(['url', 'link']);
   const cDate = find(['date', '날짜']);
+  const cSummary = find(['summary', 'description', '요약']);
   const tz = Session.getScriptTimeZone();
   return values.slice(1)
     .filter(r => { const t = String(r[cTitle] || '').trim(); return t !== '' && t.charAt(0) !== '#'; })
@@ -439,10 +440,17 @@ function readNoticeFeedSheet_(limit) {
         const d = r[cDate] instanceof Date ? r[cDate] : new Date(r[cDate]);
         if (!isNaN(d.getTime())) date = Utilities.formatDate(d, tz, 'yyyy.MM.dd');
       }
+      // 요약(본문 앞부분)에서 태그와 특수 문자를 빼고 150자까지만 보여 줌
+      let desc = '';
+      if (cSummary !== -1) {
+        const clean = decodeHtmlEntities(String(r[cSummary] || '').replace(/<[^>]*>?/gm, ' ')).replace(/\s+/g, ' ').trim();
+        desc = clean.substring(0, 150) + (clean.length > 150 ? '...' : '');
+      }
       return {
         title: String(r[cTitle]).trim(),
         link: cLink === -1 ? '' : String(r[cLink] || ''),
-        date: date
+        date: date,
+        desc: desc
       };
     });
 }
