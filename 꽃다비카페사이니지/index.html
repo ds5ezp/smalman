@@ -111,9 +111,10 @@
         @keyframes wxSnow { from { transform: translateY(0) translateX(0); } 50% { transform: translateY(65vh) translateX(30px); } to { transform: translateY(130vh) translateX(-20px); } }
         @keyframes wxDrift { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 400px)); } }
         /* ===== 토스 스타일 테마 (대시보드와 같은 색) ===== */
+        /* 다크 토스 톤: 검정 배경에 어두운 카드, 밝은 글자, 토스 파란색 포인트 */
         :root {
-            --t-bg: #f2f4f6; --t-card: #ffffff; --t-text: #191f28; --t-text2: #4e5968;
-            --t-text3: #8b95a1; --t-line: #e5e8eb; --t-blue: #3182f6; --t-blue-weak: #e8f3ff;
+            --t-bg: #0d1017; --t-card: #181c25; --t-text: #f2f4f6; --t-text2: #b0b8c1;
+            --t-text3: #8b95a1; --t-line: #262b35; --t-blue: #4593fc; --t-blue-weak: rgba(69, 147, 252, .16);
         }
         #rightContainer { background-color: var(--t-bg) !important; border-left: 1px solid var(--t-line); }
         #rightContainer span.border-yellow-500 {
