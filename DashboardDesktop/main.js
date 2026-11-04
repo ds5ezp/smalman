@@ -1,14 +1,20 @@
 // 거제시종합사회복지관 통합 대시보드 - 윈도우 프로그램 (Electron)
-// - 설정에서 대시보드 주소를 넣으면 그 주소를 전체 화면 창으로 띄움
+// - 설정에서 대시보드 주소를 넣으면 왼쪽에 대시보드를 띄움
+// - 발권시스템은 오른쪽 패널에 나란히 열림 (메뉴 또는 대시보드의 발권시스템 버튼)
 // - 구글 로그인은 이 프로그램 안에 저장되므로 한 번 로그인하면 계속 유지됨
-// - 인터넷이 끊기면 안내 화면을 보여 주고 10초마다 다시 시도
+// - 창을 닫으면 트레이로 숨고, 트레이 메뉴의 종료를 눌러야 꺼짐
+// - 설치된 프로그램은 새 버전이 있으면 자동으로 받아서 다음 실행 때 설치
 
-const { app, BrowserWindow, Menu, ipcMain, shell, Tray, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, WebContentsView, Menu, ipcMain, shell, Tray, nativeImage, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 // 구글이 "이 브라우저는 보안상 안전하지 않다"며 로그인을 막지 않도록 일반 크롬처럼 보이게 함
 const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+// 발권시스템 주소 (오른쪽 패널에서 열림)
+const TICKET_URL = 'https://selfdesk.e-ncom.co.kr/';
+const TICKET_HOST = 'selfdesk.e-ncom.co.kr';
 
 // 프로그램 안에서 열어도 되는 주소 (구글 로그인과 대시보드에 필요한 주소)
 const IN_APP_HOSTS = [
@@ -17,7 +23,9 @@ const IN_APP_HOSTS = [
 ];
 
 const DEFAULT_CONFIG = { url: '', autoStart: true };
-let mainWin = null;
+let mainWin = null;         // 창 (안에 대시보드와 발권 화면을 나란히 넣음)
+let dashView = null;        // 왼쪽: 대시보드
+let ticketView = null;      // 오른쪽: 발권시스템 (열렸을 때만 있음)
 let settingsWin = null;
 let retryTimer = null;
 let tray = null;
@@ -51,22 +59,18 @@ function isHttpUrl(value) {
   }
 }
 
-function dashboardHost(cfg) {
+function hostOf(url) {
   try {
-    return new URL(cfg.url).hostname;
+    return new URL(url).hostname;
   } catch (e) {
     return '';
   }
 }
 
 function isInApp(url, cfg) {
-  let host = '';
-  try {
-    host = new URL(url).hostname;
-  } catch (e) {
-    return false;
-  }
-  const dash = dashboardHost(cfg);
+  const host = hostOf(url);
+  if (!host) return false;
+  const dash = hostOf(cfg.url);
   const hosts = dash ? IN_APP_HOSTS.concat([dash]) : IN_APP_HOSTS;
   return hosts.some(h => host === h || host.endsWith('.' + h));
 }
@@ -75,7 +79,50 @@ function applyAutoStart(on) {
   if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!on });
 }
 
-// ---------- 메인 창 ----------
+// ---------- 화면 배치 (왼쪽 대시보드 / 오른쪽 발권) ----------
+function layout() {
+  if (!mainWin || !dashView) return;
+  const [w, h] = mainWin.getContentSize();
+  const ticketW = ticketView ? Math.round(w * 0.42) : 0;
+  dashView.setBounds({ x: 0, y: 0, width: w - ticketW, height: h });
+  if (ticketView) ticketView.setBounds({ x: w - ticketW, y: 0, width: ticketW, height: h });
+}
+
+// ---------- 발권시스템 패널 ----------
+function openTicket(url) {
+  if (!mainWin) return;
+  if (!ticketView) {
+    ticketView = new WebContentsView({
+      webPreferences: { partition: 'persist:ticket', contextIsolation: true, nodeIntegration: false }
+    });
+    ticketView.webContents.setUserAgent(CHROME_UA);
+    // 발권 화면 안에서 새 창을 열려고 하면 같은 패널에서 열기
+    ticketView.webContents.setWindowOpenHandler(({ url: u }) => {
+      if (isHttpUrl(u)) ticketView.webContents.loadURL(u);
+      return { action: 'deny' };
+    });
+    mainWin.contentView.addChildView(ticketView);
+  }
+  const target = (url && isHttpUrl(url)) ? url : TICKET_URL;
+  if (!ticketView.webContents.getURL()) ticketView.webContents.loadURL(target);
+  else if (url && isHttpUrl(url)) ticketView.webContents.loadURL(target);
+  layout();
+}
+
+function closeTicket() {
+  if (!ticketView || !mainWin) return;
+  mainWin.contentView.removeChildView(ticketView);
+  ticketView.webContents.close();
+  ticketView = null;
+  layout();
+}
+
+function toggleTicket() {
+  if (ticketView) closeTicket();
+  else openTicket(TICKET_URL);
+}
+
+// ---------- 메인 창 (대시보드) ----------
 function createMainWindow() {
   const cfg = loadConfig();
   if (!isHttpUrl(cfg.url)) {
@@ -88,7 +135,10 @@ function createMainWindow() {
     height: 900,
     title: '복지관 통합 대시보드',
     autoHideMenuBar: true,
-    backgroundColor: '#f2f4f6',
+    backgroundColor: '#f2f4f6'
+  });
+
+  dashView = new WebContentsView({
     webPreferences: {
       // 이 이름의 저장 공간에 로그인 정보가 남음 (다른 프로그램이나 크롬과 공유하지 않음)
       partition: 'persist:dashboard',
@@ -96,18 +146,29 @@ function createMainWindow() {
       nodeIntegration: false
     }
   });
+  mainWin.contentView.addChildView(dashView);
+  const wc = dashView.webContents;
+  wc.setUserAgent(CHROME_UA);
 
-  mainWin.webContents.setUserAgent(CHROME_UA);
-
-  // 새 창(팝업): 대시보드와 구글 주소는 프로그램 안에서, 나머지는 기본 브라우저로
-  mainWin.webContents.setWindowOpenHandler(({ url }) => {
+  // 발권시스템 버튼 또는 링크: 오른쪽 패널에서 열기
+  // 그 밖의 새 창: 구글 주소는 프로그램 안에서, 나머지는 기본 브라우저로
+  wc.setWindowOpenHandler(({ url }) => {
+    if (hostOf(url) === TICKET_HOST) {
+      openTicket(url);
+      return { action: 'deny' };
+    }
     if (isInApp(url, loadConfig())) return { action: 'allow' };
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
   // 화면 안에서 다른 사이트로 이동하려 하면 기본 브라우저로 보냄
-  mainWin.webContents.on('will-navigate', (event, url) => {
+  wc.on('will-navigate', (event, url) => {
+    if (hostOf(url) === TICKET_HOST) {
+      event.preventDefault();
+      openTicket(url);
+      return;
+    }
     if (!isInApp(url, loadConfig())) {
       event.preventDefault();
       shell.openExternal(url);
@@ -115,17 +176,19 @@ function createMainWindow() {
   });
 
   // 연결 실패: 안내 화면을 보여 주고 10초마다 다시 시도
-  mainWin.webContents.on('did-fail-load', (event, code, desc, validatedUrl, isMainFrame) => {
+  wc.on('did-fail-load', (event, code, desc, validatedUrl, isMainFrame) => {
     if (!isMainFrame || code === -3) return;   // -3은 사용자가 멈춘 경우
-    mainWin.loadFile(path.join(__dirname, 'offline.html'));
+    wc.loadFile(path.join(__dirname, 'offline.html'));
     scheduleRetry();
   });
 
-  mainWin.webContents.on('did-finish-load', () => {
+  wc.on('did-finish-load', () => {
     if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
   });
 
-  mainWin.loadURL(cfg.url);
+  mainWin.on('resize', layout);
+  layout();
+  wc.loadURL(cfg.url);
 
   // X 버튼을 누르면 끄지 않고 트레이로 숨김 (트레이 메뉴 '종료'를 눌러야 완전히 꺼짐)
   mainWin.on('close', (event) => {
@@ -137,8 +200,14 @@ function createMainWindow() {
 
   mainWin.on('closed', () => {
     mainWin = null;
+    dashView = null;
+    ticketView = null;
     if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
   });
+}
+
+function reloadDashboard() {
+  if (dashView) dashView.webContents.reload();
 }
 
 function scheduleRetry() {
@@ -146,7 +215,7 @@ function scheduleRetry() {
   retryTimer = setTimeout(() => {
     retryTimer = null;
     const cfg = loadConfig();
-    if (mainWin && isHttpUrl(cfg.url)) mainWin.loadURL(cfg.url);
+    if (dashView && isHttpUrl(cfg.url)) dashView.webContents.loadURL(cfg.url);
   }, 10000);
 }
 
@@ -187,39 +256,14 @@ ipcMain.handle('config:save', (event, data) => {
   saveConfig(cfg);
   applyAutoStart(cfg.autoStart);
 
-  if (mainWin) {
-    mainWin.loadURL(cfg.url);
+  if (dashView) {
+    dashView.webContents.loadURL(cfg.url);
   } else {
     createMainWindow();
   }
   if (settingsWin) settingsWin.close();
   return { ok: true };
 });
-
-// ---------- 메뉴 ----------
-function buildMenu() {
-  const template = [
-    {
-      label: '파일',
-      submenu: [
-        { label: '설정', accelerator: 'Ctrl+,', click: () => openSettings() },
-        { label: '새로고침', accelerator: 'F5', click: () => { if (mainWin) mainWin.reload(); } },
-        { type: 'separator' },
-        { label: '종료', role: 'quit' }
-      ]
-    },
-    {
-      label: '보기',
-      submenu: [
-        { label: '전체 화면', accelerator: 'F11', click: () => { if (mainWin) mainWin.setFullScreen(!mainWin.isFullScreen()); } },
-        { label: '글자 크게', role: 'zoomIn' },
-        { label: '글자 작게', role: 'zoomOut' },
-        { label: '글자 크기 원래대로', role: 'resetZoom' }
-      ]
-    }
-  ];
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
-}
 
 // ---------- 트레이 아이콘 ----------
 function showMainWindow() {
@@ -237,7 +281,8 @@ function createTray() {
   tray.setToolTip('복지관 통합 대시보드');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '열기', click: showMainWindow },
-    { label: '새로고침', click: () => { if (mainWin) mainWin.reload(); } },
+    { label: '새로고침', click: reloadDashboard },
+    { label: '발권시스템 열기/닫기', click: () => { showMainWindow(); toggleTicket(); } },
     { label: '설정', click: () => openSettings() },
     { label: '업데이트 확인', click: () => checkForUpdates(true) },
     { type: 'separator' },
@@ -285,6 +330,33 @@ function checkForUpdates(manual) {
   }
   manualUpdateCheck = !!manual;
   autoUpdater.checkForUpdates().catch(() => {});
+}
+
+// ---------- 메뉴 ----------
+function buildMenu() {
+  const template = [
+    {
+      label: '파일',
+      submenu: [
+        { label: '설정', accelerator: 'Ctrl+,', click: () => openSettings() },
+        { label: '새로고침', accelerator: 'F5', click: reloadDashboard },
+        { type: 'separator' },
+        { label: '종료', role: 'quit' }
+      ]
+    },
+    {
+      label: '보기',
+      submenu: [
+        { label: '발권시스템 열기/닫기', accelerator: 'Ctrl+T', click: toggleTicket },
+        { type: 'separator' },
+        { label: '전체 화면', accelerator: 'F11', click: () => { if (mainWin) mainWin.setFullScreen(!mainWin.isFullScreen()); } },
+        { label: '글자 크게', role: 'zoomIn' },
+        { label: '글자 작게', role: 'zoomOut' },
+        { label: '글자 크기 원래대로', role: 'resetZoom' }
+      ]
+    }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 // ---------- 시작 ----------
