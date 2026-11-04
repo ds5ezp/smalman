@@ -79,13 +79,19 @@ function applyAutoStart(on) {
   if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: !!on });
 }
 
-// ---------- 화면 배치 (왼쪽 대시보드 / 오른쪽 발권) ----------
+// ---------- 화면 배치 ----------
+// 대시보드의 왼쪽 메뉴(232px)와 상단 헤더(60px)는 그대로 두고,
+// 오른쪽 내용 영역 전체를 발권 화면이 덮음. 발권을 닫으면 다시 대시보드 내용이 보임.
+const SIDEBAR_W = 232;
+const HEADER_H = 60;
+
 function layout() {
   if (!mainWin || !dashView) return;
   const [w, h] = mainWin.getContentSize();
-  const ticketW = ticketView ? Math.round(w * 0.42) : 0;
-  dashView.setBounds({ x: 0, y: 0, width: w - ticketW, height: h });
-  if (ticketView) ticketView.setBounds({ x: w - ticketW, y: 0, width: ticketW, height: h });
+  dashView.setBounds({ x: 0, y: 0, width: w, height: h });
+  if (ticketView) {
+    ticketView.setBounds({ x: SIDEBAR_W, y: HEADER_H, width: Math.max(0, w - SIDEBAR_W), height: Math.max(0, h - HEADER_H) });
+  }
 }
 
 // ---------- 발권시스템 패널 ----------
