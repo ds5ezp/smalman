@@ -23,6 +23,7 @@
     "files": [
       "main.js",
       "settings-preload.js",
+      "settings-page.js",
       "settings.html",
       "offline.html",
       "package.json"
