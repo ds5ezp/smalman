@@ -645,6 +645,11 @@
 
             var slide = state.slides[state.slideIndex] || state.slides[0];
             var slideType = String(slide.type || 'IMAGE').toUpperCase().trim();
+            // 날씨를 아직 못 받았으면 날씨 화면은 건너뜀 (받은 뒤 다음 순서부터 실제 날씨가 나옴)
+            if (slideType === 'WEATHER_SLIDE' && !state.latestWeather) {
+                state.slideTimer = setTimeout(nextSlide, 1000);
+                return;
+            }
             
             var defaultDuration = 8000;
             if (slideType === 'CAFE_MENU') defaultDuration = 20000;
