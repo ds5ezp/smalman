@@ -948,6 +948,27 @@
               <div class="form-text">50~150 사이. 비우면 100%입니다.</div>
             </div>
           </div>
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+              <div class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" id="cafeBgm">
+                <label class="form-check-label fw-bold" for="cafeBgm">배경음악 재생</label>
+              </div>
+              <div class="form-text">BGM 폴더의 mp3를 반복 재생합니다 (절전 시간에는 멈춤).</div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" id="cafeNoticeOn">
+                <label class="form-check-label fw-bold" for="cafeNoticeOn">우측 공지 목록 표시</label>
+              </div>
+              <div class="form-text">카페 화면 오른쪽 아래의 '최근 공지' 목록입니다.</div>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label small fw-bold" for="cafeNoticeCount">공지 목록 개수</label>
+              <input class="form-control" id="cafeNoticeCount" type="number" min="1" max="10" step="1">
+              <div class="form-text">1~10개. 기본 5개입니다.</div>
+            </div>
+          </div>
           <div class="text-end"><button class="btn btn-primary btn-sm" onclick="saveCafeSettingsUI()"><i class="bi bi-save me-1"></i>운영 설정 저장</button></div>
         </div>
 
@@ -2556,6 +2577,9 @@
         document.getElementById('cafeEmergencyMsg').value = s.emergencyMsg || '';
         document.getElementById('cafeHours').value = s.hours || '';
         document.getElementById('cafeFontScale').value = s.fontScale || 100;
+        document.getElementById('cafeBgm').checked = !!s.bgm;
+        document.getElementById('cafeNoticeOn').checked = s.noticeListOn !== false;
+        document.getElementById('cafeNoticeCount').value = s.noticeListCount || 5;
         cafeSlides = s.slides || [];
         renderCafeSlides();
       }).catch(fail);
@@ -2623,7 +2647,10 @@
         emergency: document.getElementById('cafeEmergency').checked,
         emergencyMsg: document.getElementById('cafeEmergencyMsg').value,
         hours: document.getElementById('cafeHours').value,
-        fontScale: scaleRaw === '' ? '' : Number(scaleRaw)
+        fontScale: scaleRaw === '' ? '' : Number(scaleRaw),
+        bgm: document.getElementById('cafeBgm').checked,
+        noticeListOn: document.getElementById('cafeNoticeOn').checked,
+        noticeListCount: Number(document.getElementById('cafeNoticeCount').value)
       }).then(s => { toast('운영 설정을 저장했습니다. 카페 화면에 1분 안에 반영됩니다.'); loadCafe(); }).catch(fail);
     }
 

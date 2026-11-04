@@ -520,6 +520,8 @@
             }
 
             state.noticeError = data.noticeError || '';
+            state.noticeListOn = data.noticeListOn !== false;
+            state.noticeListCount = data.noticeListCount || 5;
             if (data.notices && Array.isArray(data.notices)) {
                 state.notices = data.notices;
                 state.noticePageIndex = 0;
@@ -599,7 +601,7 @@
             listHead.className = 'text-xl text-gray-400 font-bold mb-2';
             listHead.innerText = '최근 공지';
             list.appendChild(listHead);
-            state.notices.slice(0, 6).forEach(function(n) {
+            (state.notices.slice(0, state.noticeListCount || 5)).forEach(function(n) {
                 var row = document.createElement('div');
                 row.className = 'flex justify-between items-center gap-3 border-b border-gray-800 py-3';
                 var t = document.createElement('span');
@@ -612,7 +614,7 @@
                 row.appendChild(d);
                 list.appendChild(row);
             });
-            noticeContainer.appendChild(list);
+            if (state.noticeListOn !== false) noticeContainer.appendChild(list);
 
             // 다음 공지로 넘어가는 타이머 (2개가 번갈아 나옴)
             state.noticePageIndex = (state.noticePageIndex + 1) % recentNotices.length;

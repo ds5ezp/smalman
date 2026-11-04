@@ -40,11 +40,15 @@ function getCafeSettings() {
   const s = cafeSheet_('운영설정');
   const mode = String(s.getRange('B3').getValue()).trim().toUpperCase();
   const scale = Number(s.getRange('B8').getValue());
+  const listCount = Number(s.getRange('B11').getValue());
   return {
     emergency: mode === 'ON',
     emergencyMsg: String(s.getRange('B4').getDisplayValue() || ''),
     hours: String(s.getRange('B6').getDisplayValue() || '').trim(),
     fontScale: (scale >= 50 && scale <= 150) ? scale : 100,
+    bgm: String(s.getRange('B9').getValue()).trim().toUpperCase() === 'ON',
+    noticeListOn: String(s.getRange('B10').getValue()).trim().toUpperCase() !== 'OFF',
+    noticeListCount: (listCount >= 1 && listCount <= 10) ? listCount : 5,
     slides: readCafeSlides_(),
     displayUrl: CAFE.DISPLAY_URL
   };
@@ -73,6 +77,10 @@ function saveCafeSettings(data) {
   const hours = String((data && data.hours) || '').trim();
   const rawScale = data ? data.fontScale : '';
   const scale = (rawScale === '' || rawScale == null) ? 100 : Number(rawScale);
+  const bgmOn = !!(data && data.bgm);
+  const listOn = !(data && data.noticeListOn === false);
+  const listCount = Number(data && data.noticeListCount);
+  if (!(listCount >= 1 && listCount <= 10)) throw new Error('공지 목록 개수는 1~10 사이 숫자로 적어 주세요.');
 
   if (!/^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/.test(hours)) throw new Error('운영시간은 09:00 - 18:00 형식으로 적어 주세요.');
   if (!(scale >= 50 && scale <= 150)) throw new Error('글자 크기는 50~150 사이 숫자로 적어 주세요.');
@@ -83,6 +91,9 @@ function saveCafeSettings(data) {
     s.getRange('B4').setNumberFormat('@').setValue(msg);
     s.getRange('B6').setNumberFormat('@').setValue(hours);
     s.getRange('B8').setValue(scale);
+    s.getRange('B9').setNumberFormat('@').setValue(bgmOn ? 'ON' : 'OFF');
+    s.getRange('B10').setNumberFormat('@').setValue(listOn ? 'ON' : 'OFF');
+    s.getRange('B11').setValue(listCount);
     SpreadsheetApp.flush();
     log_('꽃다비 운영설정', (emergency ? '비상 ON' : '비상 OFF') + ' / 운영시간 ' + hours + ' / 글자 ' + scale + '%');
     return getCafeSettings();

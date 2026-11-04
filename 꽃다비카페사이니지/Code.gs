@@ -127,6 +127,8 @@ function getDashboardData() {
   let emergencyMsg = "";
   let operationalHours = "09:00 - 18:00";
   let fontScale = 100;
+  let noticeListOn = true;
+  let noticeListCount = 5;
   let noticeData = [];
   let noticeError = '';
 
@@ -143,6 +145,10 @@ function getDashboardData() {
         // B8: 글자 크기(%). 비워두면 100. 50~150 사이에서만 적용
         const scaleValue = Number(settingSheet.getRange('B8').getValue());
         if (scaleValue >= 50 && scaleValue <= 150) fontScale = scaleValue;
+        // B10: 우측 공지 목록 표시 ON/OFF (비우면 ON), B11: 목록 개수 (1~10, 기본 5)
+        noticeListOn = String(settingSheet.getRange('B10').getValue()).trim().toUpperCase() !== 'OFF';
+        const listCount = Number(settingSheet.getRange('B11').getValue());
+        if (listCount >= 1 && listCount <= 10) noticeListCount = listCount;
       }
     }
   } catch(e) {}
@@ -165,7 +171,9 @@ function getDashboardData() {
     news: getRealtimeNews(),
     operationalHours: operationalHours,
     welcomeInfo: checkWelcomeMode(),
-    fontScale: fontScale
+    fontScale: fontScale,
+    noticeListOn: noticeListOn,
+    noticeListCount: noticeListCount
   };
 }
 
