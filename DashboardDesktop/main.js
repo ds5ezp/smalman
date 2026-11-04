@@ -190,6 +190,21 @@ function createMainWindow() {
 
   wc.on('did-finish-load', () => {
     if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+    // 왼쪽 메뉴(발권시스템 제외)를 누르면 '메뉴 클릭' 신호를 보냄 -> 발권 화면을 닫음
+    wc.executeJavaScript(`
+      if (!window.__gjcwMenuHook) {
+        window.__gjcwMenuHook = true;
+        document.addEventListener('click', function (e) {
+          var a = e.target && e.target.closest ? e.target.closest('.sidebar .module') : null;
+          if (a && !/발권시스템/.test(a.textContent)) console.log('__GJCW_MENU_CLICK__');
+        }, true);
+      }
+    `).catch(() => {});
+  });
+
+  // 대시보드 페이지에서 보낸 신호 받기
+  wc.on('console-message', (event, level, message) => {
+    if (message === '__GJCW_MENU_CLICK__') closeTicket();
   });
 
   mainWin.on('resize', layout);
