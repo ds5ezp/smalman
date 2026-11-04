@@ -195,7 +195,7 @@ function createMainWindow() {
       if (!window.__gjcwMenuHook) {
         window.__gjcwMenuHook = true;
         document.addEventListener('click', function (e) {
-          var a = e.target && e.target.closest ? e.target.closest('.sidebar .module') : null;
+          var a = e.target && e.target.closest ? e.target.closest('[data-module]') : null;
           if (a && !/발권시스템/.test(a.textContent)) document.title = '__GJCW_MENU__' + Date.now();
         }, true);
       }
