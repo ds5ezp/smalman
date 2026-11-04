@@ -321,8 +321,11 @@ function getSlideData() {
         manualSlides = data.map(row => {
           const typeStr = String(row[1] || 'IMAGE').toUpperCase().trim();
           let rawPath = String(row[2] || '').trim();
-          if ((typeStr === 'VIDEO' || rawPath.indexOf('drive.google.com') !== -1) && rawPath.indexOf('/preview') === -1) {
-            let fileId = rawPath.indexOf('id=') !== -1 ? rawPath.split('id=')[1].split('&')[0] : rawPath.split('/d/')[1].split('/')[0].split('?')[0];
+          // 구글 드라이브 주소만 미리보기 주소로 바꿈 (드롭박스 등 다른 주소는 그대로 둠)
+          if (rawPath.indexOf('drive.google.com') !== -1 && rawPath.indexOf('/preview') === -1) {
+            let fileId = '';
+            if (rawPath.indexOf('id=') !== -1) fileId = rawPath.split('id=')[1].split('&')[0];
+            else if (rawPath.indexOf('/d/') !== -1) fileId = rawPath.split('/d/')[1].split('/')[0].split('?')[0];
             if (fileId) rawPath = "https://drive.google.com/file/d/" + fileId + "/preview";
           }
           return {
