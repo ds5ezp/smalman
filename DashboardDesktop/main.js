@@ -388,6 +388,7 @@ function buildMenu() {
       submenu: [
         { label: '발권시스템 열기/닫기', accelerator: 'Ctrl+T', click: toggleTicket },
         { type: 'separator' },
+        { label: '개발자 도구 (문제 확인용)', accelerator: 'Ctrl+Shift+I', click: () => { if (dashView) dashView.webContents.toggleDevTools(); } },
         { label: '전체 화면', accelerator: 'F11', click: () => { if (mainWin) mainWin.setFullScreen(!mainWin.isFullScreen()); } },
         { label: '글자 크게', role: 'zoomIn' },
         { label: '글자 작게', role: 'zoomOut' },
