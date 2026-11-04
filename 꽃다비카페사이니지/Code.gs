@@ -444,7 +444,7 @@ function readNoticeFeedSheet_(limit) {
       let desc = '';
       if (cSummary !== -1) {
         const clean = decodeHtmlEntities(String(r[cSummary] || '').replace(/<[^>]*>?/gm, ' ')).replace(/\s+/g, ' ').trim();
-        desc = clean.substring(0, 150) + (clean.length > 150 ? '...' : '');
+        desc = clean.substring(0, 300) + (clean.length > 300 ? '...' : '');
       }
       return {
         title: String(r[cTitle]).trim(),

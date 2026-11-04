@@ -495,11 +495,11 @@
                 contentBox.className = 'flex-1 flex flex-col justify-center min-w-0';
 
                 var titleSpan = document.createElement('div');
-                titleSpan.className = 'text-sky-200 font-black text-3xl mb-2 leading-snug break-all';
+                titleSpan.className = 'text-sky-200 font-black text-4xl mb-3 leading-snug break-all';
                 titleSpan.innerText = notice.title || '';
 
                 var descEl = document.createElement('div');
-                descEl.className = 'text-xl text-gray-300 leading-snug mb-2 line-clamp-3';
+                descEl.className = 'text-2xl text-gray-300 leading-relaxed mb-4 line-clamp-6';
                 descEl.innerText = notice.desc || '';
 
                 var dateSpanEl = document.createElement('div');
@@ -516,7 +516,7 @@
                 var qrImg = document.createElement('img');
                 qrImg.src = qrUrl;
                 qrImg.alt = 'Notice QR';
-                qrImg.className = 'w-28 h-28 object-contain';
+                qrImg.className = 'w-36 h-36 object-contain';
 
                 var qrLabel = document.createElement('span');
                 qrLabel.className = 'text-base text-gray-900 font-black mt-2';
@@ -529,6 +529,28 @@
                 card.appendChild(qrBox);
                 noticeContainer.appendChild(card);
             });
+
+            // 아래쪽: 최근 공지 목록 (칸을 채우고, 여러 공지를 한눈에 보게 함)
+            var list = document.createElement('div');
+            list.className = 'mt-4 flex flex-col';
+            var listHead = document.createElement('div');
+            listHead.className = 'text-xl text-gray-400 font-bold mb-2';
+            listHead.innerText = '최근 공지';
+            list.appendChild(listHead);
+            state.notices.slice(0, 6).forEach(function(n) {
+                var row = document.createElement('div');
+                row.className = 'flex justify-between items-center gap-3 border-b border-gray-800 py-3';
+                var t = document.createElement('span');
+                t.className = 'text-2xl text-gray-200 truncate';
+                t.innerText = n.title || '';
+                var d = document.createElement('span');
+                d.className = 'text-xl text-yellow-300 shrink-0';
+                d.innerText = n.date || '';
+                row.appendChild(t);
+                row.appendChild(d);
+                list.appendChild(row);
+            });
+            noticeContainer.appendChild(list);
 
             // 다음 공지로 넘어가는 타이머 (2개가 번갈아 나옴)
             state.noticePageIndex = (state.noticePageIndex + 1) % recentNotices.length;
