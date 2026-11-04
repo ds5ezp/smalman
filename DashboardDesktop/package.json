@@ -43,7 +43,7 @@
     "publish": {
       "provider": "github",
       "owner": "ds5ezp",
-      "repo": "smalman"
+      "repo": "gjcw-dashboard-updates"
     }
   },
   "dependencies": {
