@@ -457,6 +457,7 @@
                 }
             }
 
+            state.noticeError = data.noticeError || '';
             if (data.notices && Array.isArray(data.notices)) {
                 state.notices = data.notices;
                 state.noticePageIndex = 0;
@@ -471,7 +472,9 @@
             if (!noticeContainer) return;
 
             if (!state.notices || state.notices.length === 0) {
-                noticeContainer.innerHTML = '<div class="text-center text-gray-400 text-xl font-bold py-10">등록된 공지사항이 없습니다.</div>';
+                var noticeMsg = state.noticeError || '등록된 공지사항이 없습니다.';
+                noticeContainer.innerHTML = '<div class="text-center text-gray-400 text-xl font-bold py-10"></div>';
+                noticeContainer.firstChild.innerText = noticeMsg;
                 return;
             }
 

@@ -128,6 +128,7 @@ function getDashboardData() {
   let operationalHours = "09:00 - 18:00";
   let fontScale = 100;
   let noticeData = [];
+  let noticeError = '';
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -148,8 +149,9 @@ function getDashboardData() {
 
   try {
     const rssUrl = "http://gjcw.or.kr/wp-content/plugins/kboard/rss.php?board_id=3"; 
-    const xml = UrlFetchApp.fetch(rssUrl).getContentText();
-    const items = XmlService.parse(xml).getRootElement().getChild('channel').getChildren('item');
+    const res = UrlFetchApp.fetch(rssUrl, { muteHttpExceptions: true, headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (res.getResponseCode() !== 200) throw new Error('게시판 응답 코드 ' + res.getResponseCode());
+    const items = XmlService.parse(res.getContentText()).getRootElement().getChild('channel').getChildren('item');
 
     noticeData = items.slice(0, 6).map(item => {
       const pubDateStr = item.getChildText('pubDate') || '';
@@ -169,13 +171,17 @@ function getDashboardData() {
       return { 
         title: decodeHtmlEntities(item.getChildText('title') || '공지사항'), 
         link: targetLink, 
-        date: formattedDate 
+        date: formattedDate
       };
     });
-  } catch(e) {}
+  } catch(e) {
+    // 공지를 읽지 못한 경우 화면에 그 이유를 보여 줌 (정말 글이 없는 경우와 구분하기 위해)
+    noticeError = '공지사항을 불러오지 못했습니다. (' + e.message + ')';
+  }
 
   return { 
-    notices: noticeData, 
+    notices: noticeData,
+    noticeError: noticeError,
     weather: getLiveWeather(), 
     systemMode: systemMode, 
     emergencyMsg: emergencyMsg,
