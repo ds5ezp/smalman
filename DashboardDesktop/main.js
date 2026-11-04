@@ -128,6 +128,27 @@ function toggleTicket() {
   else openTicket(TICKET_URL);
 }
 
+// ---------- 메뉴 클릭 감지 ----------
+// 대시보드의 왼쪽 메뉴(data-module)를 누르면 신호를 보냄 (발권시스템 메뉴는 제외)
+function installMenuHook(wc) {
+  const code = `
+    if (!window.__gjcwMenuHook) {
+      window.__gjcwMenuHook = true;
+      document.addEventListener('click', function (e) {
+        var a = e.target && e.target.closest ? e.target.closest('[data-module]') : null;
+        if (a && !/발권시스템/.test(a.textContent)) console.log('__GJCW_MENU_CLICK__');
+      }, true);
+    }
+  `;
+  try {
+    wc.mainFrame.framesInSubtree.forEach(frame => {
+      frame.executeJavaScript(code).catch(() => {});
+    });
+  } catch (e) {
+    // 무시 (페이지가 아직 준비되지 않은 경우)
+  }
+}
+
 // ---------- 메인 창 (대시보드) ----------
 function createMainWindow() {
   const cfg = loadConfig();
@@ -190,24 +211,18 @@ function createMainWindow() {
 
   wc.on('did-finish-load', () => {
     if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-    // 왼쪽 메뉴(발권시스템 제외)를 누르면 '메뉴 클릭' 신호를 보냄 -> 발권 화면을 닫음
-    wc.executeJavaScript(`
-      if (!window.__gjcwMenuHook) {
-        window.__gjcwMenuHook = true;
-        document.addEventListener('click', function (e) {
-          var a = e.target && e.target.closest ? e.target.closest('[data-module]') : null;
-          if (a && !/발권시스템/.test(a.textContent)) document.title = '__GJCW_MENU__' + Date.now();
-        }, true);
-      }
-    `).catch(() => {});
+    installMenuHook(wc);
   });
 
-  // 대시보드 페이지에서 보낸 신호 받기 (제목 변경을 신호로 사용, 창 제목은 바뀌지 않게 막음)
-  wc.on('page-title-updated', (event, title) => {
-    if (String(title).indexOf('__GJCW_MENU__') === 0) {
-      event.preventDefault();
-      closeTicket();
-    }
+  // 구글 웹앱은 안쪽 화면(iframe)에 그려지므로, 안쪽 화면이 로드될 때마다 감지 코드를 넣음
+  wc.on('did-frame-finish-load', () => {
+    installMenuHook(wc);
+  });
+
+  // 메뉴 클릭 신호 받기 (안쪽 화면의 콘솔 메시지)
+  wc.on('console-message', (event, level, message) => {
+    const msg = message || (event && event.message);
+    if (msg === '__GJCW_MENU_CLICK__') closeTicket();
   });
 
   mainWin.on('resize', layout);
