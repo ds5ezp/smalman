@@ -37,11 +37,13 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "artifactName": "GJCW-Dashboard-Setup-${version}.${ext}"
     },
     "publish": {
-      "provider": "generic",
-      "url": "https://example.com/update/"
+      "provider": "github",
+      "owner": "ds5ezp",
+      "repo": "smalman"
     }
   },
   "dependencies": {
