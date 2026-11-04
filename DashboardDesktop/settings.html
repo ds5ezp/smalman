@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>설정</title>
+  <style>
+    :root { --bg:#f2f4f6; --card:#fff; --text:#191f28; --text2:#4e5968; --line:#e5e8eb; --blue:#3182f6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; background: var(--bg); color: var(--text); font-family: 'Malgun Gothic', sans-serif; }
+    h1 { font-size: 20px; margin: 0 0 16px; }
+    .card { background: var(--card); border-radius: 16px; padding: 20px; box-shadow: 0 4px 16px rgba(25,31,40,.06); }
+    label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text2); }
+    input[type=text] { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 15px; }
+    .check { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 14px; color: var(--text2); }
+    .hint { font-size: 12px; color: #8b95a1; margin-top: 6px; }
+    .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    button { border: none; border-radius: 12px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .primary { background: var(--blue); color: #fff; }
+    .ghost { background: var(--bg); color: var(--text2); }
+    .error { color: #f04452; font-size: 13px; margin-top: 10px; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <h1>설정</h1>
+  <div class="card">
+    <label for="url">대시보드 주소</label>
+    <input type="text" id="url" placeholder="https://script.google.com/macros/s/…/exec">
+    <div class="hint">대시보드를 배포한 주소를 넣으세요. 주소가 바뀌면 여기서만 고치면 됩니다.</div>
+
+    <label class="check"><input type="checkbox" id="autoStart"> 윈도우를 켜면 자동으로 실행</label>
+
+    <div class="error" id="error"></div>
+    <div class="row">
+      <button class="ghost" id="cancel">취소</button>
+      <button class="primary" id="save">저장</button>
+    </div>
+  </div>
+
+  <script src="settings-page.js"></script>
+</body>
+</html>

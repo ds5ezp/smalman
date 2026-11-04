@@ -1,0 +1,40 @@
+{
+  "name": "gjcw-dashboard-desktop",
+  "version": "1.0.0",
+  "description": "거제시종합사회복지관 통합 대시보드 윈도우 프로그램",
+  "main": "main.js",
+  "author": "거제시종합사회복지관",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "kr.or.gjcw.dashboard",
+    "productName": "복지관 통합 대시보드",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "settings-preload.js",
+      "settings.html",
+      "offline.html",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
