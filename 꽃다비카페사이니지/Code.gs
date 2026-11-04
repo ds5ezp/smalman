@@ -147,35 +147,11 @@ function getDashboardData() {
     }
   } catch(e) {}
 
+  // 공지사항: 홈페이지가 앱스 스크립트 요청을 막아서, '홈페이지RSS' 탭(IMPORTFEED 수식)에서 읽음
   try {
-    const rssUrl = "http://gjcw.or.kr/wp-content/plugins/kboard/rss.php?board_id=3"; 
-    const res = UrlFetchApp.fetch(rssUrl, { muteHttpExceptions: true, headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (res.getResponseCode() !== 200) throw new Error('게시판 응답 코드 ' + res.getResponseCode());
-    const items = XmlService.parse(res.getContentText()).getRootElement().getChild('channel').getChildren('item');
-
-    noticeData = items.slice(0, 6).map(item => {
-      const pubDateStr = item.getChildText('pubDate') || '';
-      const link = item.getChildText('link') || '';
-      let uid = "";
-      const uidMatch = link.match(/uid=(\d+)/);
-      const redirectMatch = link.match(/kboard_content_redirect=(\d+)/);
-      if (uidMatch) uid = uidMatch[1]; else if (redirectMatch) uid = redirectMatch[1];
-      const targetLink = uid ? "http://gjcw.or.kr/sub07-1/?uid=" + uid + "&mod=document" : link;
-
-      let formattedDate = "";
-      try {
-        const dateObj = new Date(pubDateStr);
-        formattedDate = Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy.MM.dd');
-      } catch(e) {}
-
-      return { 
-        title: decodeHtmlEntities(item.getChildText('title') || '공지사항'), 
-        link: targetLink, 
-        date: formattedDate
-      };
-    });
+    noticeData = readNoticeFeedSheet_(6);
   } catch(e) {
-    // 공지를 읽지 못한 경우 화면에 그 이유를 보여 줌 (정말 글이 없는 경우와 구분하기 위해)
+    // 읽지 못한 이유를 화면에 보여 줌 (정말 글이 없는 경우와 구분하기 위해)
     noticeError = '공지사항을 불러오지 못했습니다. (' + e.message + ')';
   }
 
@@ -431,6 +407,44 @@ function getSlideData() {
   }
 
   return finalSlides;
+}
+
+// 편집기에서 이 함수를 한 번 실행하면 '홈페이지RSS' 탭을 만듦 (복지관 공지 게시판 RSS를 구글 시트가 대신 가져옴)
+function setupNoticeFeedSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('홈페이지RSS') || ss.insertSheet('홈페이지RSS');
+  sheet.clear();
+  sheet.getRange('A1').setFormula('=IMPORTFEED("http://gjcw.or.kr/wp-content/plugins/kboard/rss.php?board_id=3","items",TRUE,6)');
+}
+
+// '홈페이지RSS' 탭을 읽어 공지 목록으로 만듦
+function readNoticeFeedSheet_(limit) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('홈페이지RSS');
+  if (!sheet) throw new Error("'홈페이지RSS' 탭이 없습니다. setupNoticeFeedSheet 함수를 한 번 실행해 주세요.");
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+  const head = values[0].map(h => String(h).trim().toLowerCase());
+  const find = keys => head.findIndex(h => keys.some(k => h === k || h.indexOf(k) !== -1));
+  const cTitle = find(['title', '제목']);
+  if (cTitle === -1) throw new Error("'홈페이지RSS' 탭 1행에 제목 머리글이 없습니다. setupNoticeFeedSheet 함수를 다시 실행해 주세요.");
+  const cLink = find(['url', 'link']);
+  const cDate = find(['date', '날짜']);
+  const tz = Session.getScriptTimeZone();
+  return values.slice(1)
+    .filter(r => { const t = String(r[cTitle] || '').trim(); return t !== '' && t.charAt(0) !== '#'; })
+    .slice(0, limit)
+    .map(r => {
+      let date = '';
+      if (cDate !== -1 && r[cDate]) {
+        const d = r[cDate] instanceof Date ? r[cDate] : new Date(r[cDate]);
+        if (!isNaN(d.getTime())) date = Utilities.formatDate(d, tz, 'yyyy.MM.dd');
+      }
+      return {
+        title: String(r[cTitle]).trim(),
+        link: cLink === -1 ? '' : String(r[cLink] || ''),
+        date: date
+      };
+    });
 }
 
 function getLiveWeather() {
