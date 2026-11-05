@@ -209,7 +209,14 @@
               <button class="btn btn-light border d-none" onclick="resetVisitForm()" id="visitCancel">취소</button>
             </div>
           </div>
-          <p class="small text-muted mt-2 mb-0">일정 시간 동안 로비 화면이 아래 '환영 이미지'로 바뀝니다.</p>
+          <div class="row g-2 align-items-end mt-1">
+            <div class="col-12 col-md-9">
+              <label class="form-label small">이 일정 때 보여 줄 사진 (여러 장 선택 가능, 선택 사항)</label>
+              <input type="file" id="visitPhotos" class="form-control" multiple accept="image/*">
+            </div>
+            <div class="col-12 col-md-3 small text-muted" id="visitPhotoInfo">사진을 고르면 저장할 때 함께 올라갑니다.</div>
+          </div>
+          <p class="small text-muted mt-2 mb-0">일정 시간 동안 로비 화면이 사진으로 바뀝니다. 사진은 이 일정의 날짜와 시간에만 나옵니다. (수정할 때 사진을 고르면 이 일정 시간에 맞춰 추가됩니다)</p>
         </div>
         <div class="card p-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
@@ -2905,6 +2912,8 @@
       document.getElementById('visitStart').value = '09:00';
       document.getElementById('visitEnd').value = '18:00';
       document.getElementById('visitUse').value = 'Y';
+      document.getElementById('visitPhotos').value = '';
+      document.getElementById('visitPhotoInfo').textContent = '사진을 고르면 저장할 때 함께 올라갑니다.';
     }
 
     function editVisit(idx) {
@@ -2920,6 +2929,7 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    // 일정과 사진을 한 번에 저장: 일정을 먼저 저장하고, 고른 사진을 그 일정의 날짜·시간 기간으로 올림
     function submitVisit() {
       const v = {
         date: document.getElementById('visitDate').value,
@@ -2927,12 +2937,50 @@
         end: document.getElementById('visitEnd').value,
         use: document.getElementById('visitUse').value
       };
+      const files = Array.from(document.getElementById('visitPhotos').files || []);
+      if (files.some(f => f.size > 20 * 1024 * 1024)) return fail(new Error('사진은 한 장당 20MB 이하로 골라 주세요.'));
       if (state.editingVisit) { v.row = state.editingVisit.row; v.raw = state.editingVisit.raw; }
-      save('saveVisit', v).then(list => {
-        state.visits = list; renderVisits(); resetVisitForm();
-        toast('기관방문 일정을 저장했습니다.');
+
+      save('saveVisit', v).then(async list => {
+        state.visits = list; renderVisits();
+        let uploaded = 0;
+        if (files.length) {
+          uploaded = await uploadVisitPhotos(files, { start: v.date, end: v.date, startTime: v.start, endTime: v.end });
+          loadFiles('welcome');
+        }
+        resetVisitForm();
+        toast(files.length ? '일정과 사진 ' + uploaded + '장을 저장했습니다.' : '기관방문 일정을 저장했습니다.');
       }).catch(fail);
     }
+
+    // 사진을 한 장씩 환영 이미지 폴더에 올림 (같은 기간을 모든 사진에 붙임)
+    async function uploadVisitPhotos(files, period) {
+      const info = document.getElementById('visitPhotoInfo');
+      let n = 0;
+      for (const file of files) {
+        n++;
+        info.textContent = '사진 올리는 중 (' + n + '/' + files.length + ')…';
+        const data = await readFileBase64_(file);
+        await save('uploadFile', 'welcome', { name: file.name, mime: file.type, data: data, period: period });
+      }
+      info.textContent = '사진 ' + n + '장을 올렸습니다.';
+      return n;
+    }
+
+    function readFileBase64_(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = () => reject(new Error('사진 파일을 읽지 못했습니다.'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 사진을 고르면 몇 장인지 바로 보여 줌
+    document.getElementById('visitPhotos').addEventListener('change', function () {
+      const n = this.files ? this.files.length : 0;
+      document.getElementById('visitPhotoInfo').textContent = n ? n + '장 선택됨 (저장할 때 함께 올라갑니다)' : '사진을 고르면 저장할 때 함께 올라갑니다.';
+    });
 
     function toggleVisitUse(idx) {
       const v = state.visits[idx];
