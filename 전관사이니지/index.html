@@ -61,6 +61,21 @@
             to { width: 100%; }
         }
 
+        /* 기관방문 환영 템플릿 */
+        .wc-tpl { position: absolute; inset: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;
+                  background: radial-gradient(circle at 25% 20%, #1e3a8a 0%, #0b1220 62%, #05080f 100%); }
+        .wc-ring { position: absolute; border-radius: 50%; border: 2px solid rgba(125,211,252,.25); }
+        .wc-ring-a { width: 780px; height: 780px; animation: wcSpin 40s linear infinite; }
+        .wc-ring-b { width: 1180px; height: 1180px; border-style: dashed; animation: wcSpin 70s linear infinite reverse; }
+        .wc-card { position: relative; z-index: 2; text-align: center; color: #fff; padding: 40px; animation: wcUp 1.1s ease-out both; }
+        .wc-badge { display: inline-block; padding: 10px 26px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 26px; font-weight: 700; margin-bottom: 28px; }
+        .wc-title { font-size: 110px; font-weight: 900; letter-spacing: .04em; animation: wcPulse 3.5s ease-in-out infinite; }
+        .wc-name { font-size: 84px; font-weight: 900; color: #7dd3fc; margin: 22px 0; line-height: 1.25; word-break: keep-all; }
+        .wc-time { font-size: 40px; font-weight: 700; color: #fde68a; }
+        .wc-sub { font-size: 36px; margin-top: 28px; opacity: .85; }
+        @keyframes wcUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+        @keyframes wcPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        @keyframes wcSpin { to { transform: rotate(360deg); } }
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -543,11 +558,14 @@
             }
             checkSavingMode();
 
-            if (data.welcomeInfo && data.welcomeInfo.isWelcome && data.welcomeInfo.slides.length > 0) {
+            if (data.welcomeInfo && data.welcomeInfo.isWelcome && (data.welcomeInfo.visitName || data.welcomeInfo.slides.length > 0)) {
                 clearTimeout(state.slideTimer);
                 state.slideTimer = null;
                 welcomeState.isWelcome = true;
-                welcomeState.slides = data.welcomeInfo.slides;
+                welcomeState.slides = data.welcomeInfo.slides || [];
+                welcomeState.visitName = data.welcomeInfo.visitName || '';
+                welcomeState.visitStart = data.welcomeInfo.visitStart || '';
+                welcomeState.visitEnd = data.welcomeInfo.visitEnd || '';
                 renderWelcomeSlides();
                 return;
             } else if (welcomeState.isWelcome) {
@@ -631,6 +649,37 @@
         }
 
         // ---------- 기관방문 환영 (전체 화면) ----------
+        // 환영 템플릿: 기관명과 방문 시간을 크게 보여 줌 (사진 대신 기본으로 사용)
+        function renderWelcomeTemplate() {
+            var fsOverlay = document.getElementById('fullscreen-overlay');
+            var fsContainer = document.getElementById('fullscreen-display');
+            var fsCounter = document.getElementById('fullscreenCounter');
+            var fsProgressBar = document.getElementById('fullscreenProgressBar');
+            fsOverlay.classList.remove('hidden');
+            fsCounter.innerText = '';
+            fsProgressBar.style.animation = 'none';
+            fsProgressBar.style.width = '0%';
+            var name = wxEscLobby(welcomeState.visitName || '방문해 주셔서');
+            var time = (welcomeState.visitStart && welcomeState.visitEnd) ? welcomeState.visitStart + ' ~ ' + welcomeState.visitEnd : '';
+            fsContainer.innerHTML =
+                '<div class="wc-tpl">' +
+                  '<div class="wc-ring wc-ring-a"></div><div class="wc-ring wc-ring-b"></div>' +
+                  '<div class="wc-card">' +
+                    '<div class="wc-badge">거제시종합사회복지관</div>' +
+                    '<div class="wc-title">환영합니다</div>' +
+                    '<div class="wc-name">' + name + '</div>' +
+                    (time ? '<div class="wc-time">방문 시간 ' + time + '</div>' : '') +
+                    '<div class="wc-sub">편안한 시간 되시길 바랍니다</div>' +
+                  '</div>' +
+                '</div>';
+        }
+
+        function wxEscLobby(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
         function renderWelcomeSlides() {
             clearTimeout(welcomeState.timer);
             if (savingActive) return;
@@ -639,6 +688,12 @@
             var fsContainer = document.getElementById('fullscreen-display');
             var fsCounter = document.getElementById('fullscreenCounter');
             var fsProgressBar = document.getElementById('fullscreenProgressBar');
+
+            // 기관명이 있으면 템플릿으로 보여 줌 (사진은 쓰지 않음)
+            if (welcomeState.isWelcome && welcomeState.visitName) {
+                renderWelcomeTemplate();
+                return;
+            }
 
             if (!welcomeState.isWelcome || welcomeState.slides.length === 0) {
                 if (state.systemMode !== 'emergency') fsOverlay.classList.add('hidden');

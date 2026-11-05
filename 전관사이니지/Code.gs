@@ -1017,7 +1017,8 @@ function getPromo() {
 // 기관방문 스케줄 및 환영 이미지 감지
 function checkWelcomeMode() {
   try {
-    if (!isWelcomeNow()) return { isWelcome: false, slides: [] };
+    const visit = findActiveVisit_();
+    if (!visit) return { isWelcome: false, slides: [] };
 
     const slides = listActiveFiles(WELCOME_FOLDER_ID)
       .filter(f => f.mime.startsWith('image/'))
@@ -1027,18 +1028,18 @@ function checkWelcomeMode() {
         path: driveFileUrl(f.id, false),
         duration: 6000
       }));
-    return { isWelcome: true, slides: slides };
+    return { isWelcome: true, slides: slides, visitName: visit.name, visitStart: visit.start, visitEnd: visit.end };
   } catch(e) {
     console.error("기관방문 확인 에러: " + e.toString());
     return { isWelcome: false, slides: [] };
   }
 }
 
-// '기관방문' 시트에 지금 시간이 포함된 사용 중(Y) 일정이 있는지 확인
-function isWelcomeNow() {
+// '기관방문' 시트에서 지금 시간이 포함된 사용 중(Y) 일정을 찾아 기관명과 시간을 돌려줌 (없으면 null)
+function findActiveVisit_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('기관방문');
-  if (!sheet) return false;
+  if (!sheet) return null;
 
   const rows = sheet.getDataRange().getDisplayValues();
   rows.shift();
@@ -1047,7 +1048,7 @@ function isWelcomeNow() {
   const todayStr = Utilities.formatDate(now, ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone(), 'yyyy-MM-dd');
   const currentMin = now.getHours() * 60 + now.getMinutes();
 
-  return rows.some(row => {
+  const found = rows.find(row => {
     const useYn = String(row[3] || 'Y').toUpperCase().trim();
     const startTimeStr = String(row[1] || '').trim();
     const endTimeStr = String(row[2] || '').trim();
@@ -1062,6 +1063,12 @@ function isWelcomeNow() {
     const endMin = parseInt(endParts[0], 10) * 60 + parseInt(endParts[1], 10);
     return !isNaN(startMin) && !isNaN(endMin) && currentMin >= startMin && currentMin <= endMin;
   });
+  if (!found) return null;
+  return {
+    name: String(found[4] || '').trim(),
+    start: String(found[1] || '').trim().slice(0, 5),
+    end: String(found[2] || '').trim().slice(0, 5)
+  };
 }
 
 // 2026.8.18 / 2026/08/18 / 2026-8-18 → 2026-08-18
