@@ -86,15 +86,10 @@ const TRUCK = {
   APP_URL: 'https://script.google.com/macros/s/AKfycbzfORMMwpW1wReLQNxS7CBt1uYM84_iiD2BQFhuH-H8HnUPnXcZNpgXaQmjnLDLagc_/exec'
 };
 
-// 어르신 배움터 (배움터 접수시스템 Code.gs의 FORM_ID / INFO_ID 와 같아야 함)
-// 학기가 바뀌어 강좌정보 탭 이름이 바뀌면 COURSE_SHEET 만 고치면 됨
-const LEARN = {
-  FORM_ID: '1u8MrJeVfzCli_wyt-m8-G07uTYDoEkyxDkKvMmc1VTY',
-  INFO_ID: '1_mRID4mwFypGU8pSFMZcwf35NDqjpTLuUUoe2a-mPvc',
-  RESP_SHEET: 'Form Responses 1',
-  COURSE_SHEET: '2026년하반기어르신배움터강좌정보',
-  BACKUP_SHEET: '★접수변경_백업대장'
-};
+// 어르신 배움터 (학기별): 학기 목록은 배움터 접수 시스템과 같은 학기목록 탭을 읽음
+const LEARN_REGISTRY_ID = '1_mRID4mwFypGU8pSFMZcwf35NDqjpTLuUUoe2a-mPvc';
+const LEARN_REGISTRY_TAB = '학기목록';
+const LEARN_BACKUP_SHEET = '★접수변경_백업대장';
 
 // 셔틀버스 (GitHub Pages + Firebase). 운행 현황은 승객 화면과 같은 공개 경로(publicLiveStatus)를 화면에서 바로 읽음
 const SHUTTLE = {
@@ -219,10 +214,7 @@ function getBootstrap() {
       appUrl: TRUCK.APP_URL,
       sheetUrl: TRUCK.SHEET_ID ? 'https://docs.google.com/spreadsheets/d/' + TRUCK.SHEET_ID + '/edit' : ''
     },
-    learn: {
-      formUrl: 'https://docs.google.com/spreadsheets/d/' + LEARN.FORM_ID + '/edit',
-      infoUrl: 'https://docs.google.com/spreadsheets/d/' + LEARN.INFO_ID + '/edit'
-    },
+    // 어르신 배움터 링크는 학기별로 달라서 getLearnStatus 에서 가져옴
     shuttle: {
       firebaseUrl: SHUTTLE.FIREBASE_URL,
       mapUrl: SHUTTLE.MAP_URL,
@@ -1095,19 +1087,56 @@ function getTruckSummary() {
 }
 
 // =================================================================
-// 13. 어르신 배움터 (4단계)
-// 신청: FORM 시트 'Form Responses 1' (요일별 열에 '강좌표시, 강좌표시' 형태)
-// 강좌: INFO 시트 강좌정보 탭 (A 표시명 '강좌명|...|수강료', B 요일, C 시작, D 종료, '정원' 열)
-// 일정: INFO 시트 '환경설정' A2 접수시작, B2 마감, C2 결과발표, D2 신청 화면 주소
-// 추첨 결과: FORM 시트 '결과_강좌명(15자)' 탭 (순번, 성명, 생년월일, 전화번호, 결과)
+// 13. 어르신 배움터 (학기별)
+// 학기 목록: LEARN_REGISTRY_ID 스프레드시트의 '학기목록' 탭 (배움터 접수 시스템과 같은 탭)
+// 신청: 학기의 신청 시트 (신청탭), 강좌: 학기의 강좌정보 탭 (강좌탭), 참여자 탭은 학기목록에서 읽음
+// 일정: 학기 강좌정보 스프레드시트 '환경설정' A2 접수시작, B2 마감, C2 결과발표, D2 신청 화면 주소
+// 추첨 결과: 학기 신청 시트 '결과_강좌명(15자)' 탭 (순번, 성명, 생년월일, 전화번호, 결과)
 // =================================================================
 
-function learnForm_() {
-  return SpreadsheetApp.openById(LEARN.FORM_ID);
+function listLearnTerms_() {
+  const sheet = SpreadsheetApp.openById(LEARN_REGISTRY_ID).getSheetByName(LEARN_REGISTRY_TAB);
+  if (!sheet) throw new Error("'" + LEARN_REGISTRY_TAB + "' 탭이 없습니다.");
+  const values = sheet.getDataRange().getDisplayValues();
+  const h = values[0].map(x => String(x).trim());
+  ['학기ID', '학기명', '신청시트ID', '강좌정보시트ID', '강좌탭', '사용'].forEach(n => {
+    if (h.indexOf(n) === -1) throw new Error("'" + LEARN_REGISTRY_TAB + "' 탭에 '" + n + "' 열이 없습니다.");
+  });
+  const get = (r, name) => {
+    const i = h.indexOf(name);
+    return i === -1 ? '' : String(r[i]).trim();
+  };
+  return values.slice(1).filter(r => get(r, '학기ID') !== '').map(r => ({
+    id: get(r, '학기ID'),
+    name: get(r, '학기명'),
+    formId: get(r, '신청시트ID'),
+    infoId: get(r, '강좌정보시트ID'),
+    respTab: get(r, '신청탭') || 'Form Responses 1',
+    courseTab: get(r, '강좌탭'),
+    active: get(r, '사용').toUpperCase() === 'Y'
+  }));
 }
 
-function learnInfo_() {
-  return SpreadsheetApp.openById(LEARN.INFO_ID);
+// termId 가 없으면 '사용' 이 Y 인 학기
+function getLearnTerm_(termId) {
+  const terms = listLearnTerms_();
+  const id = String(termId || '').trim();
+  const t = id ? terms.find(x => x.id === id) : terms.find(x => x.active);
+  if (!t) throw new Error('학기 정보를 찾을 수 없습니다. (' + (id || '사용 중인 학기 없음') + ')');
+  return t;
+}
+
+function listLearnTerms() {
+  requireUser_();
+  return listLearnTerms_().map(t => ({ id: t.id, name: t.name, active: t.active }));
+}
+
+function learnForm_(t) {
+  return SpreadsheetApp.openById(t.formId);
+}
+
+function learnInfo_(t) {
+  return SpreadsheetApp.openById(t.infoId);
 }
 
 function learnNormName_(n) {
@@ -1118,7 +1147,7 @@ function learnNormDob_(s) {
   return String(s || '').replace(/[^0-9]/g, '').slice(-6);
 }
 
-// '[월] 강좌명 | 시간 | 수강료' → '강좌명' (배움터 앱과 같은 규칙)
+// '[월] 강좌명 | 시간 | 수강료' → '강좌명' (배움터 접수 시스템과 같은 규칙)
 function learnCourseName_(raw) {
   return String(raw || '').replace(/^\[(월|화|수|목|금)\]\s*/, '').split('|')[0].trim();
 }
@@ -1132,7 +1161,7 @@ function learnIsExempt_(benefit) {
   return b !== '' && b.indexOf('해당없음') === -1 && b !== '일반';
 }
 
-// 이름 가운데 가리기: 홍길동 → 홍*동, 생년월일 앞 2자리, 전화 뒤 4자리 (배움터 추첨 화면과 같은 형식)
+// 이름 가운데 가리기: 홍길동 → 홍*동, 생년월일 앞 2자리, 전화 뒤 4자리
 function learnMask_(a) {
   const n = String(a.name || '');
   const masked = n.length <= 2 ? n.charAt(0) + '*' : n.charAt(0) + '*'.repeat(n.length - 2) + n.slice(-1);
@@ -1140,10 +1169,9 @@ function learnMask_(a) {
   return masked + ' (' + String(a.dob || '').slice(0, 2) + '**** / ' + phone.slice(-4) + ')';
 }
 
-function learnCourses_(info) {
-  let sheet = info.getSheetByName(LEARN.COURSE_SHEET);
-  if (!sheet) sheet = info.getSheets().filter(s => s.getName().indexOf('강좌정보') !== -1).pop();
-  if (!sheet) throw new Error("배움터 강좌정보 탭을 찾을 수 없습니다. (" + LEARN.COURSE_SHEET + ")");
+function learnCourses_(info, t) {
+  const sheet = info.getSheetByName(t.courseTab);
+  if (!sheet) throw new Error("배움터 강좌정보 탭을 찾을 수 없습니다. (" + t.courseTab + ")");
   const data = sheet.getDataRange().getDisplayValues();
   const qIdx = data[0].indexOf('정원') !== -1 ? data[0].indexOf('정원') : 4;
   return data.slice(1)
@@ -1163,9 +1191,9 @@ function learnCourses_(info) {
 }
 
 // 신청자 전체를 읽어 사람별 신청 강좌 목록으로
-function learnApplicants_(form) {
-  const sheet = form.getSheetByName(LEARN.RESP_SHEET);
-  if (!sheet) throw new Error("배움터 신청 시트에 '" + LEARN.RESP_SHEET + "' 탭이 없습니다.");
+function learnApplicants_(form, t) {
+  const sheet = form.getSheetByName(t.respTab);
+  if (!sheet) throw new Error("배움터 신청 시트에 '" + t.respTab + "' 탭이 없습니다.");
   const range = sheet.getDataRange();
   const values = range.getValues();
   const disp = range.getDisplayValues();
@@ -1239,11 +1267,12 @@ function learnAgeGroup_(dob) {
   return age >= 90 ? '90대 이상' : age >= 80 ? '80대' : age >= 70 ? '70대' : age >= 60 ? '60대' : '60세 미만';
 }
 
-function getLearnStatus() {
+function getLearnStatus(termId) {
   requireUser_();
-  const form = learnForm_(), info = learnInfo_();
-  const courses = learnCourses_(info);
-  const apps = learnApplicants_(form);
+  const t = getLearnTerm_(termId);
+  const form = learnForm_(t), info = learnInfo_(t);
+  const courses = learnCourses_(info, t);
+  const apps = learnApplicants_(form, t);
   const sheetNames = form.getSheets().map(s => s.getName());
 
   const stat = {};
@@ -1285,6 +1314,12 @@ function getLearnStatus() {
 
   return {
     checkedAt: fmt_(new Date(), 'yyyy-MM-dd HH:mm'),
+    term: t.name,
+    termId: t.id,
+    links: {
+      formUrl: 'https://docs.google.com/spreadsheets/d/' + t.formId + '/edit',
+      infoUrl: 'https://docs.google.com/spreadsheets/d/' + t.infoId + '/edit'
+    },
     schedule: learnSchedule_(info),
     actual: apps.length,
     enrollment: enrollment,
@@ -1297,70 +1332,75 @@ function getLearnStatus() {
   };
 }
 
-function getLearnApplicants() {
+function getLearnApplicants(termId) {
   requireUser_();
-  return learnApplicants_(learnForm_())
+  const t = getLearnTerm_(termId);
+  return learnApplicants_(learnForm_(t), t)
     .map(a => ({ row: a.row, date: a.date, name: a.name, dob: a.dob, gender: a.gender, phone: a.phone, benefit: a.benefit, courses: a.courses }))
     .reverse();
 }
 
-// 지우기 전에 배움터 앱과 같은 백업대장 탭에 그대로 옮겨 적음
+// 지우기 전에 배움터 접수 시스템과 같은 백업대장 탭에 그대로 옮겨 적음
 function learnBackupRow_(sheet, row, type) {
   const ss = sheet.getParent();
-  let backup = ss.getSheetByName(LEARN.BACKUP_SHEET);
+  let backup = ss.getSheetByName(LEARN_BACKUP_SHEET);
   const lastCol = sheet.getLastColumn();
   if (!backup) {
-    backup = ss.insertSheet(LEARN.BACKUP_SHEET);
+    backup = ss.insertSheet(LEARN_BACKUP_SHEET);
     backup.appendRow(['백업일시', '변경구분'].concat(sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0]));
   }
   backup.appendRow([fmt_(new Date(), 'yyyy-MM-dd HH:mm:ss'), type].concat(sheet.getRange(row, 1, 1, lastCol).getDisplayValues()[0]));
 }
 
-function cancelLearnApplicant(row, name, dob) {
+function cancelLearnApplicant(row, name, dob, termId) {
   requireUser_();
   return withLock_(() => {
-    const sheet = learnForm_().getSheetByName(LEARN.RESP_SHEET);
-    const target = learnApplicants_(learnForm_()).find(a => a.row === Number(row));
+    const t = getLearnTerm_(termId);
+    const form = learnForm_(t);
+    const sheet = form.getSheetByName(t.respTab);
+    const target = learnApplicants_(form, t).find(a => a.row === Number(row));
     if (!target || learnNormName_(target.name) !== learnNormName_(name) || learnNormDob_(target.dob) !== learnNormDob_(dob)) {
       throw new Error('그 사이에 명단이 바뀌었습니다. 새로고침 후 다시 시도해 주세요.');
     }
     learnBackupRow_(sheet, target.row, '관리자접수취소(대시보드)');
     sheet.deleteRow(target.row);
-    log_('배움터 접수 취소', target.name + ' (' + target.dob + ') ' + target.courses.join(', '));
-    return getLearnApplicants();
+    log_('배움터 접수 취소', t.name + ' / ' + target.name + ' (' + target.dob + ') ' + target.courses.join(', '));
+    return getLearnApplicants(t.id);
   });
 }
 
 // ---------- 추첨 ----------
 
-function learnCourseApplicants_(form, course) {
-  return learnApplicants_(form).filter(a => a.courses.indexOf(course) !== -1);
+function learnCourseApplicants_(form, course, t) {
+  return learnApplicants_(form, t).filter(a => a.courses.indexOf(course) !== -1);
 }
 
-function getLotteryCourses() {
+function getLotteryCourses(termId) {
   requireUser_();
-  const form = learnForm_();
-  const apps = learnApplicants_(form);
+  const t = getLearnTerm_(termId);
+  const form = learnForm_(t);
+  const apps = learnApplicants_(form, t);
   const sheetNames = form.getSheets().map(s => s.getName());
-  return learnCourses_(learnInfo_()).map(c => {
+  return learnCourses_(learnInfo_(t), t).map(c => {
     const count = apps.filter(a => a.courses.indexOf(c.name) !== -1).length;
     return { name: c.name, day: c.day, quota: c.quota, count: count, needed: count > c.quota, done: sheetNames.indexOf(learnResultSheetName_(c.name)) !== -1 };
   }).filter(c => c.needed || c.done);
 }
 
 // 서버에서 섞고 30분 동안 보관 → 저장할 때 그대로 씀 (화면에서 순서를 바꿀 수 없음)
-function drawLottery(course) {
+function drawLottery(course, termId) {
   requireUser_();
-  const c = learnCourses_(learnInfo_()).find(x => x.name === course);
+  const t = getLearnTerm_(termId);
+  const c = learnCourses_(learnInfo_(t), t).find(x => x.name === course);
   if (!c) throw new Error('강좌를 찾을 수 없습니다.');
-  const pool = learnCourseApplicants_(learnForm_(), course).map(a => ({ name: a.name, dob: a.dob, phone: a.phone }));
+  const pool = learnCourseApplicants_(learnForm_(t), course, t).map(a => ({ name: a.name, dob: a.dob, phone: a.phone }));
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+    const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
   }
   const token = Utilities.getUuid();
-  CacheService.getScriptCache().put('lottery_' + token, JSON.stringify({ course: course, quota: c.quota, list: pool }), 1800);
-  log_('배움터 추첨', course + ' (정원 ' + c.quota + ' / 신청 ' + pool.length + ')');
+  CacheService.getScriptCache().put('lottery_' + token, JSON.stringify({ termId: t.id, course: course, quota: c.quota, list: pool }), 1800);
+  log_('배움터 추첨', t.name + ' / ' + course + ' (정원 ' + c.quota + ' / 신청 ' + pool.length + ')');
   return {
     token: token, course: course, quota: c.quota, total: pool.length,
     list: pool.map((a, i) => ({ pass: i < c.quota, label: i < c.quota ? '합격 ' + (i + 1) + '번' : '대기 ' + (i - c.quota + 1) + '번', display: learnMask_(a) }))
@@ -1373,7 +1413,8 @@ function saveLottery(token, overwrite) {
   if (!raw) throw new Error('추첨한 지 30분이 지나 결과가 만료되었습니다. 다시 추첨해 주세요.');
   const draw = JSON.parse(raw);
   return withLock_(() => {
-    const form = learnForm_();
+    const t = getLearnTerm_(draw.termId);
+    const form = learnForm_(t);
     const name = learnResultSheetName_(draw.course);
     let sheet = form.getSheetByName(name);
     if (sheet && !overwrite) return { exists: true };
@@ -1382,14 +1423,15 @@ function saveLottery(token, overwrite) {
     const rows = draw.list.map((a, i) => [i + 1, a.name, a.dob, "'" + String(a.phone).replace(/[^0-9]/g, ''), i < draw.quota ? '합격자' : '대기자(' + (i - draw.quota + 1) + '번)']);
     sheet.getRange(1, 1, rows.length + 1, 5).setValues([['순번', '성명', '생년월일', '전화번호', '결과']].concat(rows))
       .setHorizontalAlignment('center').setBorder(true, true, true, true, true, true);
-    log_('배움터 추첨 결과 저장', draw.course + ' (' + rows.length + '명)');
+    log_('배움터 추첨 결과 저장', t.name + ' / ' + draw.course + ' (' + rows.length + '명)');
     return { saved: true, sheetName: name };
   });
 }
 
-function getLotteryResult(course) {
+function getLotteryResult(course, termId) {
   requireUser_();
-  const sheet = learnForm_().getSheetByName(learnResultSheetName_(course));
+  const t = getLearnTerm_(termId);
+  const sheet = learnForm_(t).getSheetByName(learnResultSheetName_(course));
   if (!sheet || sheet.getLastRow() < 2) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getDisplayValues().map(r => ({
     pass: String(r[4]).indexOf('합격') !== -1,
@@ -1398,20 +1440,21 @@ function getLotteryResult(course) {
   }));
 }
 
-// ---------- 합격자 대장 (배움터 앱 getAllPassList 와 같은 규칙) ----------
+// ---------- 합격자 대장 (배움터 접수 시스템 getAllPassList 와 같은 규칙) ----------
 
-function getLearnWinners() {
+function getLearnWinners(termId) {
   requireUser_();
-  const form = learnForm_();
+  const t = getLearnTerm_(termId);
+  const form = learnForm_(t);
   const feeOf = {};
-  learnCourses_(learnInfo_()).forEach(c => { feeOf[c.name] = c.fee; });
+  learnCourses_(learnInfo_(t), t).forEach(c => { feeOf[c.name] = c.fee; });
   const results = {};
   form.getSheets().forEach(s => {
     if (s.getName().indexOf('결과_') === 0) results[s.getName().replace('결과_', '').trim()] = s.getDataRange().getValues();
   });
 
   const people = {};
-  learnApplicants_(form).forEach(a => {
+  learnApplicants_(form, t).forEach(a => {
     const key = learnNormName_(a.name) + '_' + learnNormDob_(a.dob) + '_' + String(a.phone).replace(/[^0-9]/g, '');
     if (!people[key]) people[key] = { name: a.name, dob: a.dob, phone: a.phone, benefit: a.benefit, passed: [], waiting: [], fee: 0 };
     const p = people[key];
@@ -1445,9 +1488,9 @@ function getLearnWinners() {
 
 // ---------- 일정 / 시트 만들기 ----------
 
-function getLearnSettings() {
+function getLearnSettings(termId) {
   requireUser_();
-  return learnSchedule_(learnInfo_());
+  return learnSchedule_(learnInfo_(getLearnTerm_(termId)));
 }
 
 // 'yyyy-MM-ddTHH:mm' (스크립트 시간대 기준)
@@ -1457,29 +1500,31 @@ function learnParseInput_(s) {
   return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0);
 }
 
-function saveLearnSchedule(start, end, result) {
+function saveLearnSchedule(start, end, result, termId) {
   requireUser_();
   const s = learnParseInput_(start), e = learnParseInput_(end), r = learnParseInput_(result);
   if (!s || !e || !r) throw new Error('접수 시작, 마감, 결과 발표 일시를 모두 선택해 주세요.');
   if (s >= e) throw new Error('마감은 접수 시작보다 늦어야 합니다.');
   if (r < e) throw new Error('결과 발표는 마감 이후여야 합니다.');
-  const config = learnInfo_().getSheetByName('환경설정');
-  if (!config) throw new Error("배움터 강좌정보 시트에 '환경설정' 탭이 없습니다.");
+  const t = getLearnTerm_(termId);
+  const config = learnInfo_(t).getSheetByName('환경설정');
+  if (!config) throw new Error("강좌정보 시트에 '환경설정' 탭이 없습니다.");
   config.getRange('A2:C2').setValues([[s, e, r]]);
   SpreadsheetApp.flush();
-  log_('배움터 일정', fmt_(s, 'MM/dd HH:mm') + ' ~ ' + fmt_(e, 'MM/dd HH:mm') + ', 발표 ' + fmt_(r, 'MM/dd HH:mm'));
-  return learnSchedule_(learnInfo_());
+  log_('배움터 일정', t.name + ' / ' + fmt_(s, 'MM/dd HH:mm') + ' ~ ' + fmt_(e, 'MM/dd HH:mm') + ', 발표 ' + fmt_(r, 'MM/dd HH:mm'));
+  return learnSchedule_(learnInfo_(t));
 }
 
-// 접수 분석 보고서 탭 (★보고서_MMdd) - 배움터 앱의 보고서와 같은 내용, 날짜는 실제 접수일 기준
-function createLearnReport() {
+// 접수 분석 보고서 탭 (★보고서_MMdd) - 배움터 접수 시스템의 보고서와 같은 내용
+function createLearnReport(termId) {
   requireUser_();
-  const s = getLearnStatus();
-  const form = learnForm_();
+  const t = getLearnTerm_(termId);
+  const s = getLearnStatus(t.id);
+  const form = learnForm_(t);
   const name = '★보고서_' + fmt_(new Date(), 'MMdd');
   const sheet = form.getSheetByName(name) || form.insertSheet(name);
   sheet.clear();
-  sheet.getRange('A1').setValue('📊 어르신 배움터 접수 분석 보고 (' + fmt_(new Date(), 'MM월 dd일') + ')').setFontSize(14).setFontWeight('bold');
+  sheet.getRange('A1').setValue('📊 ' + t.name + ' 접수 분석 보고 (' + fmt_(new Date(), 'MM월 dd일') + ')').setFontSize(14).setFontWeight('bold');
   sheet.getRange('A2').setValue('※ 기준시각 ' + s.checkedAt).setFontSize(9).setFontColor('#8b95a1');
 
   const block = (row, col, title, pairs) => {
@@ -1500,19 +1545,20 @@ function createLearnReport() {
     sheet.getRange(top + 2, 5, rows.length, 1).setNumberFormat('0.0%');
   }
   sheet.autoResizeColumns(1, head.length);
-  log_('배움터 보고서', name);
+  log_('배움터 보고서', t.name + ' / ' + name);
   return name;
 }
 
-// 강좌별 신청자 명단 탭 (★전체마감명단) - 배움터 앱의 '전체 마감 명단 생성'과 같은 형식
-function createLearnFinalLists() {
+// 강좌별 신청자 명단 탭 (★전체마감명단) - 배움터 접수 시스템의 '전체 마감 명단 생성'과 같은 형식
+function createLearnFinalLists(termId) {
   requireUser_();
-  const form = learnForm_();
-  const apps = learnApplicants_(form);
+  const t = getLearnTerm_(termId);
+  const form = learnForm_(t);
+  const apps = learnApplicants_(form, t);
   const sheet = form.getSheetByName('★전체마감명단') || form.insertSheet('★전체마감명단');
   sheet.clear();
   const rows = [['강좌 정보', '접수 일시', '성 명', '성 별', '생년월일', '연락처', '비고']];
-  learnCourses_(learnInfo_()).forEach(c => {
+  learnCourses_(learnInfo_(t), t).forEach(c => {
     const list = apps.filter(a => a.courses.indexOf(c.name) !== -1);
     if (!list.length) rows.push([c.name, '-', '신청자 없음', '-', '-', '-', '정원 미달 자동 확정']);
     list.forEach(a => rows.push([c.name, a.date, a.name, a.gender, a.dob, a.phone, '']));
@@ -1521,7 +1567,7 @@ function createLearnFinalLists() {
   sheet.getRange(1, 1, rows.length, 7).setValues(rows);
   sheet.getRange(1, 1, 1, 7).setBackground('#f1c40f').setFontWeight('bold');
   sheet.autoResizeColumns(1, 7);
-  log_('배움터 전체마감명단', rows.length - 1 + '줄');
+  log_('배움터 전체마감명단', t.name + ' / ' + (rows.length - 1) + '줄');
   return '★전체마감명단';
 }
 

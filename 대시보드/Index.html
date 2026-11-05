@@ -663,7 +663,8 @@
      <div data-module-view="learn" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <h4 class="mb-0">어르신 배움터 접수</h4>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <select id="lTerm" class="form-select form-select-sm" style="max-width:260px" onchange="changeLearnTerm()"></select>
           <a class="btn btn-sm btn-outline-secondary d-none" id="learnAppLink" target="_blank"><i class="bi bi-box-arrow-up-right me-1"></i>신청 화면</a>
           <a class="btn btn-sm btn-outline-secondary" id="learnFormLink" target="_blank"><i class="bi bi-table me-1"></i>신청 시트</a>
         </div>
@@ -3937,9 +3938,41 @@
     state.winners = null;
     state.draw = null;
 
+    // 학기 선택: 선택한 학기의 ID를 모든 배움터 호출에 넘김 (처음에는 사용 중인 학기)
+    function learnTermId() { return state.learnTerm; }
+
+    function loadLearnTerms() {
+      run('listLearnTerms').then(list => {
+        const sel = document.getElementById('lTerm');
+        sel.innerHTML = list.map(t => '<option value="' + esc(t.id) + '">' + esc(t.name) + (t.active ? ' (사용 중)' : '') + '</option>').join('');
+        const active = list.find(t => t.active) || list[0];
+        state.learnTerm = active ? active.id : undefined;
+        if (state.learnTerm) sel.value = state.learnTerm;
+        loadLearnStatus();
+      }).catch(fail);
+    }
+
+    function changeLearnTerm() {
+      state.learnTerm = document.getElementById('lTerm').value;
+      state.learnList = [];
+      state.learnStatus = null;
+      state.lotteryCourses = null;
+      state.winners = null;
+      state.draw = null;
+      loadLearnStatus();
+      loadLearnList();
+    }
+
     function loadLearnStatus() {
-      run('getLearnStatus').then(s => {
+      if (state.learnTerm === undefined && !state.learnTermsLoading) {
+        state.learnTermsLoading = true;
+        return loadLearnTerms();
+      }
+      run('getLearnStatus', learnTermId()).then(s => {
         state.learnStatus = s;
+        document.getElementById('learnFormLink').href = s.links.formUrl;
+        document.getElementById('learnFormLink2').href = s.links.formUrl;
+        document.getElementById('learnInfoLink').href = s.links.infoUrl;
         document.getElementById('lCheckedAt').textContent = s.checkedAt + ' 기준';
         const phaseClass = { '접수 중': 'text-bg-success', '접수 전': 'text-bg-warning', '접수 마감': 'text-bg-secondary', '결과 발표됨': 'text-bg-primary' }[s.schedule.phase] || 'text-bg-secondary';
         document.getElementById('lPhase').innerHTML = '<span class="mode-pill ' + phaseClass + '">' + esc(s.schedule.phase) + '</span>';
@@ -3981,7 +4014,7 @@
     // ---------- 접수자 명단 ----------
     function loadLearnList() {
       if (!state.learnStatus) loadLearnStatus();
-      run('getLearnApplicants').then(list => { state.learnList = list; renderLearnList(); }).catch(fail);
+      run('getLearnApplicants', learnTermId()).then(list => { state.learnList = list; renderLearnList(); }).catch(fail);
     }
 
     function renderLearnList() {
@@ -4003,7 +4036,7 @@
     function cancelLearn(idx) {
       const a = state.learnList[idx];
       if (!confirm(a.name + ' (' + a.dob + ') 님의 접수를 취소할까요?\n신청 강좌: ' + a.courses.join(', ') + '\n\n원래 내용은 백업대장 탭에 남습니다.')) return;
-      save('cancelLearnApplicant', a.row, a.name, a.dob).then(list => {
+      save('cancelLearnApplicant', a.row, a.name, a.dob, learnTermId()).then(list => {
         state.learnList = list;
         renderLearnList();
         toast('접수를 취소했습니다.');
@@ -4012,7 +4045,7 @@
 
     // ---------- 추첨 ----------
     function loadLotteryCourses() {
-      run('getLotteryCourses').then(list => {
+      run('getLotteryCourses', learnTermId()).then(list => {
         state.lotteryCourses = list;
         document.getElementById('lLotteryCourses').innerHTML = list.length ? list.map((c, idx) =>
           '<div class="col-12 col-md-6 col-xl-4"><div class="card p-3 h-100">' +
@@ -4030,7 +4063,7 @@
     function startDraw(idx) {
       const c = state.lotteryCourses[idx];
       if (c.done && !confirm("'" + c.name + "'은(는) 이미 추첨 결과가 저장되어 있어요. 다시 추첨할까요?\n(새 결과를 저장해야 바뀝니다)")) return;
-      save('drawLottery', c.name).then(d => {
+      save('drawLottery', c.name, learnTermId()).then(d => {
         state.draw = { token: d.token, course: d.course, quota: d.quota, total: d.total, list: d.list, saved: false };
         renderDraw();
         toast('추첨했습니다. 확인 후 결과 저장을 눌러 주세요.');
@@ -4039,7 +4072,7 @@
 
     function showSavedDraw(idx) {
       const c = state.lotteryCourses[idx];
-      run('getLotteryResult', c.name).then(list => {
+      run('getLotteryResult', c.name, learnTermId()).then(list => {
         state.draw = { token: null, course: c.name, quota: c.quota, total: list.length, list: list, saved: true };
         renderDraw();
       }).catch(fail);
@@ -4101,7 +4134,7 @@
 
     // ---------- 합격자 대장 ----------
     function loadWinners() {
-      run('getLearnWinners').then(w => {
+      run('getLearnWinners', learnTermId()).then(w => {
         state.winners = w;
         document.getElementById('lwCount').textContent = w.stats.count + '명';
         document.getElementById('lwOriginal').textContent = won(w.stats.original);
@@ -4132,7 +4165,7 @@
 
     // ---------- 일정·시트 ----------
     function loadLearnSettings() {
-      run('getLearnSettings').then(renderLearnSettings).catch(fail);
+      run('getLearnSettings', learnTermId()).then(renderLearnSettings).catch(fail);
     }
 
     function renderLearnSettings(s) {
@@ -4144,12 +4177,12 @@
     }
 
     function saveLearnScheduleValue() {
-      save('saveLearnSchedule', document.getElementById('lsStart').value, document.getElementById('lsEnd').value, document.getElementById('lsResult').value)
+      save('saveLearnSchedule', document.getElementById('lsStart').value, document.getElementById('lsEnd').value, document.getElementById('lsResult').value, learnTermId())
         .then(s => { renderLearnSettings(s); toast('접수 일정을 저장했습니다.'); }).catch(fail);
     }
 
     function makeLearnSheet(fn) {
-      save(fn).then(name => toast("신청 시트에 '" + name + "' 탭을 만들었습니다.")).catch(fail);
+      save(fn, learnTermId()).then(name => toast("신청 시트에 '" + name + "' 탭을 만들었습니다.")).catch(fail);
     }
 
     // =====================================================================
@@ -4352,8 +4385,6 @@
       document.getElementById('linkSheet').href = boot.lobby.sheetUrl;
       document.getElementById('roomSheetLink').href = boot.rooms.sheetUrl;
       document.getElementById('truckAppLink').href = boot.truck.appUrl;
-      ['learnFormLink', 'learnFormLink2'].forEach(id => { document.getElementById(id).href = boot.learn.formUrl; });
-      document.getElementById('learnInfoLink').href = boot.learn.infoUrl;
       document.getElementById('shuttleMapLink').href = boot.shuttle.mapUrl;
       document.getElementById('shuttleSheetLink').href = boot.shuttle.sheetUrl;
       document.getElementById('shuttleAdminNewTab').href = boot.shuttle.adminUrl;
