@@ -513,6 +513,21 @@ if (!gotLock) {
     win.webContents.setUserAgent(CHROME_UA);
   });
 
+  // 발권·전자결재 화면의 첨부파일: 다운로드가 끝나면 임시 폴더에 저장하고 바로 엽니다
+  session.fromPartition('persist:ticket').on('will-download', (event, item) => {
+    const savePath = path.join(app.getPath('temp'), item.getFilename());
+    item.setSavePath(savePath);
+    item.once('done', (e, state) => {
+      if (state === 'completed') {
+        shell.openPath(savePath).then((err) => {
+          if (err) dialog.showErrorBox('파일 열기 실패', '이 파일을 열 프로그램이 없습니다. 파일: ' + savePath);
+        });
+      } else {
+        dialog.showErrorBox('다운로드 실패', '첨부파일을 받지 못했습니다.');
+      }
+    });
+  });
+
   app.whenReady().then(() => {
     buildMenu();
     applyAutoStart(loadConfig().autoStart);
