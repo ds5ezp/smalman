@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f1f3f5; padding: 15px; font-family: 'Malgun Gothic', sans-serif; }
+    /* 흰색 메인 카드 스타일 */
+    .main-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); max-width: 550px; margin: auto; }
+    .search-btn { font-size: 1.2rem; padding: 12px; border-radius: 12px; font-weight: bold; background-color: #1c7ed6; border: none; color: white; }
+    label { font-weight: bold; margin-bottom: 5px; color: #495057; }
+  </style>
+</head>
+<body>
+<?!= include('navbar'); ?>
+  <div class="main-card">
+    <h3 class="text-center fw-bold mb-4">📋 <?= termName ?> 신청 및 결과조회</h3>
+    <div class="mb-3"><label>성함 (실명)</label><input type="text" id="name" class="form-control form-control-lg" placeholder="예: 황성욱"></div>
+    <div class="mb-3"><label>생년월일 (6자리)</label><input type="number" id="dob" class="form-control form-control-lg" placeholder="예: 500101"></div>
+    <div class="mb-4"><label>연락처</label><input type="tel" id="phone" class="form-control form-control-lg" placeholder="010-0000-0000" maxlength="13" oninput="formatPhone(this)"></div>
+
+    <button onclick="search()" class="btn btn-primary w-100 search-btn" id="btnText">결과 확인하기</button>
+    <button type="button" onclick="goToMainIndex()" class="btn btn-outline-secondary w-100 mt-2 fw-bold" style="padding: 12px; border-radius: 12px; font-size: 1.05rem;">
+      🏠 처음 수강신청 화면으로 돌아가기
+    </button>
+
+    <!-- 결과 위치: 버튼 바로 아래 -->
+    <div id="displayArea" style="display:none;" class="mt-4">
+      <?!= include('resultView'); ?>
+    </div>
+  </div>
+
+  <script>
+    // 학기 ID (웹앱 주소의 ?term= 값, 서버가 채워 줌)
+    const TERM = '<?= termId ?>';
+    const PHONE_RE = /^01[016789]-\d{3,4}-\d{4}$/;
+
+    function formatPhone(el) {
+      const d = el.value.replace(/\D/g, '').slice(0, 11);
+      if (d.length < 4) el.value = d;
+      else if (d.length < 8) el.value = d.slice(0, 3) + '-' + d.slice(3);
+      else if (d.length < 11) el.value = d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+      else el.value = d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+    }
+
+    // 상단 네비바 로드 (navbar.html 이 mainNavbar 요소를 가질 때)
+    window.addEventListener('DOMContentLoaded', () => {
+      if (document.getElementById('mainNavbar')) document.getElementById('mainNavbar').style.display = 'block';
+    });
+
+    function goToMainIndex() {
+      window.top.location.href = '__WEB_APP_URL__?term=' + encodeURIComponent(TERM);
+    }
+
+    function search() {
+      const name = document.getElementById('name').value.trim();
+      const dob = document.getElementById('dob').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+
+      if (!name || !dob || !phone) return alert("정보를 모두 입력해주세요.");
+      if (!PHONE_RE.test(phone)) return alert("연락처는 010-0000-0000 형식으로 입력해 주세요.");
+
+      const btn = document.getElementById('btnText');
+      btn.innerText = "조회 중...";
+      btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(data => {
+          btn.innerText = "결과 확인하기";
+          btn.disabled = false;
+
+          if (!data.applied) return alert("입력하신 정보와 일치하는 신청 내역이 없습니다.");
+
+          document.getElementById('displayArea').style.display = 'block';
+          renderUnifiedResultUI(data, name, dob, false);
+        })
+        .withFailureHandler(err => {
+          btn.innerText = "결과 확인하기";
+          btn.disabled = false;
+          alert("조회 중 시스템 오류가 발생했습니다: " + err.message);
+        })
+        .checkTotalStatus(name, phone, dob, TERM);
+    }
+  </script>
+</body>
+</html>
