@@ -35,7 +35,6 @@
         <button class="menu-title" type="button" onclick="toggleGroup(this)"><i class="bi bi-megaphone"></i><span>홍보관리</span><i class="bi bi-chevron-down chev"></i></button>
         <div class="menu-items">
           <a class="module" href="#" data-module="lobby" onclick="showModule('lobby'); return false;"><i class="bi bi-display"></i>로비 사이니지</a>
-          <a class="module" href="#" data-module="mtg" onclick="showModule('mtg'); return false;"><i class="bi bi-calendar-event"></i>회의 안내</a>
           <a class="module" href="#" data-module="rooms" onclick="showModule('rooms'); return false;"><i class="bi bi-tablet"></i>각 실 사이니지</a>
           <a class="module" href="#" data-module="cafe" onclick="showModule('cafe'); return false;"><i class="bi bi-cup-hot"></i>꽃다비 카페 사이니지</a>
           <a class="module" href="#" data-module="led" onclick="showModule('led'); return false;"><i class="bi bi-easel"></i>전광판 관리</a>
@@ -83,6 +82,7 @@
         <li class="nav-item"><button class="nav-link active" data-tab="status"><i class="bi bi-speedometer2 me-1"></i>현황</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="settings"><i class="bi bi-sliders me-1"></i>운영설정</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="visits"><i class="bi bi-calendar-check me-1"></i>기관방문</button></li>
+        <li class="nav-item"><button class="nav-link" data-tab="meetingNotice"><i class="bi bi-calendar-event me-1"></i>회의 안내</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="files"><i class="bi bi-images me-1"></i>이미지·영상</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="slides"><i class="bi bi-collection-play me-1"></i>슬라이드</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="news"><i class="bi bi-newspaper me-1"></i>언론보도</button></li>
@@ -250,6 +250,43 @@
           <div id="welcomeProgress" class="small mb-2"></div>
           <div id="welcomeToolbar"></div>
           <div class="row g-3" id="welcomeGrid"></div>
+        </div>
+      </section>
+
+      <section data-panel="meetingNotice" class="d-none">
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-3" id="mtgFormTitle">회의 안내 추가</h6>
+          <div class="row g-2">
+            <div class="col-12 col-md-6"><label class="form-label small">회의명</label><input id="mtgName" class="form-control" maxlength="60" placeholder="예: 11월 월례회"></div>
+            <div class="col-12 col-md-6"><label class="form-label small">장소</label><input id="mtgPlace" class="form-control" maxlength="60" placeholder="예: 3층 대회의실"></div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6 col-md-3"><label class="form-label small">회의 날짜</label><input type="date" id="mtgDate" class="form-control"></div>
+            <div class="col-3 col-md-2"><label class="form-label small">회의 시작</label><input type="time" id="mtgStart" class="form-control" value="14:00"></div>
+            <div class="col-3 col-md-2"><label class="form-label small">회의 종료</label><input type="time" id="mtgEnd" class="form-control" value="15:00"></div>
+          </div>
+          <hr>
+          <div class="row g-2">
+            <div class="col-6 col-md-3"><label class="form-label small">표출 시작 날짜</label><input type="date" id="mtgShowStartDate" class="form-control"></div>
+            <div class="col-6 col-md-2"><label class="form-label small">표출 시작 시간</label><input type="time" id="mtgShowStartTime" class="form-control" value="09:00"></div>
+            <div class="col-6 col-md-3"><label class="form-label small">표출 종료 날짜</label><input type="date" id="mtgShowEndDate" class="form-control"></div>
+            <div class="col-6 col-md-2"><label class="form-label small">표출 종료 시간</label><input type="time" id="mtgShowEndTime" class="form-control" value="18:00"></div>
+            <div class="col-12 col-md-2"><label class="form-label small">사용</label><select id="mtgUse" class="form-select"><option value="Y">사용</option><option value="N">사용 안 함</option></select></div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button class="btn btn-light border d-none" id="mtgCancel" onclick="resetMeetingForm()">취소</button>
+            <button class="btn btn-primary" id="mtgSubmit" onclick="submitMeeting()">추가</button>
+          </div>
+          <div class="small text-muted mt-2">회의 시간과 표출 시간은 따로 정합니다. 표출 기간 동안만 로비 화면에 회의 안내가 나옵니다. 회의 전에 미리 표출하려면 표출 시작을 앞당기세요.</div>
+        </div>
+        <div class="card p-3">
+          <h6 class="fw-bold mb-2">회의 목록</h6>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead><tr><th>회의</th><th>회의 일시</th><th>표출 기간</th><th>상태</th><th class="text-end">관리</th></tr></thead>
+              <tbody id="mtgRows"><tr class="loading-row"><td colspan="5">불러오는 중…</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -919,48 +956,6 @@
      </div>
 
      <!-- ===================== 꽃다비 카페 사이니지 ===================== -->
-     <div data-module-view="mtg" class="d-none">
-      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <h4 class="mb-0">회의 안내</h4>
-      </div>
-      <section data-panel="mtgList" class="d-none">
-        <div class="card p-3 mb-3">
-          <h6 class="fw-bold mb-3" id="mtgFormTitle">회의 안내 추가</h6>
-          <div class="row g-2">
-            <div class="col-12 col-md-6"><label class="form-label small">회의명</label><input id="mtgName" class="form-control" maxlength="60" placeholder="예: 11월 월례회"></div>
-            <div class="col-12 col-md-6"><label class="form-label small">장소</label><input id="mtgPlace" class="form-control" maxlength="60" placeholder="예: 3층 대회의실"></div>
-          </div>
-          <div class="row g-2 mt-1">
-            <div class="col-6 col-md-3"><label class="form-label small">회의 날짜</label><input type="date" id="mtgDate" class="form-control"></div>
-            <div class="col-3 col-md-2"><label class="form-label small">회의 시작</label><input type="time" id="mtgStart" class="form-control" value="14:00"></div>
-            <div class="col-3 col-md-2"><label class="form-label small">회의 종료</label><input type="time" id="mtgEnd" class="form-control" value="15:00"></div>
-          </div>
-          <hr>
-          <div class="row g-2">
-            <div class="col-6 col-md-3"><label class="form-label small">표출 시작 날짜</label><input type="date" id="mtgShowStartDate" class="form-control"></div>
-            <div class="col-6 col-md-2"><label class="form-label small">표출 시작 시간</label><input type="time" id="mtgShowStartTime" class="form-control" value="09:00"></div>
-            <div class="col-6 col-md-3"><label class="form-label small">표출 종료 날짜</label><input type="date" id="mtgShowEndDate" class="form-control"></div>
-            <div class="col-6 col-md-2"><label class="form-label small">표출 종료 시간</label><input type="time" id="mtgShowEndTime" class="form-control" value="18:00"></div>
-            <div class="col-12 col-md-2"><label class="form-label small">사용</label><select id="mtgUse" class="form-select"><option value="Y">사용</option><option value="N">사용 안 함</option></select></div>
-          </div>
-          <div class="d-flex justify-content-end gap-2 mt-3">
-            <button class="btn btn-light border d-none" id="mtgCancel" onclick="resetMeetingForm()">취소</button>
-            <button class="btn btn-primary" id="mtgSubmit" onclick="submitMeeting()">추가</button>
-          </div>
-          <div class="small text-muted mt-2">회의 시간과 표출 시간은 따로 정합니다. 표출 기간 동안만 로비 화면에 회의 안내가 나옵니다. 회의 전에 미리 표출하려면 표출 시작을 앞당기세요.</div>
-        </div>
-        <div class="card p-3">
-          <h6 class="fw-bold mb-2">회의 목록</h6>
-          <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-              <thead><tr><th>회의</th><th>회의 일시</th><th>표출 기간</th><th>상태</th><th class="text-end">관리</th></tr></thead>
-              <tbody id="mtgRows"><tr class="loading-row"><td colspan="5">불러오는 중…</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-     </div>
-
      <div data-module-view="cafe" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <h4 class="mb-0">꽃다비 카페 사이니지</h4>
@@ -1634,11 +1629,11 @@
       acStatus: () => loadAirCon(),
       cafeSettings: loadCafe,
       cafeFiles: loadCafeFiles,
-      mtgList: loadMeetings
+      meetingNotice: loadMeetings
     };
     // 열 때마다 새로 읽는 탭
-    const ALWAYS_RELOAD = ['mtgList', 'status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings', 'cafeFiles'];
-    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus', cafe: 'cafeSettings', mtg: 'mtgList' };
+    const ALWAYS_RELOAD = ['meetingNotice', 'status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings', 'cafeFiles'];
+    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus', cafe: 'cafeSettings' };
 
     function moduleOfTab(tab) {
       if (/^r[A-Z]/.test(tab)) return 'rooms';
@@ -1652,7 +1647,6 @@
       if (/^h[A-Z]/.test(tab)) return 'hvac';
       if (/^ac[A-Z]/.test(tab)) return 'aircon';
       if (/^cafe[A-Z]/.test(tab)) return 'cafe';
-      if (/^mtg[A-Z]/.test(tab)) return 'mtg';
       return 'lobby';
     }
 
