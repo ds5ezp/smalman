@@ -151,8 +151,9 @@ function openTicket(url) {
     mainWin.contentView.addChildView(ticketView);
     ticketAttached = true;
   }
-  if (!ticketView.webContents.getURL()) ticketView.webContents.loadURL(target);
-  else if (url && isHttpUrl(url)) ticketView.webContents.loadURL(target);
+  // 이미 같은 사이트가 열려 있으면 다시 불러오지 않음 (다시 불러오면 로그인이 끊기는 경우가 있음)
+  const current = ticketView.webContents.getURL();
+  if (!current || hostOf(current) !== hostOf(target)) ticketView.webContents.loadURL(target);
   layout();
 }
 
