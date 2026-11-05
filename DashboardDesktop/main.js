@@ -5,7 +5,7 @@
 // - 창을 닫으면 트레이로 숨고, 트레이 메뉴의 종료를 눌러야 꺼짐
 // - 설치된 프로그램은 새 버전이 있으면 자동으로 받아서 다음 실행 때 설치
 
-const { app, BrowserWindow, WebContentsView, Menu, ipcMain, shell, Tray, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, WebContentsView, Menu, ipcMain, shell, Tray, nativeImage, dialog, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -455,6 +455,34 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// ---------- 로그인 정보 유지 ----------
+// 프로그램을 끄면 사라지는 로그인 정보(세션 쿠키)를 일주일 동안 유지되는 정보로 바꿔서 저장
+async function keepLoginCookies() {
+  try {
+    const ses = session.fromPartition('persist:ticket');
+    const cookies = await ses.cookies.get({});
+    const expires = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+    for (const c of cookies) {
+      const domain = String(c.domain || '').replace(/^\./, '');
+      if (!SIDE_HOSTS.some(h => h === domain || h.endsWith('.' + domain) || domain.endsWith('.' + h))) continue;
+      if (!c.session) continue;
+      await ses.cookies.set({
+        url: (c.secure ? 'https://' : 'http://') + domain + (c.path || '/'),
+        name: c.name,
+        value: c.value,
+        domain: c.domain,
+        path: c.path || '/',
+        secure: !!c.secure,
+        httpOnly: !!c.httpOnly,
+        expirationDate: expires
+      });
+    }
+    await ses.cookies.flushStore();
+  } catch (e) {
+    console.error('로그인 정보 저장 실패: ' + e);
+  }
+}
+
 // ---------- 시작 ----------
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -467,8 +495,17 @@ if (!gotLock) {
     }
   });
 
-  app.on('before-quit', () => {
+  // 프로그램을 끌 때 발권·전자결재 로그인 정보를 일주일짜리 정보로 바꿔서 저장
+  // (그래야 프로그램을 다시 켜도 로그인 상태가 남아 있음)
+  let loginSaved = false;
+  app.on('before-quit', (event) => {
     app.isQuitting = true;
+    if (loginSaved) return;
+    event.preventDefault();
+    keepLoginCookies().finally(() => {
+      loginSaved = true;
+      app.quit();
+    });
   });
 
   // 새로 열리는 모든 창도 일반 크롬처럼 보이게 함 (로그인 차단 방지)
