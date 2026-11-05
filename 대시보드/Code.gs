@@ -467,17 +467,40 @@ function saveVisit(visit) {
     const sheet = lobbySheet_('기관방문');
     const rowValues = [[date, start, end, use]];
     let row;
+    let oldVisit = null;
     if (visit.row) {
       row = Number(visit.row);
       checkRow_(sheet, row, 1, visit.raw);
+      const old = sheet.getRange(row, 1, 1, 4).getDisplayValues()[0];
+      oldVisit = { date: normalizeDate_(old[0]), start: String(old[1]).trim().slice(0, 5), end: String(old[2]).trim().slice(0, 5) };
     } else {
       row = sheet.getLastRow() + 1;
     }
     // 시트가 날짜/시간을 자동 변환하지 않도록 텍스트로 저장 (로비 사이니지는 표시값을 읽음)
     sheet.getRange(row, 1, 1, 4).setNumberFormat('@').setValues(rowValues);
     log_(visit.row ? '기관방문 수정' : '기관방문 추가', [date, start, end, use].join(' '));
+    // 일정 시간이 바뀌었으면, 이 일정으로 올린 환영 사진의 시간도 같이 바꿈
+    if (oldVisit) moveVisitPhotos_(oldVisit, { date: date, start: start, end: end });
     return getVisits();
   });
+}
+
+// 일정의 날짜·시간이 바뀌면, 이전 시간으로 올라간 환영 사진의 기간을 새 시간으로 바꿈
+function moveVisitPhotos_(oldVisit, newVisit) {
+  const oldToken = periodToken_({ start: oldVisit.date, end: oldVisit.date, startTime: oldVisit.start, endTime: oldVisit.end });
+  const newPeriod = { start: newVisit.date, end: newVisit.date, startTime: newVisit.start, endTime: newVisit.end };
+  const newToken = periodToken_(newPeriod);
+  if (oldToken === newToken) return 0;
+  const it = DriveApp.getFolderById(folderDef_('welcome').id).getFiles();
+  let n = 0;
+  while (it.hasNext()) {
+    const file = it.next();
+    if (file.getName().indexOf(oldToken) === -1) continue;
+    file.setName(buildName_(file.getName(), newPeriod));
+    n++;
+  }
+  if (n) log_('기관방문 사진 시간 변경', n + '장 / ' + oldToken + ' → ' + newToken);
+  return n;
 }
 
 function deleteVisit(row, raw) {
