@@ -51,11 +51,15 @@
         <button class="menu-title" type="button" onclick="toggleGroup(this)"><i class="bi bi-briefcase"></i><span>업무관련</span><i class="bi bi-chevron-down chev"></i></button>
         <div class="menu-items">
           <a class="module" href="#" data-module="meeting" onclick="showModule('meeting'); return false;"><i class="bi bi-journal-text"></i>월례회 자료</a>
-          <a class="module" href="#" data-module="learn" onclick="showModule('learn'); return false;"><i class="bi bi-mortarboard"></i>배움터 접수</a>
-          <a class="module" href="#" data-module="staff" onclick="showModule('staff'); return false;"><i class="bi bi-people"></i>직원 목록</a>
-          <a class="module" href="#" onclick="openTicket(); return false;"><i class="bi bi-ticket-perforated"></i>발권시스템</a>
           <a class="module" href="#" data-module="submit" onclick="showModule('submit'); return false;"><i class="bi bi-send-check"></i>제출 자료</a>
-          <a class="module" href="#" data-module="business" onclick="showModule('business'); return false;"><i class="bi bi-kanban"></i>사업 관리</a>
+          <a class="module" href="#" data-module="staff" onclick="showModule('staff'); return false;"><i class="bi bi-people"></i>직원 목록</a>
+          <a class="module" href="#" onclick="openElectronicApproval(); return false;"><i class="bi bi-file-earmark-check"></i>전자결재</a>
+          <div class="small fw-bold text-muted pt-2 pb-1" style="padding-left:16px">팀 업무</div>
+          <div style="padding-left:12px">
+            <a class="module" href="#" data-module="learn" onclick="showModule('learn'); return false;"><i class="bi bi-mortarboard"></i>배움터 접수</a>
+            <a class="module" href="#" onclick="openTicket(); return false;"><i class="bi bi-ticket-perforated"></i>발권시스템</a>
+            <a class="module" href="#" data-module="business" onclick="showModule('business'); return false;"><i class="bi bi-kanban"></i>사업 관리</a>
+          </div>
         </div>
       </div>
       <div class="menu-group">
@@ -4370,6 +4374,11 @@
 
   <script>
     // 발권시스템은 새 창으로 엶 (사이트가 다른 페이지 안에 띄우는 것을 막아 두었기 때문)
+    // 전자결재: 발권시스템과 같은 방식으로 프로그램 오른쪽 화면에 열림
+    function openElectronicApproval() {
+      window.open('http://gw.gjchwf.or.kr/', '_blank', 'noopener');
+    }
+
     function openTicket() {
       window.open('https://selfdesk.e-ncom.co.kr/', '_blank', 'noopener');
     }

@@ -14,7 +14,9 @@ const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
 
 // 발권시스템 주소 (오른쪽 패널에서 열림)
 const TICKET_URL = 'https://selfdesk.e-ncom.co.kr/';
-const TICKET_HOST = 'selfdesk.e-ncom.co.kr';
+// 오른쪽 화면에 열 외부 업무 시스템 (발권시스템, 전자결재)
+const SIDE_HOSTS = ['selfdesk.e-ncom.co.kr', 'gw.gjchwf.or.kr'];
+const APPROVAL_HOST = 'gw.gjchwf.or.kr';
 
 // 프로그램 안에서 열어도 되는 주소 (구글 로그인과 대시보드에 필요한 주소)
 const IN_APP_HOSTS = [
@@ -100,15 +102,26 @@ function layout() {
 }
 
 // ---------- 발권시스템 패널 ----------
+// 오른쪽 화면 막대에 보일 제목 (주소에 따라 발권시스템 또는 전자결재)
+let barTitle = '';
+function sideTitle(url) {
+  return hostOf(url || '') === APPROVAL_HOST ? '전자결재' : '발권시스템';
+}
+
 function openTicket(url) {
   if (!mainWin) return;
+  const target = (url && isHttpUrl(url)) ? url : TICKET_URL;
+  const title = sideTitle(target);
   if (!barView) {
     barView = new WebContentsView({
       webPreferences: { preload: path.join(__dirname, 'ticket-bar-preload.js'), contextIsolation: true, nodeIntegration: false }
     });
-    barView.webContents.loadFile(path.join(__dirname, 'ticket-bar.html'));
+    barView.webContents.loadFile(path.join(__dirname, 'ticket-bar.html'), { query: { title: title } });
     mainWin.contentView.addChildView(barView);
+  } else if (barTitle !== title) {
+    barView.webContents.loadFile(path.join(__dirname, 'ticket-bar.html'), { query: { title: title } });
   }
+  barTitle = title;
   if (!ticketView) {
     ticketView = new WebContentsView({
       webPreferences: { partition: 'persist:ticket', contextIsolation: true, nodeIntegration: false }
@@ -121,7 +134,6 @@ function openTicket(url) {
     });
     mainWin.contentView.addChildView(ticketView);
   }
-  const target = (url && isHttpUrl(url)) ? url : TICKET_URL;
   if (!ticketView.webContents.getURL()) ticketView.webContents.loadURL(target);
   else if (url && isHttpUrl(url)) ticketView.webContents.loadURL(target);
   layout();
@@ -129,6 +141,7 @@ function openTicket(url) {
 
 function closeTicket() {
   if (!mainWin) return;
+  barTitle = '';
   if (barView) {
     mainWin.contentView.removeChildView(barView);
     barView.webContents.close();
@@ -202,7 +215,7 @@ function createMainWindow() {
   // 발권시스템 버튼 또는 링크: 오른쪽 패널에서 열기
   // 그 밖의 새 창: 구글 주소는 프로그램 안에서, 나머지는 기본 브라우저로
   wc.setWindowOpenHandler(({ url }) => {
-    if (hostOf(url) === TICKET_HOST) {
+    if (SIDE_HOSTS.includes(hostOf(url))) {
       openTicket(url);
       return { action: 'deny' };
     }
@@ -213,7 +226,7 @@ function createMainWindow() {
 
   // 화면 안에서 다른 사이트로 이동하려 하면 기본 브라우저로 보냄
   wc.on('will-navigate', (event, url) => {
-    if (hostOf(url) === TICKET_HOST) {
+    if (SIDE_HOSTS.includes(hostOf(url))) {
       event.preventDefault();
       openTicket(url);
       return;

@@ -13,10 +13,15 @@
 </head>
 <body>
   <div class="bar">
-    <span class="title">발권시스템</span>
+    <span class="title" id="barTitle">발권시스템</span>
     <button id="close">✕ 닫기</button>
   </div>
   <script>
+    // 주소(query)에서 받은 제목을 막대에 표시
+    (function () {
+      var t = new URLSearchParams(window.location.search).get('title');
+      if (t) document.getElementById('barTitle').textContent = t;
+    })();
     document.getElementById('close').addEventListener('click', function () {
       window.barApi.close();
     });
