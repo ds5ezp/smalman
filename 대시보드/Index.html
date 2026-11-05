@@ -210,6 +210,12 @@
             </div>
           </div>
           <div class="row g-2 align-items-end mt-1">
+            <div class="col-12">
+              <label class="form-label small">기관명 (환영 화면에 크게 표시됩니다)</label>
+              <input type="text" id="visitName" class="form-control" maxlength="40" placeholder="예: 거제시 ○○초등학교 3학년">
+            </div>
+          </div>
+          <div class="row g-2 align-items-end mt-1">
             <div class="col-12 col-md-9">
               <label class="form-label small">이 일정 때 보여 줄 사진 (여러 장 선택 가능, 선택 사항)</label>
               <input type="file" id="visitPhotos" class="form-control" multiple accept="image/*">
@@ -2896,7 +2902,7 @@
       const list = state.visits.filter(v => !hidePast || v.date >= today);
       document.getElementById('visitRows').innerHTML = list.length ? list.map(v => {
         const idx = state.visits.indexOf(v);
-        return '<tr><td>' + esc(v.date) + '</td><td>' + esc(v.start) + ' ~ ' + esc(v.end) + '</td><td>' + visitStatus(v) + '</td><td class="text-end text-nowrap">' +
+        return '<tr><td>' + esc(v.date) + (v.name ? '<div class="small text-muted">' + esc(v.name) + '</div>' : '') + '</td><td>' + esc(v.start) + ' ~ ' + esc(v.end) + '</td><td>' + visitStatus(v) + '</td><td class="text-end text-nowrap">' +
           '<button class="btn btn-sm btn-light border me-1" onclick="toggleVisitUse(' + idx + ')">' + (v.use === 'Y' ? '사용 끄기' : '사용 켜기') + '</button>' +
           '<button class="btn btn-sm btn-outline-primary me-1" onclick="editVisit(' + idx + ')"><i class="bi bi-pencil"></i></button>' +
           '<button class="btn btn-sm btn-outline-danger" onclick="removeVisit(' + idx + ')"><i class="bi bi-trash"></i></button></td></tr>';
@@ -2912,6 +2918,7 @@
       document.getElementById('visitStart').value = '09:00';
       document.getElementById('visitEnd').value = '18:00';
       document.getElementById('visitUse').value = 'Y';
+      document.getElementById('visitName').value = '';
       document.getElementById('visitPhotos').value = '';
       document.getElementById('visitPhotoInfo').textContent = '사진을 고르면 저장할 때 함께 올라갑니다.';
     }
@@ -2926,6 +2933,7 @@
       document.getElementById('visitStart').value = v.start;
       document.getElementById('visitEnd').value = v.end;
       document.getElementById('visitUse').value = v.use;
+      document.getElementById('visitName').value = v.name || '';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -2935,7 +2943,8 @@
         date: document.getElementById('visitDate').value,
         start: document.getElementById('visitStart').value,
         end: document.getElementById('visitEnd').value,
-        use: document.getElementById('visitUse').value
+        use: document.getElementById('visitUse').value,
+        name: document.getElementById('visitName').value.trim()
       };
       const files = Array.from(document.getElementById('visitPhotos').files || []);
       if (files.some(f => f.size > 20 * 1024 * 1024)) return fail(new Error('사진은 한 장당 20MB 이하로 골라 주세요.'));

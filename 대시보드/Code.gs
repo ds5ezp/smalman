@@ -436,14 +436,15 @@ function readVisits_() {
   const sheet = lobbySheet_('기관방문');
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
-  return sheet.getRange(2, 1, lastRow - 1, 4).getDisplayValues()
+  return sheet.getRange(2, 1, lastRow - 1, 5).getDisplayValues()
     .map((r, i) => ({
       row: i + 2,
       raw: String(r[0]).trim(),
       date: normalizeDate_(r[0]),
       start: String(r[1]).trim().slice(0, 5),
       end: String(r[2]).trim().slice(0, 5),
-      use: String(r[3] || 'Y').trim().toUpperCase() === 'Y' ? 'Y' : 'N'
+      use: String(r[3] || 'Y').trim().toUpperCase() === 'Y' ? 'Y' : 'N',
+      name: String(r[4] || '').trim()
     }))
     .filter(v => v.raw !== '');
 }
@@ -459,13 +460,14 @@ function saveVisit(visit) {
   const start = String(visit.start || '').trim();
   const end = String(visit.end || '').trim();
   const use = visit.use === 'N' ? 'N' : 'Y';
+  const name = String(visit.name || '').trim().slice(0, 40);
   if (!validDate_(date)) throw new Error('날짜를 선택해 주세요.');
   if (!validTime_(start) || !validTime_(end)) throw new Error('시작/종료 시간을 선택해 주세요.');
   if (toMinutes_(start) >= toMinutes_(end)) throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
 
   return withLock_(() => {
     const sheet = lobbySheet_('기관방문');
-    const rowValues = [[date, start, end, use]];
+    const rowValues = [[date, start, end, use, name]];
     let row;
     let oldVisit = null;
     if (visit.row) {
@@ -477,7 +479,7 @@ function saveVisit(visit) {
       row = sheet.getLastRow() + 1;
     }
     // 시트가 날짜/시간을 자동 변환하지 않도록 텍스트로 저장 (로비 사이니지는 표시값을 읽음)
-    sheet.getRange(row, 1, 1, 4).setNumberFormat('@').setValues(rowValues);
+    sheet.getRange(row, 1, 1, 5).setNumberFormat('@').setValues(rowValues);
     log_(visit.row ? '기관방문 수정' : '기관방문 추가', [date, start, end, use].join(' '));
     // 일정 시간이 바뀌었으면, 이 일정으로 올린 환영 사진의 시간도 같이 바꿈
     if (oldVisit) moveVisitPhotos_(oldVisit, { date: date, start: start, end: end });
