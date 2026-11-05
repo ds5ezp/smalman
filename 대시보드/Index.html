@@ -54,7 +54,7 @@
           <a class="module" href="#" data-module="submit" onclick="showModule('submit'); return false;"><i class="bi bi-send-check"></i>제출 자료</a>
           <a class="module" href="#" data-module="staff" onclick="showModule('staff'); return false;"><i class="bi bi-people"></i>직원 목록</a>
           <a class="module" href="#" onclick="openElectronicApproval(); return false;"><i class="bi bi-file-earmark-check"></i>전자결재</a>
-          <div class="small fw-bold text-muted pt-2 pb-1" style="padding-left:16px">팀 업무</div>
+          <button class="btn btn-link text-decoration-none small fw-bold text-muted pt-2 pb-1 w-100 text-start" style="padding-left:16px" type="button" onclick="toggleSubGroup(this)">팀 업무 <i class="bi bi-chevron-down small"></i></button>
           <div style="padding-left:12px">
             <a class="module" href="#" data-module="learn" onclick="showModule('learn'); return false;"><i class="bi bi-mortarboard"></i>배움터 접수</a>
             <a class="module" href="#" onclick="openTicket(); return false;"><i class="bi bi-ticket-perforated"></i>발권시스템</a>
@@ -4374,6 +4374,15 @@
 
   <script>
     // 발권시스템은 새 창으로 엶 (사이트가 다른 페이지 안에 띄우는 것을 막아 두었기 때문)
+    // 팀 업무 묶음만 접고 펼침 (다른 메뉴 묶음은 그대로)
+    function toggleSubGroup(btn) {
+      var box = btn.nextElementSibling;
+      box.classList.toggle('d-none');
+      var icon = btn.querySelector('i');
+      if (icon) icon.classList.toggle('bi-chevron-down', box.classList.contains('d-none') === false);
+      if (icon) icon.classList.toggle('bi-chevron-right', box.classList.contains('d-none'));
+    }
+
     // 전자결재: 발권시스템과 같은 방식으로 프로그램 오른쪽 화면에 열림
     function openElectronicApproval() {
       window.open('http://gw.gjchwf.or.kr/', '_blank', 'noopener');
