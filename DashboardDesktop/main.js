@@ -516,17 +516,31 @@ if (!gotLock) {
   app.whenReady().then(() => {
     buildMenu();
     // 발권·전자결재 화면의 첨부파일: 다운로드가 끝나면 임시 폴더에 저장하고 바로 엽니다
+    // 발권·전자결재 첨부파일: 다운로드 폴더에 받은 뒤 열기 / 폴더 열기 / 닫기 중 선택
     session.fromPartition('persist:ticket').on('will-download', (event, item) => {
-      const savePath = path.join(app.getPath('temp'), item.getFilename());
+      const savePath = path.join(app.getPath('downloads'), item.getFilename());
       item.setSavePath(savePath);
       item.once('done', (e, state) => {
-        if (state === 'completed') {
-          shell.openPath(savePath).then((err) => {
-            if (err) dialog.showErrorBox('파일 열기 실패', '이 파일을 열 프로그램이 없습니다. 파일: ' + savePath);
-          });
-        } else {
+        if (state !== 'completed') {
           dialog.showErrorBox('다운로드 실패', '첨부파일을 받지 못했습니다.');
+          return;
         }
+        dialog.showMessageBox({
+          type: 'question',
+          message: '첨부파일을 받았습니다.',
+          detail: path.basename(savePath),
+          buttons: ['열기', '폴더 열기', '닫기'],
+          defaultId: 0,
+          cancelId: 2
+        }).then(({ response }) => {
+          if (response === 0) {
+            shell.openPath(savePath).then((err) => {
+              if (err) dialog.showErrorBox('파일 열기 실패', '이 파일을 열 프로그램이 없습니다.');
+            });
+          } else if (response === 1) {
+            shell.showItemInFolder(savePath);
+          }
+        });
       });
     });
 
