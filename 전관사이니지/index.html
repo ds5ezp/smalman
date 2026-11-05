@@ -313,6 +313,8 @@
         // 하단 순환 상태: 지금 패널(index)과 그 패널의 다음 페이지(page)
         var bottom = { index: 0, page: 0, timer: null };
 
+        var meetingState = { visible: false, key: '' };
+
         var welcomeState = {
             isWelcome: false,
             slides: [],
@@ -558,6 +560,10 @@
             }
             checkSavingMode();
 
+            var prevMeeting = meetingState.visible;
+            meetingState.visible = !!(data.meetingInfo && data.meetingInfo.active);
+            meetingState.info = data.meetingInfo || null;
+
             if (data.welcomeInfo && data.welcomeInfo.isWelcome && (data.welcomeInfo.visitName || data.welcomeInfo.slides.length > 0)) {
                 clearTimeout(state.slideTimer);
                 state.slideTimer = null;
@@ -571,6 +577,17 @@
             } else if (welcomeState.isWelcome) {
                 welcomeState.isWelcome = false;
                 clearTimeout(welcomeState.timer);
+                document.getElementById('fullscreen-overlay').classList.add('hidden');
+                if (!meetingState.visible) showCurrentSlide();
+            }
+
+            // 회의 안내: 표출 기간 안이면 회의 안내 화면을 보여 줌 (환영 화면이 없을 때)
+            if (meetingState.visible) {
+                clearTimeout(state.slideTimer);
+                state.slideTimer = null;
+                renderMeetingTemplate();
+                return;
+            } else if (prevMeeting) {
                 document.getElementById('fullscreen-overlay').classList.add('hidden');
                 showCurrentSlide();
             }
@@ -670,6 +687,34 @@
                     '<div class="wc-name">' + name + '</div>' +
                     (time ? '<div class="wc-time">방문 시간 ' + time + '</div>' : '') +
                     '<div class="wc-sub">편안한 시간 되시길 바랍니다</div>' +
+                  '</div>' +
+                '</div>';
+        }
+
+        // 회의 안내 화면: 회의명, 장소, 회의 시간을 크게 보여 줌
+        function renderMeetingTemplate() {
+            if (savingActive) return;
+            var info = meetingState.info || {};
+            var key = (info.name || '') + '|' + (info.date || '') + '|' + (info.start || '');
+            var fsOverlay = document.getElementById('fullscreen-overlay');
+            var fsContainer = document.getElementById('fullscreen-display');
+            var fsCounter = document.getElementById('fullscreenCounter');
+            var fsProgressBar = document.getElementById('fullscreenProgressBar');
+            var existing = fsContainer.querySelector('.wc-tpl');
+            fsOverlay.classList.remove('hidden');
+            fsCounter.innerText = '';
+            fsProgressBar.style.animation = 'none';
+            fsProgressBar.style.width = '0%';
+            if (existing && existing.getAttribute('data-key') === key) return;   // 같은 안내면 다시 그리지 않음
+            fsContainer.innerHTML =
+                '<div class="wc-tpl" data-key="' + wxEscLobby(key) + '">' +
+                  '<div class="wc-ring wc-ring-a"></div><div class="wc-ring wc-ring-b"></div>' +
+                  '<div class="wc-card">' +
+                    '<div class="wc-badge">회의 안내</div>' +
+                    '<div class="wc-title">' + wxEscLobby(info.name || '회의') + '</div>' +
+                    (info.place ? '<div class="wc-name">' + wxEscLobby(info.place) + '</div>' : '') +
+                    '<div class="wc-time">' + wxEscLobby(info.date || '') + ' ' + wxEscLobby(info.start || '') + ' ~ ' + wxEscLobby(info.end || '') + '</div>' +
+                    '<div class="wc-sub">회의에 참석해 주시기 바랍니다</div>' +
                   '</div>' +
                 '</div>';
         }

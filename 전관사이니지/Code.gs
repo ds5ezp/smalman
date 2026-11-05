@@ -331,7 +331,8 @@ function getDashboardData() {
     shuttleMap: getSettingByLabel('셔틀 지도 표시').toUpperCase() === 'ON',
     shuttleLead: shuttleLead_(),
     shuttleBase: shuttleBase_(),
-    welcomeInfo: checkWelcomeMode()
+    welcomeInfo: checkWelcomeMode(),
+    meetingInfo: checkMeetingNotice()
   };
 }
 
@@ -1032,6 +1033,36 @@ function checkWelcomeMode() {
   } catch(e) {
     console.error("기관방문 확인 에러: " + e.toString());
     return { isWelcome: false, slides: [] };
+  }
+}
+
+// '회의안내' 시트에서 지금이 표출 기간 안인 사용 중(Y) 회의를 찾음 (회의 시간이 아니라 표출 기간으로 판단)
+function checkMeetingNotice() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('회의안내');
+    if (!sheet || sheet.getLastRow() < 2) return { active: false };
+    const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getDisplayValues();
+    const tz = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
+    const nowStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm');
+    const found = rows.find(r => {
+      if (String(r[9] || 'Y').toUpperCase().trim() === 'N') return false;
+      const from = normalizeDateStr(String(r[5] || '')) + ' ' + String(r[6] || '').trim().slice(0, 5);
+      const to = normalizeDateStr(String(r[7] || '')) + ' ' + String(r[8] || '').trim().slice(0, 5);
+      return nowStr >= from && nowStr <= to;
+    });
+    if (!found) return { active: false };
+    return {
+      active: true,
+      name: String(found[0] || '').trim(),
+      place: String(found[1] || '').trim(),
+      date: normalizeDateStr(String(found[2] || '')),
+      start: String(found[3] || '').trim().slice(0, 5),
+      end: String(found[4] || '').trim().slice(0, 5)
+    };
+  } catch(e) {
+    console.error('회의 안내 확인 에러: ' + e.toString());
+    return { active: false };
   }
 }
 
