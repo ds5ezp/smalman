@@ -29,6 +29,8 @@ let mainWin = null;         // 창 (안에 대시보드와 발권 화면을 나�
 let dashView = null;        // 왼쪽: 대시보드
 let ticketView = null;      // 오른쪽: 발권시스템 (열렸을 때만 있음)
 let barView = null;         // 발권 화면 위의 막대 (닫기 버튼)
+let barAttached = false;    // 막대가 지금 화면에 붙어 있는지
+let ticketAttached = false; // 발권·전자결재 화면이 지금 붙어 있는지 (닫아도 화면은 살려 둠)
 let settingsWin = null;
 let retryTimer = null;
 let tray = null;
@@ -93,10 +95,10 @@ function layout() {
   if (!mainWin || !dashView) return;
   const [w, h] = mainWin.getContentSize();
   dashView.setBounds({ x: 0, y: 0, width: w, height: h });
-  if (barView) {
+  if (barView && barAttached) {
     barView.setBounds({ x: SIDEBAR_W, y: HEADER_H, width: Math.max(0, w - SIDEBAR_W), height: BAR_H });
   }
-  if (ticketView) {
+  if (ticketView && ticketAttached) {
     ticketView.setBounds({ x: SIDEBAR_W, y: HEADER_H + BAR_H, width: Math.max(0, w - SIDEBAR_W), height: Math.max(0, h - HEADER_H - BAR_H) });
   }
 }
@@ -117,11 +119,14 @@ function openTicket(url) {
       webPreferences: { preload: path.join(__dirname, 'ticket-bar-preload.js'), contextIsolation: true, nodeIntegration: false }
     });
     barView.webContents.loadFile(path.join(__dirname, 'ticket-bar.html'), { query: { title: title } });
-    mainWin.contentView.addChildView(barView);
   } else if (barTitle !== title) {
     barView.webContents.loadFile(path.join(__dirname, 'ticket-bar.html'), { query: { title: title } });
   }
   barTitle = title;
+  if (!barAttached) {
+    mainWin.contentView.addChildView(barView);
+    barAttached = true;
+  }
   if (!ticketView) {
     ticketView = new WebContentsView({
       webPreferences: { partition: 'persist:ticket', contextIsolation: true, nodeIntegration: false }
@@ -141,25 +146,27 @@ function openTicket(url) {
         }
       };
     });
+  }
+  if (!ticketAttached) {
     mainWin.contentView.addChildView(ticketView);
+    ticketAttached = true;
   }
   if (!ticketView.webContents.getURL()) ticketView.webContents.loadURL(target);
   else if (url && isHttpUrl(url)) ticketView.webContents.loadURL(target);
   layout();
 }
 
+// 닫을 때는 화면을 없애지 않고 떼어 두기만 함 (다시 열면 로그인 상태가 그대로 남아 있음)
 function closeTicket() {
   if (!mainWin) return;
   barTitle = '';
-  if (barView) {
+  if (barAttached && barView) {
     mainWin.contentView.removeChildView(barView);
-    barView.webContents.close();
-    barView = null;
+    barAttached = false;
   }
-  if (ticketView) {
+  if (ticketAttached && ticketView) {
     mainWin.contentView.removeChildView(ticketView);
-    ticketView.webContents.close();
-    ticketView = null;
+    ticketAttached = false;
   }
   layout();
 }
@@ -168,7 +175,7 @@ function closeTicket() {
 ipcMain.on('ticket:close', () => closeTicket());
 
 function toggleTicket() {
-  if (ticketView) closeTicket();
+  if (ticketAttached) closeTicket();
   else openTicket(TICKET_URL);
 }
 
@@ -286,6 +293,9 @@ function createMainWindow() {
     mainWin = null;
     dashView = null;
     ticketView = null;
+    ticketAttached = false;
+    barView = null;
+    barAttached = false;
     if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
   });
 }
