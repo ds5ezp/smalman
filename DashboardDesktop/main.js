@@ -127,10 +127,19 @@ function openTicket(url) {
       webPreferences: { partition: 'persist:ticket', contextIsolation: true, nodeIntegration: false }
     });
     ticketView.webContents.setUserAgent(CHROME_UA);
-    // 발권 화면 안에서 새 창을 열려고 하면 같은 패널에서 열기
+    // 오른쪽 화면 안에서 새 창(결재상신 등)을 열면 별도 창으로 띄움 (같은 로그인 정보 사용)
     ticketView.webContents.setWindowOpenHandler(({ url: u }) => {
-      if (isHttpUrl(u)) ticketView.webContents.loadURL(u);
-      return { action: 'deny' };
+      if (!isHttpUrl(u)) return { action: 'deny' };
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 1200,
+          height: 860,
+          title: sideTitle(u),
+          autoHideMenuBar: true,
+          webPreferences: { partition: 'persist:ticket', contextIsolation: true, nodeIntegration: false }
+        }
+      };
     });
     mainWin.contentView.addChildView(ticketView);
   }
@@ -449,6 +458,11 @@ if (!gotLock) {
 
   app.on('before-quit', () => {
     app.isQuitting = true;
+  });
+
+  // 새로 열리는 모든 창도 일반 크롬처럼 보이게 함 (로그인 차단 방지)
+  app.on('browser-window-created', (event, win) => {
+    win.webContents.setUserAgent(CHROME_UA);
   });
 
   app.whenReady().then(() => {
