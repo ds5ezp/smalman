@@ -2904,3 +2904,98 @@ function saveShuttleSignage(on, lead, base) {
     return { on: !!on, lead: minutes, base: baseLabel };
   });
 }
+
+
+// =================================================================
+// 8. 회의 안내 (회의 시간과 화면에 나오는 표출 기간을 따로 정함)
+// =================================================================
+
+const MEETING_HEADERS_ = ['회의명', '장소', '회의날짜', '회의시작', '회의종료', '표출시작날짜', '표출시작시간', '표출종료날짜', '표출종료시간', '사용'];
+
+function meetingSheet_() {
+  const ss = lobbySs_();
+  let sheet = ss.getSheetByName('회의안내');
+  if (!sheet) {
+    sheet = ss.insertSheet('회의안내');
+    sheet.getRange(1, 1, 1, MEETING_HEADERS_.length).setValues([MEETING_HEADERS_]);
+  }
+  return sheet;
+}
+
+function readMeetings_() {
+  const sheet = meetingSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  return sheet.getRange(2, 1, lastRow - 1, 10).getDisplayValues()
+    .map((r, i) => ({
+      row: i + 2,
+      raw: String(r[0]).trim(),
+      name: String(r[0]).trim(),
+      place: String(r[1]).trim(),
+      date: normalizeDate_(r[2]),
+      start: String(r[3]).trim().slice(0, 5),
+      end: String(r[4]).trim().slice(0, 5),
+      showStartDate: normalizeDate_(r[5]),
+      showStartTime: String(r[6]).trim().slice(0, 5),
+      showEndDate: normalizeDate_(r[7]),
+      showEndTime: String(r[8]).trim().slice(0, 5),
+      use: String(r[9] || 'Y').trim().toUpperCase() === 'N' ? 'N' : 'Y'
+    }))
+    .filter(m => m.raw !== '');
+}
+
+function getMeetingNotices() {
+  requireUser_();
+  return readMeetings_().sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
+}
+
+function saveMeetingNotice(m) {
+  requireUser_();
+  const name = String(m.name || '').trim().slice(0, 60);
+  const place = String(m.place || '').trim().slice(0, 60);
+  const date = String(m.date || '').trim();
+  const start = String(m.start || '').trim();
+  const end = String(m.end || '').trim();
+  const showStartDate = String(m.showStartDate || '').trim();
+  const showStartTime = String(m.showStartTime || '').trim();
+  const showEndDate = String(m.showEndDate || '').trim();
+  const showEndTime = String(m.showEndTime || '').trim();
+  const use = m.use === 'N' ? 'N' : 'Y';
+  if (!name) throw new Error('회의명을 적어 주세요.');
+  if (!validDate_(date)) throw new Error('회의 날짜를 선택해 주세요.');
+  if (!validTime_(start) || !validTime_(end) || toMinutes_(start) >= toMinutes_(end)) throw new Error('회의 시작과 종료 시간을 확인해 주세요.');
+  if (!validDate_(showStartDate) || !validTime_(showStartTime) || !validDate_(showEndDate) || !validTime_(showEndTime)) {
+    throw new Error('표출 시작과 종료 날짜·시간을 모두 선택해 주세요.');
+  }
+  const showStartStamp = showStartDate + ' ' + showStartTime;
+  const showEndStamp = showEndDate + ' ' + showEndTime;
+  if (showStartStamp >= showEndStamp) throw new Error('표출 종료는 표출 시작보다 늦어야 합니다.');
+
+  return withLock_(() => {
+    const sheet = meetingSheet_();
+    let row;
+    if (m.row) {
+      row = Number(m.row);
+      checkRow_(sheet, row, 1, m.raw);
+    } else {
+      row = sheet.getLastRow() + 1;
+    }
+    const values = [[name, place, date, start, end, showStartDate, showStartTime, showEndDate, showEndTime, use]];
+    sheet.getRange(row, 1, 1, 10).setNumberFormat('@').setValues(values);
+    log_(m.row ? '회의 안내 수정' : '회의 안내 추가', name + ' / 표출 ' + showStartStamp + '~' + showEndStamp + ' / ' + use);
+    return getMeetingNotices();
+  });
+}
+
+function deleteMeetingNotice(row, raw) {
+  requireUser_();
+  return withLock_(() => {
+    const sheet = meetingSheet_();
+    row = Number(row);
+    checkRow_(sheet, row, 1, raw);
+    const name = sheet.getRange(row, 1).getDisplayValue();
+    sheet.deleteRow(row);
+    log_('회의 안내 삭제', name);
+    return getMeetingNotices();
+  });
+}

@@ -35,6 +35,7 @@
         <button class="menu-title" type="button" onclick="toggleGroup(this)"><i class="bi bi-megaphone"></i><span>홍보관리</span><i class="bi bi-chevron-down chev"></i></button>
         <div class="menu-items">
           <a class="module" href="#" data-module="lobby" onclick="showModule('lobby'); return false;"><i class="bi bi-display"></i>로비 사이니지</a>
+          <a class="module" href="#" data-module="mtg" onclick="showModule('mtg'); return false;"><i class="bi bi-calendar-event"></i>회의 안내</a>
           <a class="module" href="#" data-module="rooms" onclick="showModule('rooms'); return false;"><i class="bi bi-tablet"></i>각 실 사이니지</a>
           <a class="module" href="#" data-module="cafe" onclick="showModule('cafe'); return false;"><i class="bi bi-cup-hot"></i>꽃다비 카페 사이니지</a>
           <a class="module" href="#" data-module="led" onclick="showModule('led'); return false;"><i class="bi bi-easel"></i>전광판 관리</a>
@@ -918,6 +919,48 @@
      </div>
 
      <!-- ===================== 꽃다비 카페 사이니지 ===================== -->
+     <div data-module-view="mtg" class="d-none">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h4 class="mb-0">회의 안내</h4>
+      </div>
+      <section data-panel="mtgList" class="d-none">
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-3" id="mtgFormTitle">회의 안내 추가</h6>
+          <div class="row g-2">
+            <div class="col-12 col-md-6"><label class="form-label small">회의명</label><input id="mtgName" class="form-control" maxlength="60" placeholder="예: 11월 월례회"></div>
+            <div class="col-12 col-md-6"><label class="form-label small">장소</label><input id="mtgPlace" class="form-control" maxlength="60" placeholder="예: 3층 대회의실"></div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6 col-md-3"><label class="form-label small">회의 날짜</label><input type="date" id="mtgDate" class="form-control"></div>
+            <div class="col-3 col-md-2"><label class="form-label small">회의 시작</label><input type="time" id="mtgStart" class="form-control" value="14:00"></div>
+            <div class="col-3 col-md-2"><label class="form-label small">회의 종료</label><input type="time" id="mtgEnd" class="form-control" value="15:00"></div>
+          </div>
+          <hr>
+          <div class="row g-2">
+            <div class="col-6 col-md-3"><label class="form-label small">표출 시작 날짜</label><input type="date" id="mtgShowStartDate" class="form-control"></div>
+            <div class="col-6 col-md-2"><label class="form-label small">표출 시작 시간</label><input type="time" id="mtgShowStartTime" class="form-control" value="09:00"></div>
+            <div class="col-6 col-md-3"><label class="form-label small">표출 종료 날짜</label><input type="date" id="mtgShowEndDate" class="form-control"></div>
+            <div class="col-6 col-md-2"><label class="form-label small">표출 종료 시간</label><input type="time" id="mtgShowEndTime" class="form-control" value="18:00"></div>
+            <div class="col-12 col-md-2"><label class="form-label small">사용</label><select id="mtgUse" class="form-select"><option value="Y">사용</option><option value="N">사용 안 함</option></select></div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button class="btn btn-light border d-none" id="mtgCancel" onclick="resetMeetingForm()">취소</button>
+            <button class="btn btn-primary" id="mtgSubmit" onclick="submitMeeting()">추가</button>
+          </div>
+          <div class="small text-muted mt-2">회의 시간과 표출 시간은 따로 정합니다. 표출 기간 동안만 로비 화면에 회의 안내가 나옵니다. 회의 전에 미리 표출하려면 표출 시작을 앞당기세요.</div>
+        </div>
+        <div class="card p-3">
+          <h6 class="fw-bold mb-2">회의 목록</h6>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead><tr><th>회의</th><th>회의 일시</th><th>표출 기간</th><th>상태</th><th class="text-end">관리</th></tr></thead>
+              <tbody id="mtgRows"><tr class="loading-row"><td colspan="5">불러오는 중…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+     </div>
+
      <div data-module-view="cafe" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <h4 class="mb-0">꽃다비 카페 사이니지</h4>
@@ -1590,11 +1633,12 @@
       hStatus: loadHvac, hSetup: loadHvacSetup,
       acStatus: () => loadAirCon(),
       cafeSettings: loadCafe,
-      cafeFiles: loadCafeFiles
+      cafeFiles: loadCafeFiles,
+      mtgList: loadMeetings
     };
     // 열 때마다 새로 읽는 탭
-    const ALWAYS_RELOAD = ['status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings', 'cafeFiles'];
-    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus', cafe: 'cafeSettings' };
+    const ALWAYS_RELOAD = ['mtgList', 'status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings', 'cafeFiles'];
+    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus', cafe: 'cafeSettings', mtg: 'mtgList' };
 
     function moduleOfTab(tab) {
       if (/^r[A-Z]/.test(tab)) return 'rooms';
@@ -1608,6 +1652,7 @@
       if (/^h[A-Z]/.test(tab)) return 'hvac';
       if (/^ac[A-Z]/.test(tab)) return 'aircon';
       if (/^cafe[A-Z]/.test(tab)) return 'cafe';
+      if (/^mtg[A-Z]/.test(tab)) return 'mtg';
       return 'lobby';
     }
 
@@ -2674,6 +2719,112 @@
         renderCafeSlides();
         toast('슬라이드를 저장했습니다. 카페 화면에 1분 안에 반영됩니다.');
       }).catch(fail);
+    }
+
+    // ---------- 회의 안내 ----------
+    var mtgItems = [];
+    var mtgEditing = null;
+
+    function loadMeetings() {
+      run('getMeetingNotices').then(list => { mtgItems = list; renderMeetings(); }).catch(fail);
+    }
+
+    function mtgStatus(v) {
+      if (v.use !== 'Y') return '<span class="badge text-bg-light border">사용 안 함</span>';
+      const d = new Date();
+      const nowStr = todayStr() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      const from = v.showStartDate + ' ' + v.showStartTime;
+      const to = v.showEndDate + ' ' + v.showEndTime;
+      if (nowStr < from) return '<span class="badge text-bg-info">표출 예정</span>';
+      if (nowStr > to) return '<span class="badge text-bg-secondary">표출 끝남</span>';
+      return '<span class="badge text-bg-warning">지금 표출 중</span>';
+    }
+
+    function renderMeetings() {
+      document.getElementById('mtgRows').innerHTML = mtgItems.length ? mtgItems.map((v, i) =>
+        '<tr><td><div class="fw-bold">' + esc(v.name) + '</div><div class="small text-muted">' + esc(v.place) + '</div></td>' +
+        '<td class="small">' + esc(v.date) + '<br>' + esc(v.start) + ' ~ ' + esc(v.end) + '</td>' +
+        '<td class="small">' + esc(v.showStartDate) + ' ' + esc(v.showStartTime) + '<br>~ ' + esc(v.showEndDate) + ' ' + esc(v.showEndTime) + '</td>' +
+        '<td>' + mtgStatus(v) + '</td>' +
+        '<td class="text-end text-nowrap">' +
+          '<button class="btn btn-sm btn-light border me-1" onclick="toggleMeeting(' + i + ')">' + (v.use === 'Y' ? '사용 끄기' : '사용 켜기') + '</button>' +
+          '<button class="btn btn-sm btn-outline-primary me-1" onclick="editMeeting(' + i + ')"><i class="bi bi-pencil"></i></button>' +
+          '<button class="btn btn-sm btn-outline-danger" onclick="removeMeeting(' + i + ')"><i class="bi bi-trash"></i></button></td></tr>'
+      ).join('') : '<tr class="loading-row"><td colspan="5">등록된 회의 안내가 없습니다.</td></tr>';
+    }
+
+    function resetMeetingForm() {
+      mtgEditing = null;
+      document.getElementById('mtgFormTitle').textContent = '회의 안내 추가';
+      document.getElementById('mtgSubmit').textContent = '추가';
+      document.getElementById('mtgCancel').classList.add('d-none');
+      document.getElementById('mtgName').value = '';
+      document.getElementById('mtgPlace').value = '';
+      document.getElementById('mtgDate').value = '';
+      document.getElementById('mtgStart').value = '14:00';
+      document.getElementById('mtgEnd').value = '15:00';
+      document.getElementById('mtgShowStartDate').value = '';
+      document.getElementById('mtgShowStartTime').value = '09:00';
+      document.getElementById('mtgShowEndDate').value = '';
+      document.getElementById('mtgShowEndTime').value = '18:00';
+      document.getElementById('mtgUse').value = 'Y';
+    }
+
+    function editMeeting(idx) {
+      const v = mtgItems[idx];
+      mtgEditing = v;
+      document.getElementById('mtgFormTitle').textContent = '회의 안내 수정';
+      document.getElementById('mtgSubmit').textContent = '수정 저장';
+      document.getElementById('mtgCancel').classList.remove('d-none');
+      document.getElementById('mtgName').value = v.name;
+      document.getElementById('mtgPlace').value = v.place;
+      document.getElementById('mtgDate').value = v.date;
+      document.getElementById('mtgStart').value = v.start;
+      document.getElementById('mtgEnd').value = v.end;
+      document.getElementById('mtgShowStartDate').value = v.showStartDate;
+      document.getElementById('mtgShowStartTime').value = v.showStartTime;
+      document.getElementById('mtgShowEndDate').value = v.showEndDate;
+      document.getElementById('mtgShowEndTime').value = v.showEndTime;
+      document.getElementById('mtgUse').value = v.use;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function meetingPayload() {
+      return {
+        name: document.getElementById('mtgName').value.trim(),
+        place: document.getElementById('mtgPlace').value.trim(),
+        date: document.getElementById('mtgDate').value,
+        start: document.getElementById('mtgStart').value,
+        end: document.getElementById('mtgEnd').value,
+        showStartDate: document.getElementById('mtgShowStartDate').value,
+        showStartTime: document.getElementById('mtgShowStartTime').value,
+        showEndDate: document.getElementById('mtgShowEndDate').value,
+        showEndTime: document.getElementById('mtgShowEndTime').value,
+        use: document.getElementById('mtgUse').value
+      };
+    }
+
+    function submitMeeting() {
+      const p = meetingPayload();
+      if (mtgEditing) { p.row = mtgEditing.row; p.raw = mtgEditing.raw; }
+      save('saveMeetingNotice', p).then(list => {
+        mtgItems = list; renderMeetings(); resetMeetingForm();
+        toast('회의 안내를 저장했습니다. 표출 기간에 로비 화면에 나옵니다.');
+      }).catch(fail);
+    }
+
+    function toggleMeeting(idx) {
+      const v = mtgItems[idx];
+      const p = { row: v.row, raw: v.raw, name: v.name, place: v.place, date: v.date, start: v.start, end: v.end,
+        showStartDate: v.showStartDate, showStartTime: v.showStartTime, showEndDate: v.showEndDate, showEndTime: v.showEndTime,
+        use: v.use === 'Y' ? 'N' : 'Y' };
+      save('saveMeetingNotice', p).then(list => { mtgItems = list; renderMeetings(); toast('변경했습니다.'); }).catch(fail);
+    }
+
+    function removeMeeting(idx) {
+      const v = mtgItems[idx];
+      if (!confirm('"' + v.name + '" 회의 안내를 삭제할까요?')) return;
+      save('deleteMeetingNotice', v.row, v.raw).then(list => { mtgItems = list; renderMeetings(); toast('삭제했습니다.'); }).catch(fail);
     }
 
     // ---------- 꽃다비 카페 사이니지: 미리보기와 사진 관리 ----------
