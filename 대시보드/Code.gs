@@ -83,7 +83,7 @@ const ROOM_FOLDERS = {
 // 예약 승인·반려 같은 관리 작업은 공유트럭 앱의 관리자 화면(비밀번호)을 대시보드 안에 띄워서 함
 const TRUCK = {
   SHEET_ID: '1GxaBRZywbBc7ITWlXtuzvGHpZpgZt7iMq73aqP8JgSA',
-  APP_URL: 'https://script.google.com/macros/s/AKfycbzfORMMwpW1wReLQNxS7CBt1uYM84_iiD2BQFhuH-H8HnUPnXcZNpgXaQmjnLDLagc_/exec'
+  APP_URL: 'https://script.google.com/macros/s/AKfycbzdDYIuqctUoMyxx--eqWEDjTXFVTDSfTpfz5-wUpQjAO7FgcKSLqVl9u6wuWQSgyXo/exec'
 };
 
 // 어르신 배움터 (학기별): 학기 목록은 배움터 접수 시스템과 같은 학기목록 탭을 읽음
