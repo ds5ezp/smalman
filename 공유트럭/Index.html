@@ -1227,22 +1227,7 @@
                   </label>
                 </div>
               </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold">① 계기판 사진 (주행거리/Full 눈금) <span class="text-danger">*</span></label>
-                <input type="file" class="form-control form-control-sm" id="photoOdo" accept="image/*" capture="environment" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold">② 주유 영수증 사진 (Full-to-Full 증빙) <span class="text-danger">*</span></label>
-                <input type="file" class="form-control form-control-sm" id="photoReceipt" accept="image/*" capture="environment" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold">③ 차량 외관 및 윙바디 상부 모서리 <span class="text-danger">*</span></label>
-                <input type="file" class="form-control form-control-sm" id="photoBody" accept="image/*" capture="environment" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold">④ 적재함 내부 및 결속벨트 보관 상태 <span class="text-danger">*</span></label>
-                <input type="file" class="form-control form-control-sm" id="photoWing" accept="image/*" capture="environment" required>
-              </div>
+              <div id="checkinPhotoFields"></div>
               <div class="mb-3">
                 <label class="form-label small fw-semibold">운행 중 특이사항</label>
                 <textarea class="form-control form-control-sm" id="notes" rows="2" placeholder="이상 소음, 흠집 등이 있을 경우 기재"></textarea>
@@ -1252,6 +1237,35 @@
               </button>
             </form>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 관리자 반납 검수 페이지 -->
+  <div class="modal fade" id="returnReviewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-clipboard-check text-primary me-1"></i> 반납 검수 <span id="rrResId" class="text-muted small ms-2"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="rrBody"></div>
+        <div class="modal-footer" id="rrFooter"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 사진 크게 보기 -->
+  <div class="modal fade" id="photoViewerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+      <div class="modal-content bg-dark">
+        <div class="modal-header border-0 text-white">
+          <span id="pvTitle" class="fw-bold"></span>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center p-2">
+          <img id="pvImg" src="" alt="" style="max-width:100%; max-height:80vh; object-fit:contain;">
         </div>
       </div>
     </div>
@@ -1727,14 +1741,7 @@
         const isInternal = item.agencyName.includes('자체');
         const overdueBadge = item.isOverdue ? '<span class="badge bg-danger ms-2"><i class="bi bi-clock-history"></i> 반납지연</span>' : '';
 
-        let returnPhotosHtml = '';
-        if (item.returnPhotos && item.returnPhotos.length > 0) {
-          returnPhotosHtml = '<div class="mt-2 pt-2 border-top"><div class="small fw-bold text-danger mb-1"><i class="bi bi-camera me-1"></i>제출된 반납 검수 사진:</div><div class="d-flex flex-wrap gap-1">';
-          item.returnPhotos.forEach((url, i) => {
-            returnPhotosHtml += `<a href="${url}" target="_blank" class="doc-pill"><i class="bi bi-image"></i> 사진 ${i+1}</a>`;
-          });
-          returnPhotosHtml += '</div></div>';
-        }
+        const photoCount = (item.returnPhotoItems || []).length;
 
         let docPills = '';
         if (!isInternal && item.status !== '신청취소') {
@@ -1750,11 +1757,15 @@
           actionBtns += `<button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="changeStatus('${item.reservationId}', '반려')">반려</button>`;
           actionBtns += `<button type="button" class="btn btn-success btn-sm rounded-pill px-3 fw-bold" onclick="changeStatus('${item.reservationId}', '승인')">대여 승인확정</button>`;
         } else if (item.status === '반납검토대기') {
-          actionBtns += `<button type="button" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="changeStatus('${item.reservationId}', '반납완료')"><i class="bi bi-check-all me-1"></i> 현장 실차확인 완료 (최종 반납승인)</button>`;
+          actionBtns += `<button type="button" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-sm" onclick="openReturnReview('${item.reservationId}')"><i class="bi bi-clipboard-check me-1"></i> 반납 검수하기</button>`;
         } else if (item.status === '승인') {
           actionBtns += '<span class="badge bg-light text-primary border px-3 py-2 rounded-pill">차량 운행 중</span>';
         } else if (item.status === '반납완료' && !isInternal) {
           actionBtns += '<span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">운행종료 (정산완료)</span>';
+        }
+
+        if (photoCount && item.status === '반납완료') {
+          actionBtns = `<button type="button" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold" onclick="openReturnReview('${item.reservationId}')"><i class="bi bi-images me-1"></i> 검수 내역 보기</button> ` + actionBtns;
         }
 
         let distInfo = '';
@@ -1785,7 +1796,7 @@
               </div>
             </div>
             ${docPills}
-            ${returnPhotosHtml}
+            ${photoCount ? `<div class="small text-muted mt-2"><i class="bi bi-camera me-1"></i>반납 검수 사진 ${photoCount}장 제출됨</div>` : ''}
             <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-2">
               <div>
                 <button type="button" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold" onclick="printDrivingLog('${item.reservationId}')">
@@ -1830,6 +1841,8 @@
         .withSuccessHandler(function(res) {
           if (res.success) {
             alert(`[${newStatus}] 처리가 완료되었습니다.`);
+            const reviewModal = bootstrap.Modal.getInstance(document.getElementById('returnReviewModal'));
+            if (reviewModal) reviewModal.hide();
             loadReservations();
           } else {
             alert(res.message);
@@ -2297,6 +2310,7 @@
       document.getElementById('stepCheckin').classList.remove('d-none');
       document.getElementById('checkinResId').value = resId;
       document.getElementById('checkinResIdDisplay').value = resId;
+      resetCheckinPhotos();
     }
 
     function cancelCheckin() {
@@ -2304,21 +2318,91 @@
       document.getElementById('stepSearch').classList.remove('d-none');
     }
 
-    document.getElementById('checkinInlineForm').addEventListener('submit', async function(e) {
+    // ---------- 반납 검수표 사진 (차량 외관은 4면 각각 촬영) ----------
+    const CHECKIN_PHOTO_GROUPS = [
+      { title: '① 계기판 사진 (주행거리/Full 눈금)', slots: [{ key: 'odo', label: '계기판' }] },
+      { title: '② 주유 영수증 사진 (Full-to-Full 증빙)', slots: [{ key: 'receipt', label: '주유 영수증' }] },
+      { title: '③ 차량 외관 및 윙바디 상부 모서리 (4면 각각)', slots: [
+        { key: 'front', label: '외관 앞면' },
+        { key: 'left', label: '외관 옆면(좌)' },
+        { key: 'right', label: '외관 옆면(우)' },
+        { key: 'rear', label: '외관 뒷면' }
+      ] },
+      { title: '④ 적재함 내부 및 결속벨트 보관 상태', slots: [{ key: 'wing', label: '적재함 내부·결속벨트' }] }
+    ];
+    const CHECKIN_PHOTO_SLOTS = CHECKIN_PHOTO_GROUPS.reduce((acc, g) => acc.concat(g.slots), []);
+    let checkinPhotos = {};
+
+    function resetCheckinPhotos() {
+      checkinPhotos = {};
+      document.getElementById('checkinPhotoFields').innerHTML = CHECKIN_PHOTO_GROUPS.map(g => `
+        <div class="mb-3">
+          <div class="form-label small fw-semibold mb-1">${g.title} <span class="text-danger">*</span></div>
+          ${g.slots.map(s => `
+            <div class="border rounded-3 p-2 mb-2 bg-white">
+              <div class="small fw-semibold mb-1">${s.label}</div>
+              <input type="file" accept="image/*" capture="environment" class="form-control form-control-sm" onchange="onCheckinPhoto('${s.key}', this)">
+              <div id="prev-${s.key}" class="small text-muted mt-1">아직 촬영/선택하지 않음</div>
+            </div>`).join('')}
+        </div>`).join('');
+    }
+
+    // 긴 변 1600px 이하, JPEG 80% 로 줄여서 글자·파손 여부를 알아볼 정도의 크기만 저장 (보통 300~600KB)
+    function compressImage(file, maxSide = 1600, quality = 0.8) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          resolve({ base64: canvas.toDataURL('image/jpeg', quality), name: (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg', width: canvas.width, height: canvas.height });
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('사진을 읽을 수 없습니다. 다시 촬영해 주세요.')); };
+        img.src = url;
+      });
+    }
+
+    async function onCheckinPhoto(key, input) {
+      const prev = document.getElementById('prev-' + key);
+      const file = input.files[0];
+      if (!file) { delete checkinPhotos[key]; prev.textContent = '아직 촬영/선택하지 않음'; return; }
+      prev.textContent = '사진 처리 중…';
+      try {
+        const img = await compressImage(file);
+        checkinPhotos[key] = img;
+        const kb = Math.round(img.base64.length * 3 / 4 / 1024);
+        prev.innerHTML = `<div class="d-flex align-items-center gap-2">
+            <img src="${img.base64}" alt="" class="rounded border" style="height:64px;width:86px;object-fit:cover;cursor:zoom-in" onclick="viewCheckinPhoto('${key}')">
+            <div>약 ${kb}KB (${img.width}×${img.height})<br><button type="button" class="btn btn-link btn-sm p-0" onclick="viewCheckinPhoto('${key}')">크게 보기</button></div>
+          </div>`;
+      } catch (err) {
+        delete checkinPhotos[key];
+        input.value = '';
+        prev.textContent = err.message;
+      }
+    }
+
+    function viewCheckinPhoto(key) {
+      const img = checkinPhotos[key];
+      const slot = CHECKIN_PHOTO_SLOTS.find(s => s.key === key);
+      if (!img || !slot) return;
+      document.getElementById('pvTitle').textContent = slot.label;
+      document.getElementById('pvImg').src = img.base64;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('photoViewerModal')).show();
+    }
+
+    document.getElementById('checkinInlineForm').addEventListener('submit', function(e) {
       e.preventDefault();
+      const missing = CHECKIN_PHOTO_SLOTS.filter(s => !checkinPhotos[s.key]).map(s => s.label);
+      if (missing.length) return alert('사진을 모두 등록해 주세요.\n빠진 사진: ' + missing.join(', '));
+
       const btn = document.getElementById('btnSubmitCheckin');
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>사진 등록 및 반납 제출 중...';
-
-      const photos = [];
-      const p1 = await getFileBase64(document.getElementById('photoOdo').files[0]);
-      const p2 = await getFileBase64(document.getElementById('photoReceipt').files[0]);
-      const p3 = await getFileBase64(document.getElementById('photoBody').files[0]);
-      const p4 = await getFileBase64(document.getElementById('photoWing').files[0]);
-      if(p1) photos.push(p1);
-      if(p2) photos.push(p2);
-      if(p3) photos.push(p3);
-      if(p4) photos.push(p4);
 
       const payload = {
         reservationId: document.getElementById('checkinResId').value,
@@ -2326,7 +2410,7 @@
         inOdo: document.getElementById('inOdo').value.trim(),
         isWingClean: document.getElementById('chkClean').checked,
         notes: document.getElementById('notes').value.trim(),
-        photos: photos
+        photos: CHECKIN_PHOTO_SLOTS.map(s => ({ slot: s.key, name: checkinPhotos[s.key].name, mimeType: 'image/jpeg', base64: checkinPhotos[s.key].base64 }))
       };
 
       google.script.run
@@ -2343,8 +2427,105 @@
             btn.innerHTML = '<i class="bi bi-send-check me-1"></i> 반납 검수표 제출하기';
           }
         })
+        .withFailureHandler(function(err) {
+          alert('제출 중 오류가 발생했습니다. 사진 용량이나 네트워크를 확인한 뒤 다시 제출해 주세요.\n' + err);
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-send-check me-1"></i> 반납 검수표 제출하기';
+        })
         .submitCheckinCheck(payload);
     });
+
+    // ---------- 관리자: 반납 검수 페이지 ----------
+    let reviewCurrent = null;
+    let reviewPhotoCache = {};
+
+    function openReturnReview(resId) {
+      const item = globalAdminList.find(x => x.reservationId === resId);
+      if (!item) return alert('예약 정보를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.');
+      reviewCurrent = item;
+      reviewPhotoCache = {};
+      const photos = item.returnPhotoItems || [];
+      const e = escapeHtml;
+      document.getElementById('rrResId').textContent = resId;
+      document.getElementById('rrBody').innerHTML = `
+        <div class="row g-3">
+          <div class="col-lg-5">
+            <div class="app-card h-100">
+              <h6 class="fw-bold mb-2">예약 정보</h6>
+              <table class="table table-sm mb-0 small"><tbody>
+                <tr><th class="text-muted fw-normal" style="width:90px">기관</th><td>${e(item.agencyName)}</td></tr>
+                <tr><th class="text-muted fw-normal">담당자</th><td>${e(item.managerName)} (${e(item.managerPhone)})</td></tr>
+                <tr><th class="text-muted fw-normal">운전자</th><td>${e(item.driverName)} (${e(item.driverPhone)})</td></tr>
+                <tr><th class="text-muted fw-normal">대여기간</th><td>${e(item.startDate)} ~ ${e(item.endDate)}</td></tr>
+                <tr><th class="text-muted fw-normal">목적</th><td>${e(item.purpose)}</td></tr>
+                <tr><th class="text-muted fw-normal">행선지</th><td>${e(item.destination)}</td></tr>
+                <tr><th class="text-muted fw-normal">수혜·참여</th><td>${e(item.beneficiaryCount)}명</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <div class="app-card h-100">
+              <h6 class="fw-bold mb-2">반납 입력 내역</h6>
+              <table class="table table-sm mb-0 small"><tbody>
+                <tr><th class="text-muted fw-normal" style="width:110px">출발 계기판</th><td>${e(item.outOdo || '-')} km</td></tr>
+                <tr><th class="text-muted fw-normal">반납 계기판</th><td class="fw-bold">${e(item.inOdo || '-')} km</td></tr>
+                <tr><th class="text-muted fw-normal">운행거리</th><td class="fw-bold text-primary">${item.totalDist !== '' && item.totalDist !== undefined ? e(item.totalDist) + ' km' : '-'}</td></tr>
+                <tr><th class="text-muted fw-normal">유류</th><td>${e(item.fuel || '-')}</td></tr>
+                <tr><th class="text-muted fw-normal">적재함 상태</th><td>${e(item.cleanStatus || '-')}</td></tr>
+                <tr><th class="text-muted fw-normal">특이사항</th><td>${e(item.checkNotes || '없음')}</td></tr>
+              </tbody></table>
+              ${item.isOverdue ? '<div class="alert alert-danger py-1 small mt-2 mb-0">반납 예정일을 지났습니다.</div>' : ''}
+            </div>
+          </div>
+        </div>
+        <h6 class="fw-bold mt-4 mb-2"><i class="bi bi-camera me-1"></i>반납 검수 사진 (${photos.length}장)
+          <span class="small text-muted fw-normal">· 사진을 누르면 크게 볼 수 있어요</span></h6>
+        <div class="row g-2">
+          ${photos.length ? '' : '<div class="col-12 text-muted small">제출된 사진이 없습니다.</div>'}
+          ${photos.map((p, i) => `
+            <div class="col-6 col-md-4 col-xl-3">
+              <button type="button" class="w-100 border rounded-3 overflow-hidden bg-light p-0" onclick="viewReturnPhoto(${i})">
+                <div class="ratio ratio-4x3" id="rrThumb${i}"><div class="d-flex align-items-center justify-content-center small text-muted">불러오는 중…</div></div>
+              </button>
+              <div class="small fw-semibold text-center mt-1">${e(p.label || ('사진 ' + (i + 1)))}</div>
+            </div>`).join('')}
+        </div>`;
+
+      const canApprove = item.status === '반납검토대기';
+      document.getElementById('rrFooter').innerHTML = `
+        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">닫기</button>
+        ${canApprove
+          ? `<button type="button" class="btn btn-danger rounded-pill px-4 fw-bold" onclick="changeStatus('${resId}', '반납완료')"><i class="bi bi-check-all me-1"></i> 검수 완료 (최종 반납승인)</button>`
+          : `<span class="badge bg-light text-secondary border px-3 py-2 rounded-pill">${e(item.status)}</span>`}`;
+
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('returnReviewModal')).show();
+      photos.forEach((p, i) => loadReturnPhoto(i));
+    }
+
+    function loadReturnPhoto(i) {
+      const p = reviewCurrent.returnPhotoItems[i];
+      const thumb = document.getElementById('rrThumb' + i);
+      if (!thumb) return;
+      if (!p || !p.fileId) { thumb.innerHTML = '<div class="small text-danger p-2">사진 정보 없음</div>'; return; }
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res.success) { thumb.innerHTML = '<div class="small text-danger p-2">' + escapeHtml(res.message) + '</div>'; return; }
+          reviewPhotoCache[i] = res.dataUrl;
+          thumb.innerHTML = '<img src="' + res.dataUrl + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+        })
+        .withFailureHandler(function() { thumb.innerHTML = '<div class="small text-danger p-2">불러오기 실패</div>'; })
+        .getReturnPhotoData(globalAdminPassword, reviewCurrent.reservationId, p.fileId);
+    }
+
+    function viewReturnPhoto(i) {
+      const p = reviewCurrent && reviewCurrent.returnPhotoItems[i];
+      if (!p) return;
+      const src = reviewPhotoCache[i];
+      if (!src) return alert('사진을 아직 불러오는 중입니다. 잠시 후 다시 눌러 주세요.');
+      document.getElementById('pvTitle').textContent = (p.label || '사진') + ' · ' + reviewCurrent.reservationId;
+      document.getElementById('pvImg').src = src;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('photoViewerModal')).show();
+    }
 
     // 앱 초기화 실행
     function initApplication() {

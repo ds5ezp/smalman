@@ -752,6 +752,10 @@ function getAdminReservations(password) {
       if (!resId) continue;
 
       let returnPhotos = [];
+      let returnPhotoItems = [];
+      let fuel = '';
+      let cleanStatus = '';
+      let checkNotes = '';
       let inOdo = '';
       let outOdo = '';
       let totalDist = '';
@@ -764,7 +768,17 @@ function getAdminReservations(password) {
             totalDist = logData[k][5] !== undefined ? logData[k][5] : '';
             if (logData[k][9]) {
               returnPhotos = String(logData[k][9]).split('\n').filter(url => url.trim().length > 0);
+              returnPhotoItems = returnPhotos.map(line => {
+                const idx = line.indexOf('|');
+                const label = idx === -1 ? '' : line.slice(0, idx).trim();
+                const url = (idx === -1 ? line : line.slice(idx + 1)).trim();
+                const m = url.match(/\/d\/([^/?#]+)/);
+                return { label: label, url: url, fileId: m ? m[1] : '' };
+              });
             }
+            fuel = logData[k][7] || '';
+            cleanStatus = logData[k][10] || '';
+            checkNotes = logData[k][11] || '';
             break;
           }
         }
@@ -805,7 +819,11 @@ function getAdminReservations(password) {
         outOdo: outOdo,
         inOdo: inOdo,
         totalDist: totalDist,
-        returnPhotos: returnPhotos
+        returnPhotos: returnPhotos,
+        returnPhotoItems: returnPhotoItems,
+        fuel: fuel,
+        cleanStatus: cleanStatus,
+        checkNotes: checkNotes
       });
     }
 
@@ -814,6 +832,30 @@ function getAdminReservations(password) {
 
   } catch (err) {
     return { success: false, message: '서버 조회 오류: ' + err.toString() };
+  }
+}
+
+/**
+ * 반납 검수 사진 한 장을 관리자 화면에 표시하기 위해 base64 로 돌려줌
+ * (해당 예약의 Vehicle_Logs 에 등록된 사진만 허용)
+ */
+function getReturnPhotoData(password, reservationId, fileId) {
+  try {
+    if (!verifyAdmin(password)) return { success: false, message: '관리자 인증 실패' };
+    if (!/^[\w-]{10,}$/.test(String(fileId || ''))) return { success: false, message: '사진을 찾을 수 없습니다.' };
+    const logData = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Vehicle_Logs').getDataRange().getValues();
+    let allowed = false;
+    for (let k = 1; k < logData.length; k++) {
+      if (String(logData[k][0]) === String(reservationId) && String(logData[k][9]).indexOf(fileId) !== -1) {
+        allowed = true;
+        break;
+      }
+    }
+    if (!allowed) return { success: false, message: '사진을 찾을 수 없습니다.' };
+    const blob = DriveApp.getFileById(fileId).getBlob();
+    return { success: true, dataUrl: 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes()) };
+  } catch (e) {
+    return { success: false, message: '사진을 불러오지 못했습니다: ' + e.toString() };
   }
 }
 
@@ -1325,6 +1367,17 @@ function cancelReservationByUser(reservationId, pin) {
 /**
  * 19. 반납 검수표 제출
  */
+// 반납 검수 사진 7장 (차량 외관은 앞·옆(좌)·옆(우)·뒤 4면을 각각 촬영)
+const RETURN_PHOTO_SLOTS = [
+  { key: 'odo', label: '계기판' },
+  { key: 'receipt', label: '주유 영수증' },
+  { key: 'front', label: '외관 앞면' },
+  { key: 'left', label: '외관 옆면(좌)' },
+  { key: 'right', label: '외관 옆면(우)' },
+  { key: 'rear', label: '외관 뒷면' },
+  { key: 'wing', label: '적재함 내부·결속벨트' }
+];
+
 function submitCheckinCheck(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const logSheet = ss.getSheetByName('Vehicle_Logs');
@@ -1361,23 +1414,21 @@ function submitCheckinCheck(data) {
   const selectedLog = existingLogData.find((row, index) => index > 0 && String(row[0]) === String(data.reservationId));
   if (selectedLog && Number(data.inOdo) < Number(selectedLog[3] || 0)) return { success: false, message: '반납 계기판은 출발 계기판보다 작을 수 없습니다.' };
 
+  const bySlot = {};
+  (Array.isArray(data.photos) ? data.photos : []).forEach(p => {
+    if (p && RETURN_PHOTO_SLOTS.some(slot => slot.key === p.slot)) bySlot[p.slot] = p;
+  });
+  const missingPhotos = RETURN_PHOTO_SLOTS.filter(slot => !bySlot[slot.key]).map(slot => slot.label);
+  if (missingPhotos.length) return { success: false, message: '사진이 빠졌습니다: ' + missingPhotos.join(', ') };
+
   const todayStr = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd');
   const folder = DriveApp.getFolderById(FOLDER_ID).createFolder(`반납_${agencyName}_${data.reservationId}`);
 
-  const checkinNames = [
-    `반납검수1_${agencyName}_계기판유류_${todayStr}`,
-    `반납검수2_${agencyName}_주유영수증_${todayStr}`,
-    `반납검수3_${agencyName}_차량외관윙_${todayStr}`,
-    `반납검수4_${agencyName}_윙적재함결속벨트_${todayStr}`
-  ];
-
-  const photoUrls = [];
-  if (data.photos && data.photos.length > 0) {
-    data.photos.forEach((photo, idx) => {
-      const customName = checkinNames[idx] || `반납검수${idx + 1}_${agencyName}_추가사진_${todayStr}`;
-      photoUrls.push(saveBase64File(folder, photo, customName));
-    });
-  }
+  // 시트에는 "사진이름|URL" 한 줄씩 저장
+  const photoLines = RETURN_PHOTO_SLOTS.map(slot => {
+    const url = saveBase64File(folder, bySlot[slot.key], `반납검수_${slot.label}_${agencyName}_${todayStr}`);
+    return slot.label + '|' + url;
+  });
 
   let totalDist = 0;
   let logFound = false;
@@ -1394,7 +1445,7 @@ function submitCheckinCheck(data) {
       logSheet.getRange(row, 5).setValue(inOdo);
       logSheet.getRange(row, 6).setValue(totalDist > 0 ? totalDist : 0);
       logSheet.getRange(row, 8).setValue('Full');
-      logSheet.getRange(row, 10).setValue(photoUrls.join('\n'));
+      logSheet.getRange(row, 10).setValue(photoLines.join('\n'));
       logSheet.getRange(row, 11).setValue(data.isWingClean ? '청결' : '정리미흡');
       logSheet.getRange(row, 12).setValue(data.notes || '');
       logFound = true;
@@ -1413,7 +1464,7 @@ function submitCheckinCheck(data) {
       '',
       'Full',
       '',
-      photoUrls.join('\n'),
+      photoLines.join('\n'),
       data.isWingClean ? '청결' : '정리미흡',
       data.notes || ''
     ]);
