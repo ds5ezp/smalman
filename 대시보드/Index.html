@@ -3970,9 +3970,11 @@
       }
       run('getLearnStatus', learnTermId()).then(s => {
         state.learnStatus = s;
-        document.getElementById('learnFormLink').href = s.links.formUrl;
-        document.getElementById('learnFormLink2').href = s.links.formUrl;
-        document.getElementById('learnInfoLink').href = s.links.infoUrl;
+        if (s.links) {
+          document.getElementById('learnFormLink').href = s.links.formUrl;
+          document.getElementById('learnFormLink2').href = s.links.formUrl;
+          document.getElementById('learnInfoLink').href = s.links.infoUrl;
+        }
         document.getElementById('lCheckedAt').textContent = s.checkedAt + ' 기준';
         const phaseClass = { '접수 중': 'text-bg-success', '접수 전': 'text-bg-warning', '접수 마감': 'text-bg-secondary', '결과 발표됨': 'text-bg-primary' }[s.schedule.phase] || 'text-bg-secondary';
         document.getElementById('lPhase').innerHTML = '<span class="mode-pill ' + phaseClass + '">' + esc(s.schedule.phase) + '</span>';
