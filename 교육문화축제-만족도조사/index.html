@@ -443,6 +443,7 @@
       <button id="btnClose" class="close">닫기</button>
     </div>
     <p class="tip">결과는 이 기기의 브라우저에 자동 저장되어 전원이 꺼지거나 새로 고침해도 유지됩니다.<br>행사가 끝나면 ‘결과 파일 저장’으로 기록을 받아 두세요.</p>
+    <p class="tip" id="voiceInfo"></p>
     <p class="tip" id="diag"></p>
   </div>
 </div>
@@ -487,7 +488,10 @@ const CONFIG = {
   idleSec: 15,           // 이 시간(초) 동안 아무도 안 만지면 손가락 그림이 사용법을 보여줌 (0 이면 끔)
   // 소리 (관리자 메뉴에서도 켜고 끌 수 있음)
   sound: true,           // 효과음: 스티커를 집을 때·붙일 때
-  voice: true,           // 음성: 감사 문구와 사용법 안내를 읽어 줌 (컴퓨터에 한국어 음성이 있어야 함)
+  voice: true,           // 음성: 감사 문구와 사용법 안내를 읽어 줌
+  // 읽어 줄 목소리 고르는 순서 (앞에 있을수록 먼저). 엣지 브라우저 + 인터넷이면 SunHi(여)/InJoon(남) AI 음성이 가장 자연스러움
+  // 남자 목소리를 원하면 'InJoon' 을 맨 앞으로. voice 폴더에 녹음 파일이 있으면 목소리 대신 그 파일을 틀어 줌 (README 참고)
+  voicePrefer: ['SunHi', 'InJoon', 'Natural', 'Online', 'Google', 'Heami'],
   music: true,           // 배경 음악: 같은 폴더에 music.mp3 가 있으면 그 노래, 없으면 오르골 음악
   soundVolume: 0.6,      // 효과음 크기 (0 ~ 1)
   musicVolume: 0.25,     // 배경 음악 크기 (0 ~ 1)
@@ -752,7 +756,8 @@ function showToast(x, y, zone) {
   const t = document.createElement('div');
   t.className = 'toast';
   t.style.color = color;
-  t.textContent = list[Math.floor(Math.random() * list.length)];
+  const idx = Math.floor(Math.random() * list.length);
+  t.textContent = list[idx];
   // 긴 문구는 읽을 수 있게 조금 더 오래 보여줌
   const sec = Math.max(1.6, Math.min(3.2, t.textContent.length * 0.09));
   t.style.animationDuration = sec + 's';
@@ -761,7 +766,7 @@ function showToast(x, y, zone) {
   t.style.left = Math.min(Math.max(x, w), innerWidth - w) + 'px';
   t.style.top = Math.max(y, 80) + 'px';
   setTimeout(() => t.remove(), sec * 1000 + 100);
-  speak(t.textContent);
+  speak(t.textContent, false, `${zone}${idx + 1}`);
 }
 
 // 길게 누름 메뉴·두 손가락 확대·우클릭 등 브라우저 기본 동작 막기
@@ -787,9 +792,9 @@ document.addEventListener('keydown', e => {
 $('btnClose').onclick = () => { adminBg.classList.remove('open'); disarmReset(); };
 $('btnCount').onclick = () => { state.showCount = !state.showCount; save(); updateCounts(); };
 $('btnSound').onclick = () => { state.sound = !state.sound; save(); updateCounts(); sfx.yes(); };
-$('btnVoice').onclick = () => { state.voice = !state.voice; save(); updateCounts(); if (state.voice) speak('음성 안내를 켰습니다'); else speechSynthesis.cancel(); };
+$('btnVoice').onclick = () => { state.voice = !state.voice; save(); updateCounts(); if (state.voice) speak('음성 안내를 켰습니다'); else stopVoice(); };
 $('btnMusic').onclick = () => { state.music = !state.music; save(); updateCounts(); bgm.update(); };
-$('btnTest').onclick = () => { sfx.pick(); setTimeout(() => sfx.yes(), 400); setTimeout(() => sfx.no(), 1400); speak('소리가 잘 들리나요?'); };
+$('btnTest').onclick = () => { sfx.pick(); setTimeout(() => sfx.yes(), 400); setTimeout(() => sfx.no(), 1400); speak('안녕하세요! 소리가 잘 들리시나요?'); };
 $('btnReload').onclick = () => location.reload();
 
 // ---------- 터치 위치 확인 ----------
@@ -947,18 +952,18 @@ function play(el, frames, opts) {
   demo.anims.push(a);
   return a;
 }
-function caption(step, text, sub, top) {
+function caption(step, text, sub, top, key) {
   dCap.innerHTML = `<span class="step">${step}</span>${text}${sub ? `<small>${sub}</small>` : ''}`;
   dCap.style.top = top + 'px';
   dCap.classList.add('show');
-  speak(text.replace(/<[^>]+>/g, ''), true);
+  speak(text.replace(/<[^>]+>/g, ''), true, key);
 }
 function stopDemo() {
   demo.token++;
   demo.running = false;
   demo.anims.forEach(a => { try { a.cancel(); } catch (e) {} });
   demo.anims = [];
-  if (window.speechSynthesis) speechSynthesis.cancel();
+  stopVoice();
   dCap.classList.remove('show');
   document.querySelectorAll('.src.demo-press').forEach(e => e.classList.remove('demo-press'));
   zones.forEach(z => z.classList.remove('hover'));
@@ -986,7 +991,7 @@ async function runDemo() {
       const capTop = zr.top + zr.height * .12;
 
       // ① 스티커를 꾹 누르기
-      caption('1', '마음에 드는 <b style="color:var(--green-dark)">스티커</b>를 손가락으로 <b style="color:var(--green-dark)">꾹</b> 누르세요', '', capTop);
+      caption('1', '마음에 드는 <b style="color:var(--green-dark)">스티커</b>를 손가락으로 <b style="color:var(--green-dark)">꾹</b> 누르세요', '', capTop, 'step1');
       play(dHand, [{ transform: hand(sx + 6 * u, tr.bottom + 4 * u), opacity: 0 }, { transform: hand(sx, sy), opacity: 1 }], { duration: 900, easing: 'ease-out' });
       await wait(1000, tk);
       src.classList.add('demo-press');
@@ -999,7 +1004,7 @@ async function runDemo() {
 
       // ② 누른 채로 칸까지 끌기
       const label = zone.dataset.zone === 'yes' ? CONFIG.yesLabel : CONFIG.noLabel;
-      caption('2', `누른 채로 <b style="color:${zone.dataset.zone === 'yes' ? 'var(--green-dark)' : 'var(--orange-dark)'}">‘${label}’</b> 칸까지 끌어오세요`, '그렇다 / 아니다 중 마음에 드는 칸으로!', capTop);
+      caption('2', `누른 채로 <b style="color:${zone.dataset.zone === 'yes' ? 'var(--green-dark)' : 'var(--orange-dark)'}">‘${label}’</b> 칸까지 끌어오세요`, '그렇다 / 아니다 중 마음에 드는 칸으로!', capTop, 'step2-' + zone.dataset.zone);
       src.classList.remove('demo-press');
       const mx = (sx + tx) / 2 + (zone.dataset.zone === 'yes' ? -8 : 8) * u, my = (sy + ty) / 2 + 4 * u;
       play(dSticker, [
@@ -1019,7 +1024,7 @@ async function runDemo() {
       await wait(900, tk);
 
       // ③ 손을 떼면 붙음
-      caption('3', '손을 떼면 <b style="color:var(--green-dark)">쏙!</b> 붙어요', '참여해 주셔서 감사합니다 💛', capTop);
+      caption('3', '손을 떼면 <b style="color:var(--green-dark)">쏙!</b> 붙어요', '참여해 주셔서 감사합니다 💛', capTop, 'step3');
       play(dHand, [{ transform: hand(tx, ty, .88), opacity: 1 }, { transform: hand(tx + 5 * u, ty + 9 * u, 1), opacity: 0 }], { duration: 700, easing: 'ease-in' });
       play(dSticker, [
         { transform: stk(tx, ty, 1.1, -4), opacity: 1 },
@@ -1106,22 +1111,59 @@ const sfx = {
   miss() { if (!this.ok()) return; sweep(520, 220, .22, .25 * CONFIG.soundVolume, 'sine'); }
 };
 
-// 음성: 한국어 목소리가 있을 때만 읽음 (그림 문자는 빼고)
+// 음성
+// 1순위: voice 폴더의 녹음 파일 (사람 목소리 그대로)
+// 2순위: 컴퓨터의 한국어 음성 중 가장 자연스러운 것 (엣지의 AI 음성 SunHi·InJoon 등)
+const voiceFiles = {};   // 파일 이름 → Audio (실제로 있는 파일만)
+let voicePlaying = null;
+(function findVoiceFiles() {
+  const keys = ['step1', 'step2-yes', 'step2-no', 'step3'];
+  CONFIG.thanksYes.forEach((_, i) => keys.push('yes' + (i + 1)));
+  CONFIG.thanksNo.forEach((_, i) => keys.push('no' + (i + 1)));
+  keys.forEach(k => {
+    const a = new Audio();
+    a.preload = 'auto';
+    a.addEventListener('canplaythrough', () => { voiceFiles[k] = a; pickVoice(); }, { once: true });
+    a.src = `voice/${k}.mp3`;
+  });
+})();
 let koVoice = null;
 function pickVoice() {
-  if (!window.speechSynthesis) return;
-  const vs = speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang));
-  koVoice = vs.find(v => /heami|sunhi|injoon|google/i.test(v.name)) || vs[0] || null;
+  const vs = window.speechSynthesis ? speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang)) : [];
+  koVoice = null;
+  for (const want of CONFIG.voicePrefer) {
+    koVoice = vs.find(v => v.name.toLowerCase().includes(want.toLowerCase()));
+    if (koVoice) break;
+  }
+  koVoice = koVoice || vs[0] || null;
+  const el = $('voiceInfo');
+  if (el) el.textContent = '읽어 주는 목소리: ' + (koVoice ? koVoice.name : '한국어 음성 없음') +
+    ' · 녹음 파일: ' + (Object.keys(voiceFiles).length ? Object.keys(voiceFiles).sort().join(', ') : '없음');
 }
 if (window.speechSynthesis) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-function speak(text, isDemo) {
-  if (!state.voice || !window.speechSynthesis || !koVoice) return;
+function stopVoice() {
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  if (voicePlaying) { voicePlaying.pause(); voicePlaying = null; }
+}
+function speak(text, isDemo, key) {
+  if (!state.voice) return;
+  stopVoice();
+  // 녹음 파일이 있으면 그것을 틂
+  const file = key && voiceFiles[key];
+  if (file) {
+    file.currentTime = 0;
+    file.volume = isDemo ? .85 : 1;
+    file.play().catch(() => {});
+    voicePlaying = file;
+    return;
+  }
+  if (!window.speechSynthesis || !koVoice) return;
   const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️‍✦]/gu, '').replace(/\s+/g, ' ').trim();
   if (!clean) return;
-  speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(clean);
   try { u.voice = koVoice; } catch (e) {}
-  u.lang = koVoice.lang || 'ko-KR'; u.rate = isDemo ? .95 : 1.05; u.pitch = 1.15; u.volume = isDemo ? .8 : 1;
+  // 높낮이는 그대로, 빠르기는 살짝 느리게 → 덜 기계적으로 들림
+  u.lang = koVoice.lang || 'ko-KR'; u.rate = isDemo ? .92 : .97; u.pitch = 1; u.volume = isDemo ? .85 : 1;
   speechSynthesis.speak(u);
 }
 
