@@ -166,6 +166,25 @@ function isAllowed_(email) {
   return teamEmails_().indexOf(email) !== -1;
 }
 
+// ---------- 내 캘린더: 로그인한 직원의 기본 구글 캘린더 일정 (달력 한 화면 분량: 42일) ----------
+function getMyCalendarEvents(year, month) {
+  requireUser_();
+  const y = Number(year), m = Number(month);
+  if (!y || !m || m < 1 || m > 12) throw new Error('조회할 년월을 확인해 주세요.');
+  const cal = CalendarApp.getDefaultCalendar();
+  const first = new Date(y, m - 1, 1);
+  const start = new Date(y, m - 1, 1 - first.getDay());
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 42);
+  return cal.getEvents(start, end).map(ev => ({
+    id: ev.getId(),
+    title: ev.getTitle() || '(제목 없음)',
+    allDay: ev.isAllDayEvent(),
+    start: ev.getStartTime().getTime(),
+    end: ev.getEndTime().getTime(),
+    location: ev.getLocation() || ''
+  })).sort((a, b) => a.start - b.start);
+}
+
 function requireUser_() {
   const email = currentUser_();
   if (!isAllowed_(email)) throw new Error('접근 권한이 없습니다. (' + (email || '로그인 정보 없음') + ')');
