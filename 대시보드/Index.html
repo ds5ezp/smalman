@@ -12,15 +12,7 @@
     .menu-title .chev { margin-left: auto; font-size: .8em; transition: transform .2s; }
     .menu-group.collapsed .menu-items { display: none; }
     .menu-group.collapsed .chev { transform: rotate(-90deg); }
-      /* 내 캘린더 */
-    .mycal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-    .mycal-cell { min-height: 92px; border: 1px solid #e9ecef; border-radius: 8px; padding: 4px; font-size: 12px; overflow: hidden; cursor: pointer; background: #fff; }
-    .mycal-cell.muted { background: #f8f9fa; color: #adb5bd; }
-    .mycal-cell.today { border-color: #339af0; }
-    .mycal-cell.sel { box-shadow: inset 0 0 0 2px #339af0; }
-    .mycal-ev { background: #e7f5ff; color: #1c7ed6; border-radius: 4px; padding: 1px 4px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    @media (max-width: 640px) { .mycal-cell { min-height: 60px; font-size: 11px; } .mycal-ev { font-size: 10px; } }
-</style>
+  </style>
 </head>
 <body>
   <header class="app-header">
@@ -913,17 +905,12 @@
      <div data-module-view="mycal" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <h4 class="mb-0">내 캘린더</h4>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-          <button class="btn btn-sm btn-outline-secondary" onclick="moveMyCal(-1)" title="이전 달"><i class="bi bi-chevron-left"></i></button>
-          <strong id="mcTitle" class="px-2" style="min-width:120px; text-align:center;"></strong>
-          <button class="btn btn-sm btn-outline-secondary" onclick="moveMyCal(1)" title="다음 달"><i class="bi bi-chevron-right"></i></button>
-          <button class="btn btn-sm btn-light" onclick="moveMyCal(0)">오늘</button>
-          <a class="btn btn-sm btn-outline-primary" href="https://calendar.google.com/" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>구글 캘린더 열기</a>
-        </div>
+        <a class="btn btn-sm btn-outline-primary" href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>구글 캘린더 새 창으로 열기</a>
       </div>
-      <div class="card p-2 mb-3"><div class="mycal-grid" id="mcGrid"></div></div>
-      <div class="card p-3" id="mcDetail"></div>
-      <div class="small text-muted mt-2">일정을 추가하거나 고치려면 구글 캘린더에서 해 주세요. 이 화면은 보기 전용입니다.</div>
+      <div class="card p-2">
+        <iframe id="mcFrame" title="내 캘린더" style="width:100%; height:720px; border:0;" src="about:blank"></iframe>
+      </div>
+      <div class="small text-muted mt-2">로그인한 본인의 구글 캘린더를 보여 줍니다. 화면이 비어 있으면 "새 창으로 열기"를 눌러 주세요. 일정 추가와 수정은 구글 캘린더에서 해 주세요.</div>
      </div>
 
      <div data-module-view="staff" class="d-none">
@@ -1694,94 +1681,16 @@
       }
     }
 
-    // ---------- 내 캘린더 (로그인한 직원의 구글 캘린더, 보기 전용) ----------
-    const mycal = { year: new Date().getFullYear(), month: new Date().getMonth() + 1, selected: null, events: [] };
-
-    function moveMyCal(delta) {
-      if (delta === 0) {
-        const now = new Date();
-        mycal.year = now.getFullYear();
-        mycal.month = now.getMonth() + 1;
-      } else {
-        let m = mycal.month + delta, y = mycal.year;
-        if (m < 1) { m = 12; y--; }
-        if (m > 12) { m = 1; y++; }
-        mycal.month = m;
-        mycal.year = y;
-      }
-      mycal.selected = null;
-      loadMyCalendar();
-    }
-
+    // ---------- 내 캘린더: 접속한 직원 본인의 구글 캘린더를 임베드 ----------
+    let mycalLoaded = false;
     function loadMyCalendar() {
-      document.getElementById('mcTitle').textContent = mycal.year + '년 ' + mycal.month + '월';
-      document.getElementById('mcGrid').innerHTML = '<div class="text-center text-muted py-5" style="grid-column:1/-1">일정을 불러오는 중…</div>';
-      run('getMyCalendarEvents', mycal.year, mycal.month).then(list => {
-        mycal.events = list || [];
-        renderMyCalendar();
-      }).catch(err => {
-        document.getElementById('mcGrid').innerHTML = '<div class="text-danger py-4" style="grid-column:1/-1">일정을 불러오지 못했습니다: ' + esc(err && err.message ? err.message : err) + '</div>';
-      });
-    }
-
-    function renderMyCalendar() {
-      const first = new Date(mycal.year, mycal.month - 1, 1);
-      const start = new Date(mycal.year, mycal.month - 1, 1 - first.getDay());
-      const todayKey = dayKey(new Date());
-      const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
-      let html = WEEK.map((w, i) => '<div class="small fw-bold text-center ' + (i === 0 ? 'text-danger' : i === 6 ? 'text-primary' : 'text-muted') + '">' + w + '</div>').join('');
-      for (let i = 0; i < 42; i++) {
-        const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-        const key = dayKey(d);
-        const evs = eventsOnDay(d);
-        const classes = ['mycal-cell'];
-        if (d.getMonth() !== mycal.month - 1) classes.push('muted');
-        if (key === todayKey) classes.push('today');
-        if (mycal.selected === key) classes.push('sel');
-        html += '<div class="' + classes.join(' ') + '" onclick="selectMyCalDay(\'' + key + '\')">' +
-          '<div class="fw-bold ' + (d.getDay() === 0 ? 'text-danger' : '') + '">' + d.getDate() + '</div>' +
-          evs.slice(0, 3).map(ev => '<div class="mycal-ev" title="' + esc(ev.title) + '">' + (ev.allDay ? '' : esc(fmtTime(ev.start)) + ' ') + esc(ev.title) + '</div>').join('') +
-          (evs.length > 3 ? '<div class="small text-muted">외 ' + (evs.length - 3) + '건</div>' : '') +
-          '</div>';
-      }
-      document.getElementById('mcGrid').innerHTML = html;
-      renderMyCalDetail();
-    }
-
-    function selectMyCalDay(key) {
-      mycal.selected = mycal.selected === key ? null : key;
-      renderMyCalendar();
-    }
-
-    function renderMyCalDetail() {
-      const box = document.getElementById('mcDetail');
-      if (!mycal.selected) {
-        box.innerHTML = '<div class="text-muted small">날짜를 누르면 그날의 일정을 볼 수 있어요.</div>';
-        return;
-      }
-      const parts = mycal.selected.split('-').map(Number);
-      const day = new Date(parts[0], parts[1] - 1, parts[2]);
-      const evs = eventsOnDay(day);
-      box.innerHTML = '<div class="fw-bold mb-2">' + parts[0] + '년 ' + parts[1] + '월 ' + parts[2] + '일 일정</div>' +
-        (evs.length ? evs.map(ev => '<div class="border-bottom py-2"><div class="fw-semibold">' + esc(ev.title) + '</div>' +
-          '<div class="small text-muted">' + (ev.allDay ? '종일' : esc(fmtTime(ev.start)) + ' ~ ' + esc(fmtTime(ev.end))) + (ev.location ? ' · ' + esc(ev.location) : '') + '</div></div>').join('')
-          : '<div class="text-muted small">일정이 없습니다.</div>');
-    }
-
-    function dayKey(d) {
-      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    }
-
-    // 하루 [0시, 다음날 0시)와 겹치는 일정 (여러 날짜 일정은 각 날짜에 표시)
-    function eventsOnDay(d) {
-      const ds = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-      const de = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
-      return mycal.events.filter(ev => ev.start < de && Math.max(ev.end, ev.start + 1) > ds);
-    }
-
-    function fmtTime(ms) {
-      const d = new Date(ms);
-      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      if (mycalLoaded) return;
+      run('getMyCalendarEmail').then(email => {
+        const src = 'https://calendar.google.com/calendar/embed?src=' + encodeURIComponent(email) +
+          '&ctz=Asia%2FSeoul&mode=MONTH&showTitle=0&showPrint=0&showTabs=1&showCalendars=0&showTz=0';
+        document.getElementById('mcFrame').src = src;
+        mycalLoaded = true;
+      }).catch(fail);
     }
 
     // 왼쪽 메뉴: 로비 사이니지 / 각 실 사이니지

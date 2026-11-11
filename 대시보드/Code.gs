@@ -166,23 +166,11 @@ function isAllowed_(email) {
   return teamEmails_().indexOf(email) !== -1;
 }
 
-// ---------- 내 캘린더: 로그인한 직원의 기본 구글 캘린더 일정 (달력 한 화면 분량: 42일) ----------
-function getMyCalendarEvents(year, month) {
-  requireUser_();
-  const y = Number(year), m = Number(month);
-  if (!y || !m || m < 1 || m > 12) throw new Error('조회할 년월을 확인해 주세요.');
-  const cal = CalendarApp.getDefaultCalendar();
-  const first = new Date(y, m - 1, 1);
-  const start = new Date(y, m - 1, 1 - first.getDay());
-  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 42);
-  return cal.getEvents(start, end).map(ev => ({
-    id: ev.getId(),
-    title: ev.getTitle() || '(제목 없음)',
-    allDay: ev.isAllDayEvent(),
-    start: ev.getStartTime().getTime(),
-    end: ev.getEndTime().getTime(),
-    location: ev.getLocation() || ''
-  })).sort((a, b) => a.start - b.start);
+// ---------- 내 캘린더: 접속한 직원의 이메일만 돌려줌 ----------
+// 배포 설정이 '나로 실행'(USER_DEPLOYING)이라 CalendarApp 은 배포자 캘린더를 읽으므로 쓰지 않음.
+// 화면에서 구글 캘린더 임베드를 직접 열어 본인 캘린더를 보여 줌.
+function getMyCalendarEmail() {
+  return requireUser_();
 }
 
 function requireUser_() {
