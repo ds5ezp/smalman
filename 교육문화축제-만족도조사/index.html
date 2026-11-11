@@ -436,6 +436,10 @@
       <button id="btnReset" class="danger">전체 초기화</button>
       <button id="btnReload">화면 새로 고침</button>
       <button id="btnTouch">터치 위치 확인</button>
+      <button id="btnSound">효과음: 켜짐</button>
+      <button id="btnVoice">음성 안내: 켜짐</button>
+      <button id="btnMusic">배경 음악: 켜짐</button>
+      <button id="btnTest">소리 시험</button>
       <button id="btnClose" class="close">닫기</button>
     </div>
     <p class="tip">결과는 이 기기의 브라우저에 자동 저장되어 전원이 꺼지거나 새로 고침해도 유지됩니다.<br>행사가 끝나면 ‘결과 파일 저장’으로 기록을 받아 두세요.</p>
@@ -481,6 +485,12 @@ const CONFIG = {
   maxSimultaneous: 10,   // 동시에 끌 수 있는 손가락 수
   adminHoldMs: 3000,     // 관리자 메뉴 열기: 기관명 길게 누르는 시간
   idleSec: 15,           // 이 시간(초) 동안 아무도 안 만지면 손가락 그림이 사용법을 보여줌 (0 이면 끔)
+  // 소리 (관리자 메뉴에서도 켜고 끌 수 있음)
+  sound: true,           // 효과음: 스티커를 집을 때·붙일 때
+  voice: true,           // 음성: 감사 문구와 사용법 안내를 읽어 줌 (컴퓨터에 한국어 음성이 있어야 함)
+  music: true,           // 배경 음악: 같은 폴더에 music.mp3 가 있으면 그 노래, 없으면 오르골 음악
+  soundVolume: 0.6,      // 효과음 크기 (0 ~ 1)
+  musicVolume: 0.25,     // 배경 음악 크기 (0 ~ 1)
   fileName: '제14회_교육문화축제_만족도조사',
   storageKey: 'edu-culture-festival-14'
 };
@@ -528,7 +538,7 @@ const zones = [...document.querySelectorAll('.zone')];
 const zoneByName = Object.fromEntries(zones.map(z => [z.dataset.zone, z]));
 
 // ---------- 저장 ----------
-let state = { stickers: [], showCount: CONFIG.showCount };
+let state = { stickers: [], showCount: CONFIG.showCount, sound: CONFIG.sound, voice: CONFIG.voice, music: CONFIG.music };
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(CONFIG.storageKey));
@@ -595,6 +605,9 @@ function updateCounts() {
   $('aNoPct').textContent = (total ? 100 - yp : 0) + '%';
   $('aBar').style.width = (total ? yp : 50) + '%';
   $('btnCount').textContent = '화면 숫자 표시: ' + (state.showCount ? '켜짐' : '꺼짐');
+  $('btnSound').textContent = '효과음: ' + (state.sound ? '켜짐' : '꺼짐');
+  $('btnVoice').textContent = '음성 안내: ' + (state.voice ? '켜짐' : '꺼짐');
+  $('btnMusic').textContent = '배경 음악: ' + (state.music ? '켜짐' : '꺼짐');
 }
 
 // ---------- 스티커 받침 ----------
@@ -641,6 +654,7 @@ function startDrag(id, target, x, y) {
   const d = { el, type: src.dataset.type, size, r: Math.round(Math.random() * 30 - 15) };
   drags.set(id, d);
   moveDrag(d, x, y);
+  sfx.pick();
   return true;
 }
 function dragMove(id, x, y) {
@@ -677,10 +691,12 @@ function endDrag(id, cancelled) {
     updateCounts();
     d.el.remove();
     showToast(px, py - half, zone);
+    sfx[zone === 'yes' ? 'yes' : 'no']();
   } else {
     d.el.classList.add('vanish');
     d.el.style.transform += ' scale(0.3)';
     setTimeout(() => d.el.remove(), 320);
+    sfx.miss();
   }
   refreshHover();
 }
@@ -745,6 +761,7 @@ function showToast(x, y, zone) {
   t.style.left = Math.min(Math.max(x, w), innerWidth - w) + 'px';
   t.style.top = Math.max(y, 80) + 'px';
   setTimeout(() => t.remove(), sec * 1000 + 100);
+  speak(t.textContent);
 }
 
 // 길게 누름 메뉴·두 손가락 확대·우클릭 등 브라우저 기본 동작 막기
@@ -769,6 +786,10 @@ document.addEventListener('keydown', e => {
 
 $('btnClose').onclick = () => { adminBg.classList.remove('open'); disarmReset(); };
 $('btnCount').onclick = () => { state.showCount = !state.showCount; save(); updateCounts(); };
+$('btnSound').onclick = () => { state.sound = !state.sound; save(); updateCounts(); sfx.yes(); };
+$('btnVoice').onclick = () => { state.voice = !state.voice; save(); updateCounts(); if (state.voice) speak('음성 안내를 켰습니다'); else speechSynthesis.cancel(); };
+$('btnMusic').onclick = () => { state.music = !state.music; save(); updateCounts(); bgm.update(); };
+$('btnTest').onclick = () => { sfx.pick(); setTimeout(() => sfx.yes(), 400); setTimeout(() => sfx.no(), 1400); speak('소리가 잘 들리나요?'); };
 $('btnReload').onclick = () => location.reload();
 
 // ---------- 터치 위치 확인 ----------
@@ -930,12 +951,14 @@ function caption(step, text, sub, top) {
   dCap.innerHTML = `<span class="step">${step}</span>${text}${sub ? `<small>${sub}</small>` : ''}`;
   dCap.style.top = top + 'px';
   dCap.classList.add('show');
+  speak(text.replace(/<[^>]+>/g, ''), true);
 }
 function stopDemo() {
   demo.token++;
   demo.running = false;
   demo.anims.forEach(a => { try { a.cancel(); } catch (e) {} });
   demo.anims = [];
+  if (window.speechSynthesis) speechSynthesis.cancel();
   dCap.classList.remove('show');
   document.querySelectorAll('.src.demo-press').forEach(e => e.classList.remove('demo-press'));
   zones.forEach(z => z.classList.remove('hover'));
@@ -967,6 +990,7 @@ async function runDemo() {
       play(dHand, [{ transform: hand(sx + 6 * u, tr.bottom + 4 * u), opacity: 0 }, { transform: hand(sx, sy), opacity: 1 }], { duration: 900, easing: 'ease-out' });
       await wait(1000, tk);
       src.classList.add('demo-press');
+      sfx.pick(.5);
       play(dHand, [{ transform: hand(sx, sy) }, { transform: hand(sx, sy, .88) }], { duration: 250 });
       dRing.style.width = dRing.style.height = sr.width * 1.4 + 'px';
       play(dRing, [{ transform: `translate(${sx - sr.width * .7}px, ${sy - sr.width * .7}px) scale(.6)`, opacity: .9 },
@@ -1006,6 +1030,7 @@ async function runDemo() {
       ], { duration: 1900 });
       zone.classList.remove('hover');
       celebrate(tx, ty - size * .35, zone.dataset.zone);
+      sfx[zone.dataset.zone === 'yes' ? 'yes' : 'no'](.5);
       await wait(2300, tk);
       dCap.classList.remove('show');
       await wait(1300, tk);
@@ -1025,6 +1050,144 @@ function armIdle() {
 ['touchstart', 'pointerdown', 'mousedown', 'keydown'].forEach(ev =>
   window.addEventListener(ev, () => { if (demo.running) stopDemo(); armIdle(); }, true));
 armIdle();
+
+// ---------- 소리 ----------
+// 소리 파일 없이 브라우저에서 직접 만들어 냄 (인터넷 없어도 됨).
+// 브라우저 규칙상 첫 터치 전에는 소리가 나지 않음 → 노트북-실행.bat 으로 띄우면 처음부터 남.
+let actx = null, master = null;
+function audio() {
+  if (!actx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    actx = new AC();
+    master = actx.createGain();
+    master.gain.value = 1;
+    master.connect(actx.destination);
+  }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+// 맑은 종소리 한 음
+function note(freq, at, dur, vol, type, out) {
+  const c = actx, o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain();
+  o.type = type || 'sine'; o.frequency.value = freq;
+  o2.type = 'sine'; o2.frequency.value = freq * 2; // 배음으로 반짝이는 느낌
+  const g2 = c.createGain(); g2.gain.value = .25;
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(out || master);
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  o.start(at); o2.start(at); o.stop(at + dur + .05); o2.stop(at + dur + .05);
+}
+function sweep(f1, f2, dur, vol, type) {
+  const c = actx, o = c.createOscillator(), g = c.createGain(), t = c.currentTime;
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05);
+}
+const sfx = {
+  ok() { return state.sound && audio(); },
+  pick(k = 1) { if (!this.ok()) return; sweep(420, 980, .13, .35 * CONFIG.soundVolume * k, 'triangle'); },
+  // 그렇다: 도-미-솔-도 딩동댕
+  yes(k = 1) {
+    if (!this.ok()) return;
+    const t = actx.currentTime, v = .3 * CONFIG.soundVolume * k;
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => note(f, t + i * .085, .5, v, 'triangle'));
+    note(1568, t + .38, .7, v * .5);
+    note(2093, t + .46, .8, v * .35);
+  },
+  // 아니다: 부드럽고 따뜻한 차임 (서운하지 않게)
+  no(k = 1) {
+    if (!this.ok()) return;
+    const t = actx.currentTime, v = .28 * CONFIG.soundVolume * k;
+    [659.25, 783.99, 1046.5].forEach((f, i) => note(f, t + i * .16, .8, v));
+  },
+  miss() { if (!this.ok()) return; sweep(520, 220, .22, .25 * CONFIG.soundVolume, 'sine'); }
+};
+
+// 음성: 한국어 목소리가 있을 때만 읽음 (그림 문자는 빼고)
+let koVoice = null;
+function pickVoice() {
+  if (!window.speechSynthesis) return;
+  const vs = speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang));
+  koVoice = vs.find(v => /heami|sunhi|injoon|google/i.test(v.name)) || vs[0] || null;
+}
+if (window.speechSynthesis) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function speak(text, isDemo) {
+  if (!state.voice || !window.speechSynthesis || !koVoice) return;
+  const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️‍✦]/gu, '').replace(/\s+/g, ' ').trim();
+  if (!clean) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(clean);
+  try { u.voice = koVoice; } catch (e) {}
+  u.lang = koVoice.lang || 'ko-KR'; u.rate = isDemo ? .95 : 1.05; u.pitch = 1.15; u.volume = isDemo ? .8 : 1;
+  speechSynthesis.speak(u);
+}
+
+// 배경 음악: music.mp3 가 있으면 그 노래를 반복, 없으면 오르골 음악을 만들어 연주
+const bgm = {
+  file: null, fileOk: false, synthOn: false, timer: null, next: 0, step: 0, bus: null,
+  init() {
+    const a = new Audio();
+    a.loop = true; a.preload = 'auto';
+    a.addEventListener('canplaythrough', () => { this.fileOk = true; this.update(); }, { once: true });
+    a.addEventListener('error', () => { this.fileOk = false; this.update(); }, { once: true });
+    a.src = 'music.mp3';
+    this.file = a;
+  },
+  update() {
+    const want = state.music && !!actx;
+    if (this.fileOk) {
+      this.stopSynth();
+      this.file.volume = Math.min(1, CONFIG.musicVolume);
+      if (want) this.file.play().catch(() => {}); else this.file.pause();
+    } else {
+      if (want) this.startSynth(); else this.stopSynth();
+    }
+  },
+  // 8마디 밝은 멜로디 (8분음표 단위, 0 = 쉼표) 와 마디별 화음
+  mel: [523,659,784,659, 880,784,659,784, 698,880,1047,880, 784,659,587,659,
+        523,659,784,1047, 880,784,659,523, 587,698,659,587, 523,0,392,0],
+  bass: [131,110,87,98, 131,110,147,131],
+  chord: [[262,330,392],[220,262,330],[175,220,262],[196,247,294],[262,330,392],[220,262,330],[147,175,220],[262,330,392]],
+  startSynth() {
+    if (this.synthOn || !audio()) return;
+    this.synthOn = true;
+    this.bus = actx.createGain();
+    this.bus.gain.value = CONFIG.musicVolume * .9;
+    this.bus.connect(master);
+    this.next = actx.currentTime + .1; this.step = 0;
+    const beat = 60 / 112 / 2; // 112 BPM, 8분음표
+    this.timer = setInterval(() => {
+      while (this.next < actx.currentTime + .4) {
+        const i = this.step % 32, bar = Math.floor(i / 4);
+        const f = this.mel[i];
+        if (f) note(f, this.next, beat * 1.8, .16, 'triangle', this.bus);
+        if (i % 4 === 0) {
+          note(this.bass[bar], this.next, beat * 3.6, .22, 'sine', this.bus);
+          this.chord[bar].forEach((cf, k) => note(cf, this.next + beat * (k * .5 + 1), beat * 2.4, .05, 'sine', this.bus));
+        }
+        this.next += beat; this.step++;
+      }
+    }, 120);
+  },
+  stopSynth() {
+    if (!this.synthOn) return;
+    this.synthOn = false; clearInterval(this.timer);
+    const b = this.bus; this.bus = null;
+    if (b) { b.gain.setTargetAtTime(0, actx.currentTime, .2); setTimeout(() => b.disconnect(), 1500); }
+  }
+};
+bgm.init();
+// 첫 터치(또는 자동재생 허용 시 바로) 소리 시작
+function unlockAudio() { if (audio()) bgm.update(); }
+['touchstart', 'pointerdown', 'mousedown', 'keydown'].forEach(ev => window.addEventListener(ev, unlockAudio, true));
+// 자동재생이 허용된 실행(노트북-실행.bat)이면 손대기 전부터 음악이 나옴
+try {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (AC) { const probe = new AC(); if (probe.state === 'running') { probe.close(); unlockAudio(); } else probe.close(); }
+} catch (e) {}
 
 load();
 renderAll();
