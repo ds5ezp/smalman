@@ -166,13 +166,6 @@ function isAllowed_(email) {
   return teamEmails_().indexOf(email) !== -1;
 }
 
-// ---------- 내 캘린더: 접속한 직원의 이메일만 돌려줌 ----------
-// 배포 설정이 '나로 실행'(USER_DEPLOYING)이라 CalendarApp 은 배포자 캘린더를 읽으므로 쓰지 않음.
-// 화면에서 구글 캘린더 임베드를 직접 열어 본인 캘린더를 보여 줌.
-function getMyCalendarEmail() {
-  return requireUser_();
-}
-
 function requireUser_() {
   const email = currentUser_();
   if (!isAllowed_(email)) throw new Error('접근 권한이 없습니다. (' + (email || '로그인 정보 없음') + ')');

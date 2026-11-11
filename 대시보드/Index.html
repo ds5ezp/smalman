@@ -904,13 +904,13 @@
      <!-- ===================== 직원 목록 (Workspace 디렉터리) ===================== -->
      <div data-module-view="mycal" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <h4 class="mb-0">내 캘린더</h4>
+        <h4 class="mb-0">복지관 캘린더</h4>
         <a class="btn btn-sm btn-outline-primary" href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>구글 캘린더 새 창으로 열기</a>
       </div>
       <div class="card p-2">
         <iframe id="mcFrame" title="내 캘린더" style="width:100%; height:720px; border:0;" src="about:blank"></iframe>
       </div>
-      <div class="small text-muted mt-2">로그인한 본인의 구글 캘린더를 보여 줍니다. 화면이 비어 있으면 "새 창으로 열기"를 눌러 주세요. 일정 추가와 수정은 구글 캘린더에서 해 주세요.</div>
+      <div class="small text-muted mt-2">복지관 공용 캘린더를 보여 줍니다. 화면이 비어 있으면 "새 창으로 열기"를 눌러 주세요. 일정 추가와 수정은 구글 캘린더에서 해 주세요.</div>
      </div>
 
      <div data-module-view="staff" class="d-none">
@@ -1681,16 +1681,14 @@
       }
     }
 
-    // ---------- 내 캘린더: 접속한 직원 본인의 구글 캘린더를 임베드 ----------
-    let mycalLoaded = false;
+    // ---------- 내 캘린더: 복지관 공용 캘린더(calendar@geojecwc.kr)를 임베드 ----------
+    const MYCAL_EMBED_IDS = ['calendar@geojecwc.kr'];
     function loadMyCalendar() {
-      if (mycalLoaded) return;
-      run('getMyCalendarEmail').then(email => {
-        const src = 'https://calendar.google.com/calendar/embed?src=' + encodeURIComponent(email) +
-          '&ctz=Asia%2FSeoul&mode=MONTH&showTitle=0&showPrint=0&showTabs=1&showCalendars=0&showTz=0';
-        document.getElementById('mcFrame').src = src;
-        mycalLoaded = true;
-      }).catch(fail);
+      const frame = document.getElementById('mcFrame');
+      if (frame.dataset.loaded) return;
+      const srcs = MYCAL_EMBED_IDS.map(id => 'src=' + encodeURIComponent(id)).join('&');
+      frame.src = 'https://calendar.google.com/calendar/embed?' + srcs + '&ctz=Asia%2FSeoul&mode=MONTH&showTitle=0&showPrint=0&showTabs=1&showCalendars=0&showTz=0';
+      frame.dataset.loaded = '1';
     }
 
     // 왼쪽 메뉴: 로비 사이니지 / 각 실 사이니지
