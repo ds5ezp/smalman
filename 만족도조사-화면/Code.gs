@@ -23,7 +23,7 @@ function doGet(e) {
   const preview = !!(e && e.parameter && e.parameter.preview === '1');
   if (!SHEET_ID) return messagePage_('설정이 필요합니다', 'Code.gs 맨 위 SHEET_ID 에 대시보드 > 만족도 조사 > 처음 설정 탭의 시트 ID를 넣고 다시 배포해 주세요.');
   const survey = findSurvey_(key);
-  if (!survey) return messagePage_('조사를 찾을 수 없습니다', '주소가 맞는지 확인해 주세요. 대시보드 > 만족도 조사에서 주소를 다시 복사할 수 있습니다.');
+  if (!survey) return messagePage_('조사를 찾을 수 없습니다', notFoundReason_(key));
 
   const t = HtmlService.createTemplateFromFile('Survey');
   // 처음 화면에 필요한 자료를 함께 넣어 보냄 (스크립트 안에 넣으므로 < 를 바꿔 태그가 닫히지 않게)
@@ -40,6 +40,19 @@ function messagePage_(title, text) {
     '<div style="font-family:sans-serif;max-width:560px;margin:15vh auto;padding:32px;border-radius:24px;background:#fff7ef;text-align:center;line-height:1.7">' +
     '<h2 style="margin-top:0">' + escapeHtml_(title) + '</h2><p>' + escapeHtml_(text) + '</p></div>'
   ).setTitle(title);
+}
+
+// 조사를 못 찾은 이유를 알려 줌 (설정 실수를 바로 알 수 있게)
+function notFoundReason_(key) {
+  const fix = ' 업무포털 > 만족도 조사 > 처음 설정 1번의 시트 ID와 이 프로젝트 Code.gs 맨 위 SHEET_ID 가 같은지 확인하고, 고쳤으면 저장한 뒤 새 버전으로 배포해 주세요.';
+  if (!/^[A-Za-z0-9]{8,32}$/.test(key)) return '주소 끝의 ?s= 뒤 키가 올바르지 않습니다. 업무포털 > 만족도 조사에서 전용 주소를 다시 복사해 주세요.';
+  const ss = ss_();
+  const sheet = ss.getSheetByName(SURVEY_TAB);
+  if (!sheet) return 'SHEET_ID 가 가리키는 시트("' + ss.getName() + '")에 \'' + SURVEY_TAB + '\' 탭이 없습니다. 만족도 조사 시트가 아닌 다른 시트 ID가 들어간 것 같습니다.' + fix;
+  const rows = sheet.getDataRange().getValues().slice(1).filter(v => String(v[0]).trim());
+  const row = rows.find(v => String(v[0]).trim() === key);
+  if (row && String(row[3]).trim() === '삭제') return '업무포털에서 삭제한 조사입니다.';
+  return '이 프로젝트가 보는 시트("' + ss.getName() + '")에는 조사 ' + rows.length + '개가 있지만 이 주소의 키(' + key + ')는 없습니다.' + fix;
 }
 
 function escapeHtml_(v) {
