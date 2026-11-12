@@ -1,0 +1,6 @@
+# Gradle / Android Studio 생성물
+.gradle/
+build/
+.idea/
+*.iml
+local.properties

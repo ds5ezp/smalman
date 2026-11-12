@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>복지관 스마트 사이니지</title>
+    <!-- Tailwind CSS CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #080d1a;
+            color: #ffffff;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+        }
+
+        .logo-glow {
+            filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.5));
+        }
+
+        #slide-display {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        @keyframes progressAnimation {
+            from { width: 0%; }
+            to { width: 100%; }
+        }
+
+        .progress-bar-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 14px;
+            background-color: #0f172a;
+            z-index: 30;
+            overflow: visible !important;
+            border-top: 2px solid #334155;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #38bdf8, #f59e0b);
+            position: relative;
+        }
+
+        .progress-icon {
+            position: absolute;
+            right: -22px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 50px;
+            filter: drop-shadow(0 0 10px rgba(245, 158, 11, 1));
+            animation: bounceIcon 0.6s infinite alternate ease-in-out;
+        }
+
+        @keyframes bounceIcon {
+            from { transform: translateY(-50%) scale(1); }
+            to { transform: translateY(-50%) scale(1.25); }
+        }
+
+        /* 캔버스 스타일 날씨 카드 및 애니메이션 */
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+
+        @keyframes rotate-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes float-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        @keyframes rain-fall { 0% { transform: translateY(-10px); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(20px); opacity: 0; } }
+
+        .anim-sun { animation: rotate-slow 20s linear infinite; display: inline-block; }
+        .anim-cloud { animation: float-slow 5s ease-in-out infinite; display: inline-block; }
+        .anim-rain { animation: rain-fall 2s linear infinite; display: inline-block; }
+
+        /* 날씨 화면 */
+        .wx-screen { position: relative; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .wx-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+        .wx-card { position: relative; z-index: 2; text-align: center; color: #fff; padding: 12px; animation: wxUp .9s ease-out both; }
+        .wx-date { font-size: 20px; opacity: .85; letter-spacing: .05em; margin-bottom: 6px; }
+        .wx-icon { font-size: 96px; line-height: 1.1; animation: wxBob 3s ease-in-out infinite; filter: drop-shadow(0 12px 24px rgba(0,0,0,.25)); }
+        .wx-status { font-size: 32px; font-weight: 700; margin-top: 4px; }
+        .wx-temp { font-size: 110px; font-weight: 200; line-height: 1; margin: 6px 0; text-shadow: 0 8px 30px rgba(0,0,0,.25); font-variant-numeric: tabular-nums; }
+        .wx-sub { font-size: 20px; opacity: .85; }
+        .wx-pill { display: inline-flex; align-items: center; gap: 10px; margin-top: 14px; padding: 8px 20px; border-radius: 999px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3); font-size: 20px; font-weight: 600; }
+        .wx-dot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 12px currentColor; animation: wxPulse 1.6s ease-in-out infinite; }
+        .wx-msg { margin-top: 14px; font-size: 22px; font-style: italic; opacity: .92; }
+        .wx-drop { position: absolute; top: -80px; width: 2px; height: 70px; background: linear-gradient(transparent, rgba(255,255,255,.75)); animation-name: wxFall; animation-timing-function: linear; animation-iteration-count: infinite; }
+        .wx-flake { position: absolute; top: -40px; color: #fff; opacity: .9; font-style: normal; animation-name: wxSnow; animation-timing-function: linear; animation-iteration-count: infinite; }
+        .wx-cloud { position: absolute; left: -220px; font-size: 120px; opacity: .35; animation-name: wxDrift; animation-timing-function: linear; animation-iteration-count: infinite; }
+        .wx-sun { position: absolute; top: -140px; right: -140px; width: 460px; height: 460px; border-radius: 50%; background: radial-gradient(circle, rgba(255,236,160,.9), rgba(255,236,160,0) 70%); animation: wxPulse 4s ease-in-out infinite; }
+        @keyframes wxUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
+        @keyframes wxBob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-14px) rotate(3deg); } }
+        @keyframes wxPulse { 0%, 100% { opacity: .6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+        @keyframes wxFall { from { transform: translateY(0); } to { transform: translateY(130vh); } }
+        @keyframes wxSnow { from { transform: translateY(0) translateX(0); } 50% { transform: translateY(65vh) translateX(30px); } to { transform: translateY(130vh) translateX(-20px); } }
+        @keyframes wxDrift { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 400px)); } }
+        /* ===== 토스 스타일 테마 (대시보드와 같은 색) ===== */
+        /* 다크 토스 톤: 검정 배경에 어두운 카드, 밝은 글자, 토스 파란색 포인트 */
+        :root {
+            --t-bg: #0d1017; --t-card: #181c25; --t-text: #f2f4f6; --t-text2: #b0b8c1;
+            --t-text3: #8b95a1; --t-line: #262b35; --t-blue: #4593fc; --t-blue-weak: rgba(69, 147, 252, .16);
+        }
+        #rightContainer { background-color: var(--t-bg) !important; border-left: 1px solid var(--t-line); }
+        #rightContainer span.border-yellow-500 {
+            background: var(--t-blue-weak) !important; border: none !important; color: var(--t-blue) !important;
+            border-radius: 999px !important; padding: 10px 20px !important; font-weight: 800 !important;
+        }
+        #notice-list > div {
+            background: var(--t-card) !important; border: none !important; border-radius: 20px !important;
+            box-shadow: 0 6px 20px rgba(25, 31, 40, .07) !important; padding: 18px !important;
+        }
+        #notice-list .text-sky-200, #notice-list .text-gray-200 { color: var(--t-text) !important; }
+        #notice-list .text-gray-300, #notice-list .text-gray-400 { color: var(--t-text2) !important; }
+        #notice-list .text-yellow-300 { color: var(--t-blue) !important; }
+        #notice-list .border-gray-800 { border-color: var(--t-line) !important; }
+        #notice-list .bg-white { border-radius: 16px !important; border: 1px solid var(--t-line) !important; }
+        #widgetOverlay {
+            background: var(--t-card) !important; border-top: 1px solid var(--t-line) !important;
+            box-shadow: 0 -4px 16px rgba(25, 31, 40, .05) !important;
+        }
+        #widgetOverlay .text-white, #widgetOverlay .text-yellow-300, #widgetOverlay .text-yellow-400 { color: var(--t-text) !important; }
+        #widgetOverlay .text-gray-200, #widgetOverlay .text-gray-300, #widgetOverlay .text-gray-400 { color: var(--t-text2) !important; }
+        #widgetOverlay .bg-gray-800, #widgetOverlay .bg-slate-900\/80 {
+            background: var(--t-bg) !important; border: none !important; border-radius: 16px !important;
+        }
+        #widgetOverlay .text-blue-400 { color: var(--t-blue) !important; }
+        #dustBadge { background: var(--t-bg) !important; border: none !important; border-radius: 16px !important; }
+        #weatherStatus { color: var(--t-text2) !important; }
+        #weatherTemp { color: var(--t-text) !important; font-weight: 800 !important; }
+        #syncStatus { color: var(--t-text) !important; font-weight: 700 !important; }
+        #clock-display, #clockDate { color: var(--t-text) !important; }
+        /* 하단 바와 공지 글씨 크기를 같은 기준(화면 높이 비율)으로 맞춤 */
+        #weatherTemp { font-size: 2.6vh !important; }
+        #weatherStatus, #clockDate, #clock-display { font-size: 2.2vh !important; }
+        #notice-list .text-sky-200 { font-size: 2.8vh !important; line-height: 1.3 !important; }
+        #notice-list .text-gray-300, #notice-list .text-yellow-300, #notice-list .text-gray-200,
+        #notice-list .text-base { font-size: 1.8vh !important; }
+        #notice-list .notice-desc, #notice-list .notice-date { font-size: 2.3vh !important; }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex flex-col relative" style="background-color: #020617; width: 100vw; height: 100vh;">
+
+    <!-- [비상 모드 오버레이] -->
+    <div id="emergency-overlay" class="hidden fixed inset-0 z-50 flex-col items-center justify-center p-12 text-center text-white border-8 border-red-600" style="background-color: rgba(69, 10, 10, 0.95);">
+        <div class="w-28 h-28 rounded-full flex items-center justify-center mb-6 border-4 border-red-500" style="background-color: rgba(220, 38, 38, 0.3);">
+            <i class="fa-solid fa-triangle-exclamation text-6xl text-red-400"></i>
+        </div>
+        <h1 class="text-6xl font-black mb-6 text-red-200">[긴급 비상 방송]</h1>
+        <p id="emergency-text" class="text-4xl font-black max-w-5xl leading-relaxed text-white p-8 rounded-2xl border border-red-500" style="background-color: rgba(153, 27, 27, 0.6);">
+            비상 상황 발생 - 안내에 따라 대피하십시오.
+        </p>
+    </div>
+
+    <!-- [1. 상단 메인 영역] -->
+    <div id="mainContainer" class="flex flex-row w-full" style="height: 90vh;">
+        <!-- 좌측 미디어 플레이어 영역 (70% 폭) -->
+        <div id="leftContainer" class="relative bg-black overflow-hidden flex flex-col justify-between border-r border-gray-800" style="width: 70vw; height: 100%;">
+            <div id="slide-display" class="w-full flex-1 flex items-center justify-center relative p-0 opacity-100">
+                <div class="text-gray-400 text-2xl font-bold flex items-center gap-3">
+                    <i class="fa-solid fa-circle-notch fa-spin text-blue-400"></i>
+                    미디어 콘텐츠를 불러오는 중...
+                </div>
+            </div>
+
+            <!-- 글로벌 QR 박스 -->
+            <div id="slideQrBox" class="hidden absolute top-4 right-4 z-20 flex-col items-center bg-white p-3 rounded-xl shadow-2xl border border-gray-300">
+                <img id="slideQrImg" src="" alt="Slide QR" class="w-28 h-28 object-contain">
+                <span class="text-xs text-gray-900 font-extrabold mt-1.5">상세 보기</span>
+            </div>
+
+            <!-- 미디어 플레이어 하단 진행 바 (커피 아이콘 없이 바만 움직임) -->
+            <div class="progress-bar-container">
+                <div id="progressBar" class="progress-bar-fill"></div>
+            </div>
+        </div>
+
+        <!-- 우측 공지사항 영역 (30% 폭) -->
+        <div id="rightContainer" class="relative flex flex-col justify-between overflow-hidden" style="width: 30vw; height: 100%; background-color: #020617;">
+            <div class="relative flex-1 p-5 overflow-y-auto flex flex-col justify-start">
+                <div class="flex items-center justify-between mb-4 shrink-0">
+                    <span class="px-5 py-2 text-yellow-400 border-2 border-yellow-500 rounded-xl text-2xl font-black flex items-center gap-2" style="background-color: rgba(245, 158, 11, 0.2);">
+                        <i class="fa-solid fa-bullhorn text-xl"></i> 복지관 공지사항
+                    </span>
+                    <span class="w-3.5 h-3.5 rounded-full bg-green-400" title="실시간 동기화"></span>
+                </div>
+                <div id="notice-list" class="flex flex-col gap-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- [2. 최하단 통합 위젯 바] -->
+    <div id="widgetOverlay" class="w-full border-t border-gray-800 px-6 flex items-center justify-between gap-4 z-30 shadow-2xl shrink-0 overflow-hidden whitespace-nowrap" style="height: 10vh; background-color: rgba(15, 23, 42, 0.98);">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-blue-400 border border-gray-700 shadow-inner shrink-0">
+                <i class="fa-regular fa-clock text-2xl"></i>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="clockDate" class="text-lg text-gray-300 font-black whitespace-nowrap">월 일 (요일)</span>
+                <span class="text-lg text-yellow-400 font-bold">|</span>
+                <span id="clock-display" class="text-2xl font-black text-yellow-300 font-mono leading-none tracking-wider whitespace-nowrap">오전 00시 00분 00초</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-center">
+            <img src="https://lh3.googleusercontent.com/d/1IV2uScHVsv0g4eQt2V33yjtMZewVY5-X" 
+                 alt="거제시종합사회복지관" 
+                 class="h-11 object-contain logo-glow"
+                 onerror="this.src='https://drive.google.com/uc?export=view&id=1IV2uScHVsv0g4eQt2V33yjtMZewVY5-X';">
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div id="weather-display" class="flex items-center gap-3 bg-slate-900/80 px-3 py-1 rounded-xl border border-gray-800 whitespace-nowrap">
+                <i id="weatherIcon" class="fa-solid fa-sun text-yellow-400 text-2xl"></i>
+                <div class="flex items-center gap-2">
+                    <span id="weatherStatus" class="text-lg text-gray-300 font-bold whitespace-nowrap">거제시 | 맑음</span>
+                    <span id="weatherTemp" class="text-2xl font-black text-white whitespace-nowrap">--°C</span>
+                </div>
+            </div>
+            <span id="dustBadge" class="text-lg font-black px-3 py-1 whitespace-nowrap rounded-xl bg-blue-500/30 text-blue-300 border border-blue-400/50">
+                미세 보통
+            </span>
+            <div class="flex items-center gap-2 text-gray-200 text-base font-black bg-gray-800 px-3 py-1 rounded-xl border border-gray-700 whitespace-nowrap">
+                <span id="statusDot" class="w-4 h-4 rounded-full bg-green-400"></span>
+                <span id="syncStatus">온라인</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var state = {
+            slides: [],
+            slideIndex: 0,
+            notices: [],
+            noticePageIndex: 0,
+            noticeTimer: null,
+            systemMode: 'normal',
+            operationalHours: "09:00 - 18:00",
+            slideTimer: null,
+            latestWeather: null
+        };
+
+        var welcomeState = {
+            isWelcome: false,
+            slides: [],
+            index: 0,
+            timer: null
+        };
+
+        function triggerProgressBar(barElement, durationSec) {
+            if (!barElement) return;
+            barElement.style.animation = 'none';
+            barElement.offsetHeight;
+            barElement.style.animation = 'progressAnimation ' + durationSec + 's linear forwards';
+        }
+
+        function updateOnlineStatus(isOnline) {
+            var dot = document.getElementById('statusDot');
+            var text = document.getElementById('syncStatus');
+            if (!dot || !text) return;
+
+            if (isOnline) {
+                dot.className = 'w-4 h-4 rounded-full bg-green-400';
+                text.innerText = '온라인';
+            } else {
+                dot.className = 'w-4 h-4 rounded-full bg-red-500 animate-pulse';
+                text.innerText = '오프라인';
+            }
+        }
+
+        function getWeatherIconClass(iconCode) {
+            if (!iconCode) return 'fa-solid fa-sun text-yellow-400';
+            var code = String(iconCode).substring(0, 2);
+            switch(code) {
+                case '01': return 'fa-solid fa-sun text-yellow-400';
+                case '02': return 'fa-solid fa-cloud-sun text-amber-300';
+                case '03': 
+                case '04': return 'fa-solid fa-cloud text-gray-300';
+                case '09': 
+                case '10': return 'fa-solid fa-cloud-showers-heavy text-blue-400';
+                case '11': return 'fa-solid fa-cloud-bolt text-yellow-300';
+                case '13': return 'fa-solid fa-snowflake text-sky-200';
+                case '50': return 'fa-solid fa-smog text-slate-300';
+                default: return 'fa-solid fa-sun text-yellow-400';
+            }
+        }
+
+        function getDriveFileId(url) {
+            if (!url) return '';
+            if (url.indexOf('id=') !== -1) return url.split('id=')[1].split('&')[0];
+            if (url.indexOf('/d/') !== -1) return url.split('/d/')[1].split('/')[0].split('?')[0];
+            var match = url.match(/[-\w]{25,}/);
+            return match ? match[0] : '';
+        }
+
+        // 운영시간 밖(절전)이면 슬라이드·영상·타이머를 모두 멈추고, 안이면 다시 시작
+        var savingActive = false;
+
+        function setSavingActive(on) {
+            if (on === savingActive) return;
+            savingActive = on;
+
+            if (on) {
+                clearTimeout(state.slideTimer);
+                state.slideTimer = null;
+                clearTimeout(welcomeState.timer);
+                // 화면에 떠 있는 내용(영상 iframe 포함)을 지워서 소리와 움직임을 멈춤
+                var slideEl = document.getElementById('slide-display');
+                if (slideEl) slideEl.innerHTML = '';
+                var fsEl = document.getElementById('fullscreen-overlay');
+                if (fsEl) { fsEl.classList.add('hidden'); fsEl.innerHTML = ''; }
+                document.querySelectorAll('video').forEach(function (v) { v.pause(); });
+                var bgmEl = document.getElementById('bgmAudio');
+                if (bgmEl) bgmEl.pause();
+                if (document.getAnimations) {
+                    document.getAnimations().forEach(function (a) { a.cancel(); });
+                }
+            } else {
+                var bgmResume = document.getElementById('bgmAudio');
+                if (bgmResume && bgmResume.src) bgmResume.play().catch(function () {});
+                if (welcomeState.isWelcome) {
+                    renderWelcomeSlides();
+                } else {
+                    showCurrentSlide();
+                }
+            }
+        }
+
+        function checkOperationalHours() {
+            if (!state.operationalHours || state.operationalHours.indexOf('-') === -1) return;
+
+            var parts = state.operationalHours.split('-');
+            var startStr = parts[0].trim();
+            var endStr = parts[1].trim();
+
+            var now = new Date();
+            var currentHour = now.getHours();
+            var currentMin = now.getMinutes();
+            var currentTimeVal = currentHour * 60 + currentMin;
+
+            var startParts = startStr.split(':');
+            var startTimeVal = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+
+            var endParts = endStr.split(':');
+            var endTimeVal = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+
+            var emergencyOverlay = document.getElementById('emergency-overlay');
+            var emergencyText = document.getElementById('emergency-text');
+
+            if (state.systemMode !== 'emergency') {
+                if (currentTimeVal < startTimeVal || currentTimeVal > endTimeVal) {
+                    setSavingActive(true);
+                    emergencyOverlay.classList.remove('hidden');
+                    emergencyOverlay.classList.add('flex');
+                    emergencyText.innerText = "현재는 복지관 운영 시간이 아닙니다. (" + state.operationalHours + ")";
+                } else {
+                    setSavingActive(false);
+                    emergencyOverlay.classList.add('hidden');
+                    emergencyOverlay.classList.remove('flex');
+                }
+            } else {
+                // 비상모드: 대시보드에서 켠 비상 안내를 화면에 띄움 (운영시간과 상관없이)
+                setSavingActive(false);
+                emergencyOverlay.classList.remove('hidden');
+                emergencyOverlay.classList.add('flex');
+                emergencyText.innerText = state.emergencyMsg || "비상 상황 발생 - 안내에 따라 대피하십시오.";
+            }
+        }
+
+        function refreshDashboardData() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(onDashboardDataLoaded)
+                    .withFailureHandler(function(err) { 
+                        console.error('대시보드 데이터 연동 에러:', err); 
+                        updateOnlineStatus(false);
+                    })
+                    .getDashboardData();
+            } else {
+                updateOnlineStatus(navigator.onLine);
+            }
+        }
+
+        function refreshSlideData() {
+            if (welcomeState.isWelcome) return;
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(slides) {
+                        updateOnlineStatus(true);
+                        if (slides && Array.isArray(slides) && slides.length > 0) {
+                            state.slides = slides;
+                            if (state.slideIndex >= state.slides.length) {
+                                state.slideIndex = 0;
+                            }
+                            if (!state.slideTimer) {
+                                showCurrentSlide();
+                            }
+                        }
+                    })
+                    .withFailureHandler(function(err) { 
+                        console.error('슬라이드 데이터 연동 에러:', err); 
+                        updateOnlineStatus(false);
+                    })
+                    .getSlideData();
+            }
+        }
+
+        function renderWelcomeSlides() {
+            clearTimeout(welcomeState.timer);
+            if (savingActive) return;
+
+            var fsOverlay = document.getElementById('fullscreen-overlay');
+            if (!fsOverlay) {
+                fsOverlay = document.createElement('div');
+                fsOverlay.id = 'fullscreen-overlay';
+                fsOverlay.className = 'hidden fixed inset-0 z-40 bg-black flex items-center justify-center overflow-hidden';
+                document.body.appendChild(fsOverlay);
+            }
+
+            if (!welcomeState.isWelcome || !welcomeState.slides || welcomeState.slides.length === 0) {
+                if (fsOverlay && state.systemMode !== 'emergency') {
+                    fsOverlay.classList.add('hidden');
+                }
+                return;
+            }
+
+            fsOverlay.classList.remove('hidden');
+
+            var currentSlide = welcomeState.slides[welcomeState.index];
+            var durationSec = (currentSlide.duration || 15000) / 1000;
+
+            fsOverlay.style.opacity = '0';
+            setTimeout(function() {
+                if (savingActive) return;
+                fsOverlay.innerHTML = '';
+
+                var bgImgFs = document.createElement('img');
+                bgImgFs.className = 'absolute inset-0 w-full h-full object-cover filter blur-3xl opacity-50 scale-110 pointer-events-none';
+                bgImgFs.src = currentSlide.path;
+
+                var imgFs = document.createElement('img');
+                imgFs.className = 'relative z-10 max-w-full max-h-full object-contain shadow-2xl';
+                imgFs.src = currentSlide.path;
+
+                fsOverlay.appendChild(bgImgFs);
+                fsOverlay.appendChild(imgFs);
+                fsOverlay.style.opacity = '1';
+            }, 50);
+
+            if (welcomeState.slides.length > 1) {
+                welcomeState.timer = setTimeout(function() {
+                    welcomeState.index++;
+                    if (welcomeState.index >= welcomeState.slides.length) {
+                        welcomeState.index = 0;
+                    }
+                    renderWelcomeSlides();
+                }, currentSlide.duration || 15000);
+            }
+        }
+
+        function onDashboardDataLoaded(data) {
+            if (!data) {
+                updateOnlineStatus(false);
+                return;
+            }
+
+            updateOnlineStatus(true);
+            state.systemMode = data.systemMode || 'normal';
+            state.emergencyMsg = data.emergencyMsg || '';
+            if (data.operationalHours) {
+                state.operationalHours = data.operationalHours;
+            }
+            // 글자 크기: 운영설정 시트 B8 값(%)으로 글자 크기만 바꿈 (화면 전체가 줄어들지 않게 root 글자 크기 사용)
+            if (data.fontScale) {
+                document.documentElement.style.fontSize = (16 * Number(data.fontScale) / 100) + 'px';
+            }
+
+            if (data.weather) {
+                state.latestWeather = data.weather;
+                var tempStr = data.weather.temp || '--°C';
+                var iconCode = data.weather.icon || '01d';
+                var statusText = data.weather.status || '맑음';
+                var dustText = data.weather.dust || '보통';
+
+                var weatherIconEl = document.getElementById('weatherIcon');
+                var weatherStatusEl = document.getElementById('weatherStatus');
+                var weatherTempEl = document.getElementById('weatherTemp');
+                var dustBadgeEl = document.getElementById('dustBadge');
+
+                if (weatherIconEl) weatherIconEl.className = getWeatherIconClass(iconCode) + ' text-2xl';
+                if (weatherStatusEl) weatherStatusEl.innerText = '거제시 | ' + statusText;
+                if (weatherTempEl) weatherTempEl.innerText = tempStr;
+
+                if (dustBadgeEl) {
+                    var dustClass = 'bg-blue-500/30 text-blue-300 border-blue-400/50';
+                    if (dustText === '좋음') dustClass = 'bg-blue-500/30 text-blue-300 border-blue-400/50';
+                    else if (dustText === '보통') dustClass = 'bg-green-500/30 text-green-300 border-green-400/50';
+                    else if (dustText === '나쁨') dustClass = 'bg-amber-500/30 text-amber-300 border-amber-400/50';
+                    else if (dustText === '매우나쁨') dustClass = 'bg-red-500/30 text-red-300 border-red-400/50';
+                    dustBadgeEl.className = 'text-lg font-black px-3 py-1 whitespace-nowrap rounded-xl border ' + dustClass;
+                    dustBadgeEl.innerText = '미세 ' + dustText;
+                }
+            }
+
+            state.noticeError = data.noticeError || '';
+            state.noticeListOn = data.noticeListOn !== false;
+            state.noticeListCount = data.noticeListCount || 5;
+            if (data.notices && Array.isArray(data.notices)) {
+                state.notices = data.notices;
+                state.noticePageIndex = 0;
+            }
+
+            renderNotices();
+        }
+
+        function renderNotices() {
+            clearTimeout(state.noticeTimer);
+            var noticeContainer = document.getElementById('notice-list');
+            if (!noticeContainer) return;
+
+            if (!state.notices || state.notices.length === 0) {
+                var noticeMsg = state.noticeError || '등록된 공지사항이 없습니다.';
+                noticeContainer.innerHTML = '<div class="text-center text-gray-400 text-xl font-bold py-10"></div>';
+                noticeContainer.firstChild.innerText = noticeMsg;
+                return;
+            }
+
+            // 최근 공지 2개를 한 화면에 하나씩 10초마다 번갈아 보여 줌
+            var recentNotices = state.notices.slice(0, 2);
+            if (state.noticePageIndex >= recentNotices.length) state.noticePageIndex = 0;
+            var displayNotices = [recentNotices[state.noticePageIndex]];
+            noticeContainer.innerHTML = '';
+
+            displayNotices.forEach(function(notice) {
+                var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(notice.link || 'http://gjcw.or.kr');
+                
+                var card = document.createElement('div');
+                card.className = 'w-full border-2 border-gray-700 p-6 rounded-2xl flex flex-col gap-3 shadow-xl shrink-0';
+                card.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
+
+                var contentBox = document.createElement('div');
+                contentBox.className = 'flex-1 flex flex-col justify-center min-w-0';
+
+                var titleSpan = document.createElement('div');
+                titleSpan.className = 'text-sky-200 font-black text-2xl mb-2 leading-snug break-all';
+                titleSpan.innerText = notice.title || '';
+
+                var descEl = document.createElement('div');
+                descEl.className = 'text-lg text-gray-300 leading-snug line-clamp-4 notice-desc';
+                descEl.innerText = notice.desc || '';
+
+                var dateSpanEl = document.createElement('div');
+                dateSpanEl.className = 'text-lg text-yellow-300 font-extrabold notice-date';
+                dateSpanEl.innerHTML = '<i class="fa-regular fa-calendar-check mr-2"></i>' + (notice.date || '');
+
+                contentBox.appendChild(titleSpan);
+                contentBox.appendChild(descEl);
+                contentBox.appendChild(dateSpanEl);
+
+                var qrBox = document.createElement('div');
+                qrBox.className = 'flex flex-row items-center gap-2 bg-white p-2 rounded-xl self-end';
+
+                var qrImg = document.createElement('img');
+                qrImg.src = qrUrl;
+                qrImg.alt = 'Notice QR';
+                qrImg.className = 'w-16 h-16 object-contain';
+
+                var qrLabel = document.createElement('span');
+                qrLabel.className = 'text-sm text-gray-900 font-black';
+                qrLabel.innerText = '상세보기';
+
+                qrBox.appendChild(qrImg);
+                qrBox.appendChild(qrLabel);
+
+                card.appendChild(contentBox);
+                card.appendChild(qrBox);
+                noticeContainer.appendChild(card);
+            });
+
+            // 아래쪽: 최근 공지 목록 (칸을 채우고, 여러 공지를 한눈에 보게 함)
+            var list = document.createElement('div');
+            list.className = 'mt-4 flex flex-col';
+            var listHead = document.createElement('div');
+            listHead.className = 'text-base text-gray-400 font-bold mb-2';
+            listHead.innerText = '최근 공지';
+            list.appendChild(listHead);
+            (state.notices.slice(0, state.noticeListCount || 5)).forEach(function(n) {
+                var row = document.createElement('div');
+                row.className = 'flex justify-between items-center gap-3 border-b border-gray-800 py-2';
+                var t = document.createElement('span');
+                t.className = 'text-lg text-gray-200 truncate';
+                t.innerText = n.title || '';
+                var d = document.createElement('span');
+                d.className = 'text-base text-yellow-300 shrink-0';
+                d.innerText = n.date || '';
+                row.appendChild(t);
+                row.appendChild(d);
+                list.appendChild(row);
+            });
+            if (state.noticeListOn !== false) noticeContainer.appendChild(list);
+
+            // 다음 공지로 넘어가는 타이머 (2개가 번갈아 나옴)
+            state.noticePageIndex = (state.noticePageIndex + 1) % recentNotices.length;
+            state.noticeTimer = setTimeout(renderNotices, 10000);
+
+        }
+
+        function showCurrentSlide() {
+            clearTimeout(state.slideTimer);
+
+            if (savingActive || welcomeState.isWelcome) return;
+
+            var container = document.getElementById('slide-display');
+            var progressBar = document.getElementById('progressBar');
+            var slideQrBox = document.getElementById('slideQrBox');
+            var slideQrImg = document.getElementById('slideQrImg');
+            var leftContainer = document.getElementById('leftContainer');
+            var rightContainer = document.getElementById('rightContainer');
+            var mainContainer = document.getElementById('mainContainer');
+            var widgetOverlay = document.getElementById('widgetOverlay');
+
+            if (!state.slides || state.slides.length === 0) {
+                if (container) {
+                    container.innerHTML = '<div class="text-gray-400 text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-circle-notch fa-spin text-blue-400"></i> 콘텐츠 로딩 중...</div>';
+                }
+                return;
+            }
+
+            var slide = state.slides[state.slideIndex] || state.slides[0];
+            var slideType = String(slide.type || 'IMAGE').toUpperCase().trim();
+            // 날씨를 아직 못 받았으면 날씨 화면은 건너뜀 (받은 뒤 다음 순서부터 실제 날씨가 나옴)
+            if (slideType === 'WEATHER_SLIDE' && !state.latestWeather) {
+                state.slideTimer = setTimeout(nextSlide, 1000);
+                return;
+            }
+            
+            var defaultDuration = 8000;
+            if (slideType === 'CAFE_MENU') defaultDuration = 20000;
+            else if (slideType === 'EVENT_POST') defaultDuration = 10000;
+            else if (slideType === 'FULLSCREEN' || slideType === 'WEATHER_SLIDE') defaultDuration = 12000;
+
+            var durationMs = (slide.duration && slide.duration > 1000) ? Number(slide.duration) : defaultDuration;
+            var durationSec = durationMs / 1000;
+            var rawPath = String(slide.path || '').trim();
+
+            if (slideType === 'FULLSCREEN') {
+                if (mainContainer) mainContainer.style.height = '100vh';
+                if (leftContainer) leftContainer.style.width = '100vw';
+                if (rightContainer) rightContainer.style.display = 'none';
+                if (widgetOverlay) widgetOverlay.style.display = 'none';
+            } else if (slideType === 'CAFE_MENU' || slideType === 'LOGO_SLIDE') {
+                if (mainContainer) mainContainer.style.height = '90vh';
+                if (leftContainer) leftContainer.style.width = '100vw';
+                if (rightContainer) rightContainer.style.display = 'none';
+                if (widgetOverlay) widgetOverlay.style.display = 'flex';
+            } else {
+                if (mainContainer) mainContainer.style.height = '90vh';
+                if (leftContainer) leftContainer.style.width = '70vw';
+                if (rightContainer) rightContainer.style.display = 'flex';
+                if (widgetOverlay) widgetOverlay.style.display = 'flex';
+            }
+
+            triggerProgressBar(progressBar, durationSec);
+
+            if (slideType !== 'WELFARE_NEWS_4LINES' && slideType !== 'EVENT_POST' && slideType !== 'LOGO_SLIDE' && slideType !== 'CAFE_MENU' && slideType !== 'FULLSCREEN' && slideType !== 'WEATHER_SLIDE' && slide.qr && slide.qr !== '(선택)' && slide.qr.length > 5) {
+                var slideQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(slide.qr);
+                if (slideQrImg) slideQrImg.src = slideQrUrl;
+                if (slideQrBox) slideQrBox.classList.remove('hidden');
+            } else {
+                if (slideQrBox) slideQrBox.classList.add('hidden');
+            }
+
+            if (!container) return;
+
+            container.style.opacity = '0';
+            setTimeout(function() {
+                if (savingActive) return;   // 절전 중이면 새 내용을 그리지 않음
+                container.innerHTML = '';
+
+                if (slideType === 'WEATHER_SLIDE') {
+                    if (slideQrBox) slideQrBox.classList.add('hidden');
+                    container.innerHTML = buildWeatherScreen_(state.latestWeather);
+                    animateWeatherTemp_();
+                } else if (slideType === 'LOGO_SLIDE') {
+                    if (slideQrBox) slideQrBox.classList.add('hidden');
+                    var logoWrapper = document.createElement('div');
+                    logoWrapper.className = 'w-full h-full flex flex-col items-center justify-center p-0 bg-slate-950/95 relative';
+                    var bgLogo = document.createElement('img');
+                    bgLogo.className = 'absolute inset-0 w-full h-full object-cover filter blur-3xl opacity-30 scale-110 pointer-events-none';
+                    bgLogo.src = rawPath;
+                    var logoImg = document.createElement('img');
+                    logoImg.className = 'relative z-10 w-auto h-full max-w-full max-h-full object-contain logo-glow p-4';
+                    logoImg.src = rawPath;
+                    logoWrapper.appendChild(bgLogo);
+                    logoWrapper.appendChild(logoImg);
+                    container.appendChild(logoWrapper);
+
+                } else if (slideType === 'FULLSCREEN') {
+                    if (slideQrBox) slideQrBox.classList.add('hidden');
+                    var fsWrapper = document.createElement('div');
+                    fsWrapper.className = 'w-full h-full flex items-center justify-center bg-black relative p-0';
+                    var bgFs = document.createElement('img');
+                    bgFs.className = 'absolute inset-0 w-full h-full object-cover filter blur-2xl opacity-40 scale-110 pointer-events-none';
+                    bgFs.src = rawPath;
+                    var fsImg = document.createElement('img');
+                    fsImg.className = 'relative z-10 w-auto h-full max-w-full max-h-full object-contain shadow-2xl';
+                    fsImg.src = rawPath;
+                    fsWrapper.appendChild(bgFs);
+                    fsWrapper.appendChild(fsImg);
+                    container.appendChild(fsWrapper);
+
+                } else if (slideType === 'WELFARE_NEWS_4LINES') {
+                    if (slideQrBox) slideQrBox.classList.add('hidden');
+                    var listWrapper = document.createElement('div');
+                    listWrapper.className = 'w-full h-full flex flex-col p-4 gap-3 bg-slate-950/95 justify-center';
+                    var items = slide.items || [];
+                    items.forEach(function(item) {
+                        var rowCard = document.createElement('div');
+                        rowCard.className = 'w-full bg-slate-900/90 border border-sky-500/40 rounded-xl px-4 py-3 flex items-center justify-between gap-4 shadow-lg flex-1 min-h-0';
+                        var leftBox = document.createElement('div');
+                        leftBox.className = 'flex flex-col justify-center min-w-0 flex-1';
+                        var topRow = document.createElement('div');
+                        topRow.className = 'flex items-center gap-2 mb-1';
+                        var badge = document.createElement('span');
+                        badge.className = 'px-2 py-0.5 bg-sky-500/20 text-sky-300 text-xs font-bold rounded border border-sky-400/40 shrink-0';
+                        badge.innerText = item.source;
+                        var date = document.createElement('span');
+                        date.className = 'text-xs text-gray-400 font-bold';
+                        date.innerHTML = '<i class="fa-regular fa-calendar-check mr-1"></i>' + item.date;
+                        topRow.appendChild(badge);
+                        topRow.appendChild(date);
+                        var title = document.createElement('h3');
+                        title.className = 'text-base font-bold text-white truncate mb-1';
+                        title.innerText = item.title;
+                        var desc = document.createElement('p');
+                        desc.className = 'text-xs text-gray-300 line-clamp-1 leading-snug';
+                        desc.innerText = item.desc;
+                        leftBox.appendChild(topRow);
+                        leftBox.appendChild(title);
+                        leftBox.appendChild(desc);
+                        var rightBox = document.createElement('div');
+                        rightBox.className = 'flex items-center gap-3 shrink-0';
+                        if (item.image) {
+                            var thumb = document.createElement('img');
+                            thumb.src = item.image;
+                            thumb.className = 'w-16 h-12 object-cover rounded border border-gray-700 shadow';
+                            rightBox.appendChild(thumb);
+                        }
+                        var qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(item.qr);
+                        var qrImg = document.createElement('img');
+                        qrImg.src = qrCodeUrl;
+                        qrImg.className = 'w-14 h-14 bg-white p-1 rounded border border-gray-300 object-contain shadow';
+                        rightBox.appendChild(qrImg);
+                        rowCard.appendChild(leftBox);
+                        rowCard.appendChild(rightBox);
+                        listWrapper.appendChild(rowCard);
+                    });
+                    container.appendChild(listWrapper);
+
+                } else if (slideType === 'EVENT_POST') {
+                    var eventWrapper = document.createElement('div');
+                    eventWrapper.className = 'w-full h-full flex flex-row items-center justify-between p-4 gap-4 bg-slate-950/90';
+                    var imgUrl = slide.imagePath || rawPath;
+                    if (imgUrl) {
+                        var imgBoxContainer = document.createElement('div');
+                        imgBoxContainer.className = 'w-1/2 h-full flex flex-col justify-center items-center py-2';
+                        var box = document.createElement('div');
+                        box.className = 'w-full h-full relative overflow-hidden rounded-xl bg-black border border-gray-800 shadow-xl flex items-center justify-center';
+                        var bgImg = document.createElement('img');
+                        bgImg.className = 'absolute inset-0 w-full h-full object-cover filter blur-2xl opacity-40 scale-110 pointer-events-none';
+                        bgImg.src = imgUrl;
+                        var img = document.createElement('img');
+                        img.className = 'relative z-10 w-auto h-full max-w-full max-h-full object-contain p-2 rounded-lg shadow-md img-fade-transition';
+                        img.src = imgUrl;
+                        box.appendChild(bgImg);
+                        box.appendChild(img);
+                        imgBoxContainer.appendChild(box);
+                        eventWrapper.appendChild(imgBoxContainer);
+                    }
+                    var textBox = document.createElement('div');
+                    textBox.className = (imgUrl ? 'w-1/2' : 'w-full') + ' h-full flex flex-col justify-between p-6 bg-slate-900/90 rounded-2xl border-2 border-amber-500/50 shadow-2xl overflow-hidden';
+                    var topHeader = document.createElement('div');
+                    topHeader.className = 'flex flex-col gap-4 min-h-0 overflow-hidden';
+                    var badgeBox = document.createElement('div');
+                    badgeBox.className = 'flex items-center justify-between shrink-0';
+                    var badgeText = '<i class="fa-solid fa-camera-retro"></i> 복지관 행사 소식';
+                    if (slide.imgTotal && slide.imgTotal > 1) {
+                        badgeText += ' (' + slide.imgIndex + '/' + slide.imgTotal + ')';
+                    }
+                    var badge = document.createElement('span');
+                    badge.className = 'px-4 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/50 text-3xl font-black flex items-center gap-2.5';
+                    badge.innerHTML = badgeText;
+                    var dateEl = document.createElement('span');
+                    dateEl.className = 'text-3xl text-yellow-300 font-extrabold';
+                    dateEl.innerText = slide.date || '';
+                    badgeBox.appendChild(badge);
+                    badgeBox.appendChild(dateEl);
+                    var titleEl = document.createElement('h2');
+                    titleEl.className = 'text-6xl font-black text-amber-300 leading-snug mt-4 shrink-0';
+                    titleEl.innerText = slide.title || '';
+                    topHeader.appendChild(badgeBox);
+                    topHeader.appendChild(titleEl);
+                    var qrSection = document.createElement('div');
+                    qrSection.className = 'flex-1 flex flex-col items-center justify-center gap-4 bg-slate-950/60 p-6 rounded-2xl border border-amber-500/30 my-auto shadow-inner';
+                    var qrInfoText = document.createElement('span');
+                    qrInfoText.className = 'text-3xl text-amber-200 font-black text-center leading-snug';
+                    qrInfoText.innerText = '스마트폰 카메라로 QR을 스캔하여\n전체 내용을 확인해보세요!';
+                    if (slide.qr && slide.qr.length > 5) {
+                        var qrImgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' + encodeURIComponent(slide.qr);
+                        var qrImgEl = document.createElement('img');
+                        qrImgEl.src = qrImgUrl;
+                        qrImgEl.className = 'w-64 h-64 bg-white p-2 rounded-2xl shadow-2xl border-4 border-amber-400 object-contain';
+                        qrSection.appendChild(qrInfoText);
+                        qrSection.appendChild(qrImgEl);
+                    }
+                    textBox.appendChild(topHeader);
+                    textBox.appendChild(qrSection);
+                    eventWrapper.appendChild(textBox);
+                    container.appendChild(eventWrapper);
+
+                } else if (slideType === 'SLIDES') {
+                    var embedUrl = rawPath;
+                    if (rawPath.indexOf('/pub?') !== -1) {
+                        embedUrl = rawPath.replace('/pub?', '/embed?');
+                    } else if (rawPath.indexOf('/presentation/d/') !== -1 && rawPath.indexOf('/embed') === -1) {
+                        embedUrl = rawPath.split('/edit')[0].split('/pub')[0] + '/embed?start=true&loop=true&delayms=3000';
+                    }
+                    if (embedUrl.indexOf('rm=minimal') === -1) {
+                        embedUrl += (embedUrl.indexOf('?') !== -1 ? '&' : '?') + 'rm=minimal';
+                    }
+                    var slideIframe = document.createElement('iframe');
+                    slideIframe.src = embedUrl;
+                    slideIframe.className = 'w-full h-full border-none';
+                    slideIframe.allow = 'autoplay; encrypted-media';
+                    container.appendChild(slideIframe);
+
+                } else if (slideType === 'CAFE_MENU') {
+                    if (slideQrBox) slideQrBox.classList.add('hidden');
+                    var cafeWrapper = document.createElement('div');
+                    cafeWrapper.className = 'w-full h-full bg-black relative overflow-hidden';
+                    var bgCafe = document.createElement('img');
+                    bgCafe.className = 'absolute inset-0 w-full h-full object-cover filter blur-2xl opacity-40 scale-110 pointer-events-none';
+                    bgCafe.src = rawPath;
+                    var cafeImg = document.createElement('img');
+                    // 화면 전체를 채움 (가장자리가 조금 잘릴 수 있음)
+                    cafeImg.className = 'absolute inset-0 w-full h-full object-cover z-10';
+                    cafeImg.src = rawPath;
+                    cafeWrapper.appendChild(bgCafe);
+                    cafeWrapper.appendChild(cafeImg);
+                    container.appendChild(cafeWrapper);
+
+                } else if (slideType === 'IMAGE') {
+                    var bgImg = document.createElement('img');
+                    bgImg.className = 'absolute inset-0 w-full h-full object-cover filter blur-2xl opacity-30 scale-110 pointer-events-none';
+                    bgImg.src = rawPath;
+                    var img = document.createElement('img');
+                    img.className = 'relative z-10 w-auto h-full max-w-full max-h-full object-contain p-2 shadow-2xl';
+                    img.src = rawPath;
+                    container.appendChild(bgImg);
+                    container.appendChild(img);
+
+                } else if (slideType === 'VIDEO') {
+                    var isDrive = (rawPath.indexOf('drive.google.com') !== -1 || rawPath.indexOf('googleusercontent.com') !== -1);
+                    var fileId = isDrive ? getDriveFileId(rawPath) : '';
+                    if (isDrive && fileId) {
+                        var iframe = document.createElement('iframe');
+                        iframe.src = 'https://drive.google.com/file/d/' + fileId + '/preview?autoplay=1';
+                        iframe.className = 'w-full h-full border-none';
+                        iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+                        container.appendChild(iframe);
+                    } else {
+                        var video = document.createElement('video');
+                        video.src = rawPath;
+                        video.autoplay = true;
+                        video.muted = true;
+                        video.playsInline = true;
+                        video.loop = true;
+                        video.className = 'w-auto h-full max-w-full max-h-full object-contain';
+                        container.appendChild(video);
+                        video.play().catch(function(e) {});
+                    }
+                } else {
+                    var fallbackImg = document.createElement('img');
+                    fallbackImg.className = 'relative z-10 w-auto h-full max-w-full max-h-full object-contain p-2 shadow-2xl';
+                    fallbackImg.src = rawPath;
+                    container.appendChild(fallbackImg);
+                }
+
+                container.style.opacity = '1';
+            }, 50);
+
+            state.slideTimer = setTimeout(nextSlide, durationMs);
+        }
+
+        // ---------- 날씨 화면 ----------
+        function wxEsc_(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
+        // 날씨 코드(아이콘 번호)에 따라 배경, 아이콘, 움직이는 효과, 안내 문구를 고름
+        function weatherTheme_(icon) {
+            var c = String(icon || '01d').substring(0, 2);
+            if (c === '01') return { bg: 'linear-gradient(135deg,#f59e0b,#f97316 55%,#ea580c)', emoji: '☀️', fx: 'sun', msg: '햇살 가득한 좋은 날입니다.' };
+            if (c === '02') return { bg: 'linear-gradient(135deg,#38bdf8,#0ea5e9 55%,#0369a1)', emoji: '⛅', fx: 'cloud', msg: '포근한 구름이 덮인 하루네요.' };
+            if (c === '03' || c === '04') return { bg: 'linear-gradient(135deg,#64748b,#334155 60%,#1e293b)', emoji: '☁️', fx: 'cloud', msg: '흐린 하늘이지만 편안한 하루 보내세요.' };
+            if (c === '09' || c === '10' || c === '11') return { bg: 'linear-gradient(135deg,#334155,#1e3a8a 60%,#0f172a)', emoji: '🌧️', fx: 'rain', msg: '빗소리 들으며 따뜻한 차 한 잔 어떠세요?' };
+            if (c === '13') return { bg: 'linear-gradient(135deg,#bae6fd,#38bdf8 45%,#1e3a8a)', emoji: '❄️', fx: 'snow', msg: '눈길 조심하시고 따뜻하게 입으세요.' };
+            return { bg: 'linear-gradient(135deg,#0ea5e9,#1e3a8a)', emoji: '🌤️', fx: 'cloud', msg: '오늘도 좋은 하루 보내세요.' };
+        }
+
+        function buildWeatherScreen_(w) {
+            // 날씨를 아직 못 받았으면 가짜 숫자 대신 '--'로 표시 (받은 뒤 다음 화면부터 실제 값)
+            w = w || { status: '날씨 확인 중', temp: '--°C', feels_like: '--°C', icon: '01d', dust: '--' };
+            var t = weatherTheme_(w.icon);
+            var now = new Date();
+            var days = ['일', '월', '화', '수', '목', '금', '토'];
+            var dateStr = (now.getMonth() + 1) + '월 ' + now.getDate() + '일 ' + days[now.getDay()] + '요일';
+            var dustColor = { '좋음': '#38bdf8', '보통': '#4ade80', '나쁨': '#fbbf24', '매우나쁨': '#f87171' }[w.dust] || '#4ade80';
+            var fx = '';
+            var i;
+            if (t.fx === 'rain') {
+                for (i = 0; i < 60; i++) {
+                    fx += '<i class="wx-drop" style="left:' + (Math.random() * 100).toFixed(1) + '%;animation-delay:' + (Math.random() * 2).toFixed(2) + 's;animation-duration:' + (0.7 + Math.random() * 0.6).toFixed(2) + 's"></i>';
+                }
+            }
+            if (t.fx === 'snow') {
+                for (i = 0; i < 40; i++) {
+                    fx += '<i class="wx-flake" style="left:' + (Math.random() * 100).toFixed(1) + '%;animation-delay:' + (Math.random() * 6).toFixed(2) + 's;animation-duration:' + (5 + Math.random() * 5).toFixed(2) + 's;font-size:' + (10 + Math.random() * 16).toFixed(0) + 'px">❄</i>';
+                }
+            }
+            if (t.fx === 'cloud') {
+                fx += '<span class="wx-cloud" style="top:12%;animation-duration:38s">☁️</span><span class="wx-cloud" style="top:55%;animation-duration:52s;animation-delay:-20s;font-size:90px">☁️</span>';
+            }
+            if (t.fx === 'sun') {
+                fx += '<span class="wx-sun"></span>';
+            }
+            return '<div class="wx-screen" style="background:' + t.bg + '">' +
+                '<div class="wx-fx">' + fx + '</div>' +
+                '<div class="wx-card">' +
+                    '<div class="wx-date">' + wxEsc_(dateStr) + '</div>' +
+                    '<div class="wx-icon">' + t.emoji + '</div>' +
+                    '<div class="wx-status">' + wxEsc_(w.status) + '</div>' +
+                    '<div class="wx-temp" id="wxTemp" data-target="' + wxEsc_(w.temp) + '">' + wxEsc_(w.temp) + '</div>' +
+                    '<div class="wx-sub">체감 ' + wxEsc_(w.feels_like || w.temp) + '</div>' +
+                    '<div class="wx-pill"><span class="wx-dot" style="background:' + dustColor + ';color:' + dustColor + '"></span>미세먼지 ' + wxEsc_(w.dust) + '</div>' +
+                    '<div class="wx-msg">"' + t.msg + '"</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        // 기온 숫자가 0도에서 올라가는 효과
+        function animateWeatherTemp_() {
+            var el = document.getElementById('wxTemp');
+            if (!el) return;
+            var target = parseInt(String(el.getAttribute('data-target')).replace(/[^0-9-]/g, ''), 10);
+            if (isNaN(target)) return;
+            var startTs = null, dur = 1200;
+            function step(ts) {
+                if (startTs === null) startTs = ts;
+                var p = Math.min(1, (ts - startTs) / dur);
+                var v = Math.round(target * (1 - Math.pow(1 - p, 3)));
+                el.innerText = v + '°C';
+                if (p < 1 && document.getElementById('wxTemp') === el) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        function nextSlide() {
+            if (savingActive || !state.slides || state.slides.length === 0) return;
+            state.slideIndex++;
+            if (state.slideIndex >= state.slides.length) {
+                state.slideIndex = 0;
+            }
+            showCurrentSlide();
+        }
+
+        function startClock() {
+            function updateClock() {
+                var now = new Date();
+                var month = String(now.getMonth() + 1);
+                var date = String(now.getDate());
+                var days = ['일', '월', '화', '수', '목', '금', '토'];
+                var dayName = days[now.getDay()];
+
+                var hours24 = now.getHours();
+                var period = hours24 >= 12 ? '오후' : '오전';
+                var hours12 = hours24 % 12;
+                hours12 = hours12 ? hours12 : 12;
+                
+                var hoursStr = String(hours12).padStart(2, '0');
+                var minutesStr = String(now.getMinutes()).padStart(2, '0');
+                var secondsStr = String(now.getSeconds()).padStart(2, '0');
+
+                document.getElementById('clockDate').innerText = month + '월 ' + date + '일 (' + dayName + ')';
+                document.getElementById('clock-display').innerText = period + ' ' + hoursStr + '시 ' + minutesStr + '분 ' + secondsStr + '초';
+
+                checkOperationalHours();
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+
+        // 배경음악: 서버에서 mp3를 받아 재생 (소리 볼륨은 30%)
+        function loadBgm() {
+            if (typeof google === 'undefined' || !google.script || !google.script.run) return;
+            google.script.run
+                .withSuccessHandler(function (url) {
+                    if (!url) return;
+                    var audio = document.getElementById('bgmAudio');
+                    if (!audio) return;
+                    audio.src = url;
+                    audio.volume = 0.3;
+                    audio.loop = true;
+                    if (!savingActive) audio.play().catch(function () {});
+                })
+                .withFailureHandler(function (err) { console.error('배경음악 로드 실패:', err); })
+                .getBgmDataUrl();
+        }
+
+        (function initSignage() {
+            startClock();
+            window.addEventListener('online', function() { updateOnlineStatus(true); });
+            window.addEventListener('offline', function() { updateOnlineStatus(false); });
+            refreshDashboardData();
+            refreshSlideData();
+            loadBgm();
+            setInterval(refreshDashboardData, 60000);
+            setInterval(refreshSlideData, 60000); // 1분 주기로 최신 슬라이드 목록 동기화
+        })();
+    </script>
+    <audio id="bgmAudio" loop preload="auto"></audio>
+</body>
+</html>

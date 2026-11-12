@@ -141,6 +141,20 @@ function getAirConReservations() {
   }));
 }
 
+// 홈 요약: 켜진 대수, 연결 안 된 대수, 마지막 실행이 실패한 예약 수
+function getHomeAircon() {
+  requireUser_();
+  const units = getAirConUnits();
+  const failed = acRows_().filter(r => r.enabled && r.lastRun && r.lastResult !== '성공').length;
+  return {
+    total: units.length,
+    on: units.filter(u => u.on).length,
+    offline: units.filter(u => !u.online).length,
+    failed: failed,
+    checkedAt: fmt_(new Date(), 'HH:mm')
+  };
+}
+
 // 예약 1건 추가. entry.no 가 있으면 그 예약을 고침
 function saveAirConReservation(entry) {
   const email = requireUser_();

@@ -5,8 +5,12 @@
  *  - OPENWEATHER_KEY : OpenWeather API 키
  */
 
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('index')
+// ?mode=desk 를 주소에 붙이면 접수 데스크용 화면 (동영상 등 데스크에 맞지 않는 화면은 제외)
+function doGet(e) {
+  const mode = (e && e.parameter && e.parameter.mode) ? String(e.parameter.mode) : 'lobby';
+  const template = HtmlService.createTemplateFromFile('index');
+  template.mode = mode;
+  return template.evaluate()
     .setTitle('거제시종합사회복지관 스마트 사이니지')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -327,7 +331,8 @@ function getDashboardData() {
     shuttleMap: getSettingByLabel('셔틀 지도 표시').toUpperCase() === 'ON',
     shuttleLead: shuttleLead_(),
     shuttleBase: shuttleBase_(),
-    welcomeInfo: checkWelcomeMode()
+    welcomeInfo: checkWelcomeMode(),
+    meetingInfo: checkMeetingNotice()
   };
 }
 
@@ -732,7 +737,9 @@ function getEventBoardSlides() {
         pairs.push(imgUrls.slice(i, i + 3));
       }
       pairs.forEach((pair, idx) => {
+        // 내용 4초 → 사진 한 장당 약 3.4초 → 마지막 내용 4초
         eventSlides.push(Object.assign({}, base, {
+          duration: Math.max(9000, pair.length * 3400 + 8000),
           images: pair,
           path: pair[0],
           imgIndex: idx + 1,
@@ -748,7 +755,7 @@ function getEventBoardSlides() {
 
 // 4. 슬라이드 데이터 통합 (화면에서 5분마다 호출)
 // 상단 슬라이드 순서: 수동 슬라이드 → 행사 → 로고 → 웹진 → 프로그램 폴더 → 전체화면
-function getSlideData() {
+function getSlideData(mode) {
   const logoSlide = {
     type: 'LOGO_SLIDE',
     title: '거제시종합사회복지관',
@@ -758,12 +765,15 @@ function getSlideData() {
     priority: 'N'
   };
 
-  return getManualSlides()
+  const all = getManualSlides()
     .concat(getEventBoardSlides())
     .concat([logoSlide])
     .concat(getWebzineSlides())
     .concat(getMainMediaSlides())
     .concat(getFullscreenSlides());
+  // 접수 데스크용: 동영상은 빼고 나머지(사진·행사·웹진·안내)만 보여줌
+  if (mode === 'desk') return all.filter(sl => sl.type !== 'VIDEO' && !(sl.type === 'FULLSCREEN' && String(sl.path).indexOf('/preview') !== -1));
+  return all;
 }
 
 // '슬라이드설정' 시트의 수동 슬라이드 (우선순위 Y는 앞으로)
@@ -804,9 +814,13 @@ function getManualSlides() {
 
 // 수동 입력 주소를 재생 가능한 주소로 변환 (드라이브 영상 링크 → 미리보기 주소)
 function normalizeManualPath(rawPath, typeStr) {
-  const isDriveLink = typeStr === 'VIDEO' || rawPath.indexOf('drive.google.com') !== -1;
+  // 구글 드라이브 주소나 드라이브 파일 ID가 아니면 (시놀로지, 직접 영상 주소 등) 그대로 사용
+  const isBareDriveId = /^[-\w]{25,}$/.test(rawPath);
+  const isDriveAddress = rawPath.indexOf('drive.google.com') !== -1 || rawPath.indexOf('googleusercontent.com') !== -1;
+  if (isBareDriveId) return "https://drive.google.com/file/d/" + rawPath + "/preview";
+  if (!isDriveAddress) return rawPath;
   const isPlayable = rawPath.indexOf('/preview') !== -1 || rawPath.indexOf('youtube.com') !== -1 || rawPath.indexOf('youtu.be') !== -1;
-  if (!isDriveLink || isPlayable) return rawPath;
+  if (isPlayable) return rawPath;
 
   let fileId = "";
   if (rawPath.indexOf('id=') !== -1) {
@@ -827,10 +841,28 @@ function getWebzineSlides() {
       type: 'WEBZINE',
       title: monthTitle,
       path: driveFileUrl(f.id, false),
-      duration: 6000,
+      duration: 8000,   // 한 장당 8초 (넘김 효과 후 충분히 보이도록)
       qr: '',
       priority: 'N'
     }));
+}
+
+// 영상 길이(밀리초). 편집기 '서비스'에서 Drive API를 켜야 읽을 수 있음. 못 읽으면 0
+function videoDurationMs_(fileId) {
+  try {
+    if (typeof Drive === 'undefined') return 0;
+    const meta = Drive.Files.get(fileId, { fields: 'videoMediaMetadata' });
+    return meta.videoMediaMetadata ? (Number(meta.videoMediaMetadata.durationMillis) || 0) : 0;
+  } catch (e) {
+    console.error('영상 길이 읽기 실패: ' + e.message);
+    return 0;
+  }
+}
+
+// 영상 한 건의 보여주는 시간: 실제 길이 + 1.5초, 길이를 못 읽으면 10초
+function videoSlideMs_(fileId) {
+  const ms = videoDurationMs_(fileId);
+  return ms > 0 ? ms + 1500 : 10000;
 }
 
 // 일반 이미지/영상 폴더 (기간 필터링 적용)
@@ -839,7 +871,7 @@ function getMainMediaSlides() {
     if (f.mime.startsWith('image/')) {
       acc.push({ type: 'IMAGE', title: '프로그램 안내', path: driveFileUrl(f.id, false), duration: 5000, qr: '', priority: 'N' });
     } else if (f.mime.startsWith('video/')) {
-      acc.push({ type: 'VIDEO', title: '홍보 영상', path: driveFileUrl(f.id, true), duration: 10000, qr: '', priority: 'N' });
+      acc.push({ type: 'VIDEO', title: '홍보 영상', path: driveFileUrl(f.id, true), duration: videoSlideMs_(f.id), qr: '', priority: 'N' });
     }
     return acc;
   }, []);
@@ -856,7 +888,7 @@ function getFullscreenSlides() {
         type: 'FULLSCREEN',
         title: '특별 안내',
         path: driveFileUrl(f.id, isVid),
-        duration: isVid ? 10000 : 6000,
+        duration: isVid ? videoSlideMs_(f.id) : 5000,
         qr: '',
         priority: 'N'
       };
@@ -986,7 +1018,8 @@ function getPromo() {
 // 기관방문 스케줄 및 환영 이미지 감지
 function checkWelcomeMode() {
   try {
-    if (!isWelcomeNow()) return { isWelcome: false, slides: [] };
+    const visit = findActiveVisit_();
+    if (!visit) return { isWelcome: false, slides: [] };
 
     const slides = listActiveFiles(WELCOME_FOLDER_ID)
       .filter(f => f.mime.startsWith('image/'))
@@ -996,18 +1029,48 @@ function checkWelcomeMode() {
         path: driveFileUrl(f.id, false),
         duration: 6000
       }));
-    return { isWelcome: true, slides: slides };
+    return { isWelcome: true, slides: slides, visitName: visit.name, visitStart: visit.start, visitEnd: visit.end };
   } catch(e) {
     console.error("기관방문 확인 에러: " + e.toString());
     return { isWelcome: false, slides: [] };
   }
 }
 
-// '기관방문' 시트에 지금 시간이 포함된 사용 중(Y) 일정이 있는지 확인
-function isWelcomeNow() {
+// '회의안내' 시트에서 지금이 표출 기간 안인 사용 중(Y) 회의를 찾음 (회의 시간이 아니라 표출 기간으로 판단)
+function checkMeetingNotice() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('회의안내');
+    if (!sheet || sheet.getLastRow() < 2) return { active: false };
+    const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getDisplayValues();
+    const tz = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
+    const nowStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm');
+    const found = rows.find(r => {
+      if (String(r[9] || 'Y').toUpperCase().trim() === 'N') return false;
+      const from = normalizeDateStr(String(r[5] || '')) + ' ' + String(r[6] || '').trim().slice(0, 5);
+      const to = normalizeDateStr(String(r[7] || '')) + ' ' + String(r[8] || '').trim().slice(0, 5);
+      return nowStr >= from && nowStr <= to;
+    });
+    if (!found) return { active: false };
+    return {
+      active: true,
+      name: String(found[0] || '').trim(),
+      place: String(found[1] || '').trim(),
+      date: normalizeDateStr(String(found[2] || '')),
+      start: String(found[3] || '').trim().slice(0, 5),
+      end: String(found[4] || '').trim().slice(0, 5)
+    };
+  } catch(e) {
+    console.error('회의 안내 확인 에러: ' + e.toString());
+    return { active: false };
+  }
+}
+
+// '기관방문' 시트에서 지금 시간이 포함된 사용 중(Y) 일정을 찾아 기관명과 시간을 돌려줌 (없으면 null)
+function findActiveVisit_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('기관방문');
-  if (!sheet) return false;
+  if (!sheet) return null;
 
   const rows = sheet.getDataRange().getDisplayValues();
   rows.shift();
@@ -1016,7 +1079,7 @@ function isWelcomeNow() {
   const todayStr = Utilities.formatDate(now, ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone(), 'yyyy-MM-dd');
   const currentMin = now.getHours() * 60 + now.getMinutes();
 
-  return rows.some(row => {
+  const found = rows.find(row => {
     const useYn = String(row[3] || 'Y').toUpperCase().trim();
     const startTimeStr = String(row[1] || '').trim();
     const endTimeStr = String(row[2] || '').trim();
@@ -1031,6 +1094,12 @@ function isWelcomeNow() {
     const endMin = parseInt(endParts[0], 10) * 60 + parseInt(endParts[1], 10);
     return !isNaN(startMin) && !isNaN(endMin) && currentMin >= startMin && currentMin <= endMin;
   });
+  if (!found) return null;
+  return {
+    name: String(found[4] || '').trim(),
+    start: String(found[1] || '').trim().slice(0, 5),
+    end: String(found[2] || '').trim().slice(0, 5)
+  };
 }
 
 // 2026.8.18 / 2026/08/18 / 2026-8-18 → 2026-08-18

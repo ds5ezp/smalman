@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>발권시스템</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #ffffff; font-family: 'Malgun Gothic', sans-serif; overflow: hidden; }
+    .bar { height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; border-bottom: 1px solid #e5e8eb; }
+    .title { font-size: 14px; font-weight: 700; color: #191f28; }
+    button { border: none; background: #f2f4f6; color: #4e5968; border-radius: 8px; padding: 4px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    button:hover { background: #e5e8eb; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span class="title" id="barTitle">발권시스템</span>
+    <button id="close">✕ 닫기</button>
+  </div>
+  <script>
+    // 주소(query)에서 받은 제목을 막대에 표시
+    (function () {
+      var t = new URLSearchParams(window.location.search).get('title');
+      if (t) document.getElementById('barTitle').textContent = t;
+    })();
+    document.getElementById('close').addEventListener('click', function () {
+      window.barApi.close();
+    });
+  </script>
+</body>
+</html>

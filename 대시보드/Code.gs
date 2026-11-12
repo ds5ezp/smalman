@@ -83,18 +83,13 @@ const ROOM_FOLDERS = {
 // 예약 승인·반려 같은 관리 작업은 공유트럭 앱의 관리자 화면(비밀번호)을 대시보드 안에 띄워서 함
 const TRUCK = {
   SHEET_ID: '1GxaBRZywbBc7ITWlXtuzvGHpZpgZt7iMq73aqP8JgSA',
-  APP_URL: 'https://script.google.com/macros/s/AKfycbzfORMMwpW1wReLQNxS7CBt1uYM84_iiD2BQFhuH-H8HnUPnXcZNpgXaQmjnLDLagc_/exec'
+  APP_URL: 'https://script.google.com/macros/s/AKfycbzdDYIuqctUoMyxx--eqWEDjTXFVTDSfTpfz5-wUpQjAO7FgcKSLqVl9u6wuWQSgyXo/exec'
 };
 
-// 어르신 배움터 (배움터 접수시스템 Code.gs의 FORM_ID / INFO_ID 와 같아야 함)
-// 학기가 바뀌어 강좌정보 탭 이름이 바뀌면 COURSE_SHEET 만 고치면 됨
-const LEARN = {
-  FORM_ID: '1u8MrJeVfzCli_wyt-m8-G07uTYDoEkyxDkKvMmc1VTY',
-  INFO_ID: '1_mRID4mwFypGU8pSFMZcwf35NDqjpTLuUUoe2a-mPvc',
-  RESP_SHEET: 'Form Responses 1',
-  COURSE_SHEET: '2026년하반기어르신배움터강좌정보',
-  BACKUP_SHEET: '★접수변경_백업대장'
-};
+// 어르신 배움터 (학기별): 학기 목록은 배움터 접수 시스템과 같은 학기목록 탭을 읽음
+const LEARN_REGISTRY_ID = '1_mRID4mwFypGU8pSFMZcwf35NDqjpTLuUUoe2a-mPvc';
+const LEARN_REGISTRY_TAB = '학기목록';
+const LEARN_BACKUP_SHEET = '★접수변경_백업대장';
 
 // 셔틀버스 (GitHub Pages + Firebase). 운행 현황은 승객 화면과 같은 공개 경로(publicLiveStatus)를 화면에서 바로 읽음
 const SHUTTLE = {
@@ -219,10 +214,7 @@ function getBootstrap() {
       appUrl: TRUCK.APP_URL,
       sheetUrl: TRUCK.SHEET_ID ? 'https://docs.google.com/spreadsheets/d/' + TRUCK.SHEET_ID + '/edit' : ''
     },
-    learn: {
-      formUrl: 'https://docs.google.com/spreadsheets/d/' + LEARN.FORM_ID + '/edit',
-      infoUrl: 'https://docs.google.com/spreadsheets/d/' + LEARN.INFO_ID + '/edit'
-    },
+    // 어르신 배움터 링크는 학기별로 달라서 getLearnStatus 에서 가져옴
     shuttle: {
       firebaseUrl: SHUTTLE.FIREBASE_URL,
       mapUrl: SHUTTLE.MAP_URL,
@@ -436,14 +428,15 @@ function readVisits_() {
   const sheet = lobbySheet_('기관방문');
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
-  return sheet.getRange(2, 1, lastRow - 1, 4).getDisplayValues()
+  return sheet.getRange(2, 1, lastRow - 1, 5).getDisplayValues()
     .map((r, i) => ({
       row: i + 2,
       raw: String(r[0]).trim(),
       date: normalizeDate_(r[0]),
       start: String(r[1]).trim().slice(0, 5),
       end: String(r[2]).trim().slice(0, 5),
-      use: String(r[3] || 'Y').trim().toUpperCase() === 'Y' ? 'Y' : 'N'
+      use: String(r[3] || 'Y').trim().toUpperCase() === 'Y' ? 'Y' : 'N',
+      name: String(r[4] || '').trim()
     }))
     .filter(v => v.raw !== '');
 }
@@ -459,25 +452,49 @@ function saveVisit(visit) {
   const start = String(visit.start || '').trim();
   const end = String(visit.end || '').trim();
   const use = visit.use === 'N' ? 'N' : 'Y';
+  const name = String(visit.name || '').trim().slice(0, 40);
   if (!validDate_(date)) throw new Error('날짜를 선택해 주세요.');
   if (!validTime_(start) || !validTime_(end)) throw new Error('시작/종료 시간을 선택해 주세요.');
   if (toMinutes_(start) >= toMinutes_(end)) throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
 
   return withLock_(() => {
     const sheet = lobbySheet_('기관방문');
-    const rowValues = [[date, start, end, use]];
+    const rowValues = [[date, start, end, use, name]];
     let row;
+    let oldVisit = null;
     if (visit.row) {
       row = Number(visit.row);
       checkRow_(sheet, row, 1, visit.raw);
+      const old = sheet.getRange(row, 1, 1, 4).getDisplayValues()[0];
+      oldVisit = { date: normalizeDate_(old[0]), start: String(old[1]).trim().slice(0, 5), end: String(old[2]).trim().slice(0, 5) };
     } else {
       row = sheet.getLastRow() + 1;
     }
     // 시트가 날짜/시간을 자동 변환하지 않도록 텍스트로 저장 (로비 사이니지는 표시값을 읽음)
-    sheet.getRange(row, 1, 1, 4).setNumberFormat('@').setValues(rowValues);
+    sheet.getRange(row, 1, 1, 5).setNumberFormat('@').setValues(rowValues);
     log_(visit.row ? '기관방문 수정' : '기관방문 추가', [date, start, end, use].join(' '));
+    // 일정 시간이 바뀌었으면, 이 일정으로 올린 환영 사진의 시간도 같이 바꿈
+    if (oldVisit) moveVisitPhotos_(oldVisit, { date: date, start: start, end: end });
     return getVisits();
   });
+}
+
+// 일정의 날짜·시간이 바뀌면, 이전 시간으로 올라간 환영 사진의 기간을 새 시간으로 바꿈
+function moveVisitPhotos_(oldVisit, newVisit) {
+  const oldToken = periodToken_({ start: oldVisit.date, end: oldVisit.date, startTime: oldVisit.start, endTime: oldVisit.end });
+  const newPeriod = { start: newVisit.date, end: newVisit.date, startTime: newVisit.start, endTime: newVisit.end };
+  const newToken = periodToken_(newPeriod);
+  if (oldToken === newToken) return 0;
+  const it = DriveApp.getFolderById(folderDef_('welcome').id).getFiles();
+  let n = 0;
+  while (it.hasNext()) {
+    const file = it.next();
+    if (file.getName().indexOf(oldToken) === -1) continue;
+    file.setName(buildName_(file.getName(), newPeriod));
+    n++;
+  }
+  if (n) log_('기관방문 사진 시간 변경', n + '장 / ' + oldToken + ' → ' + newToken);
+  return n;
 }
 
 function deleteVisit(row, raw) {
@@ -501,7 +518,7 @@ const PERIOD_12 = /(\d{12})-(\d{12})/;
 const PERIOD_8 = /(\d{8})-(\d{8})/;
 
 function folderDef_(key) {
-  const f = LOBBY_FOLDERS[key] || ROOM_FOLDERS[key];
+  const f = LOBBY_FOLDERS[key] || ROOM_FOLDERS[key] || CAFE_FOLDERS[key];
   if (!f) throw new Error('알 수 없는 폴더입니다.');
   return f;
 }
@@ -1070,19 +1087,56 @@ function getTruckSummary() {
 }
 
 // =================================================================
-// 13. 어르신 배움터 (4단계)
-// 신청: FORM 시트 'Form Responses 1' (요일별 열에 '강좌표시, 강좌표시' 형태)
-// 강좌: INFO 시트 강좌정보 탭 (A 표시명 '강좌명|...|수강료', B 요일, C 시작, D 종료, '정원' 열)
-// 일정: INFO 시트 '환경설정' A2 접수시작, B2 마감, C2 결과발표, D2 신청 화면 주소
-// 추첨 결과: FORM 시트 '결과_강좌명(15자)' 탭 (순번, 성명, 생년월일, 전화번호, 결과)
+// 13. 어르신 배움터 (학기별)
+// 학기 목록: LEARN_REGISTRY_ID 스프레드시트의 '학기목록' 탭 (배움터 접수 시스템과 같은 탭)
+// 신청: 학기의 신청 시트 (신청탭), 강좌: 학기의 강좌정보 탭 (강좌탭), 참여자 탭은 학기목록에서 읽음
+// 일정: 학기 강좌정보 스프레드시트 '환경설정' A2 접수시작, B2 마감, C2 결과발표, D2 신청 화면 주소
+// 추첨 결과: 학기 신청 시트 '결과_강좌명(15자)' 탭 (순번, 성명, 생년월일, 전화번호, 결과)
 // =================================================================
 
-function learnForm_() {
-  return SpreadsheetApp.openById(LEARN.FORM_ID);
+function listLearnTerms_() {
+  const sheet = SpreadsheetApp.openById(LEARN_REGISTRY_ID).getSheetByName(LEARN_REGISTRY_TAB);
+  if (!sheet) throw new Error("'" + LEARN_REGISTRY_TAB + "' 탭이 없습니다.");
+  const values = sheet.getDataRange().getDisplayValues();
+  const h = values[0].map(x => String(x).trim());
+  ['학기ID', '학기명', '신청시트ID', '강좌정보시트ID', '강좌탭', '사용'].forEach(n => {
+    if (h.indexOf(n) === -1) throw new Error("'" + LEARN_REGISTRY_TAB + "' 탭에 '" + n + "' 열이 없습니다.");
+  });
+  const get = (r, name) => {
+    const i = h.indexOf(name);
+    return i === -1 ? '' : String(r[i]).trim();
+  };
+  return values.slice(1).filter(r => get(r, '학기ID') !== '').map(r => ({
+    id: get(r, '학기ID'),
+    name: get(r, '학기명'),
+    formId: get(r, '신청시트ID'),
+    infoId: get(r, '강좌정보시트ID'),
+    respTab: get(r, '신청탭') || 'Form Responses 1',
+    courseTab: get(r, '강좌탭'),
+    active: get(r, '사용').toUpperCase() === 'Y'
+  }));
 }
 
-function learnInfo_() {
-  return SpreadsheetApp.openById(LEARN.INFO_ID);
+// termId 가 없으면 '사용' 이 Y 인 학기
+function getLearnTerm_(termId) {
+  const terms = listLearnTerms_();
+  const id = String(termId || '').trim();
+  const t = id ? terms.find(x => x.id === id) : terms.find(x => x.active);
+  if (!t) throw new Error('학기 정보를 찾을 수 없습니다. (' + (id || '사용 중인 학기 없음') + ')');
+  return t;
+}
+
+function listLearnTerms() {
+  requireUser_();
+  return listLearnTerms_().map(t => ({ id: t.id, name: t.name, active: t.active }));
+}
+
+function learnForm_(t) {
+  return SpreadsheetApp.openById(t.formId);
+}
+
+function learnInfo_(t) {
+  return SpreadsheetApp.openById(t.infoId);
 }
 
 function learnNormName_(n) {
@@ -1093,7 +1147,7 @@ function learnNormDob_(s) {
   return String(s || '').replace(/[^0-9]/g, '').slice(-6);
 }
 
-// '[월] 강좌명 | 시간 | 수강료' → '강좌명' (배움터 앱과 같은 규칙)
+// '[월] 강좌명 | 시간 | 수강료' → '강좌명' (배움터 접수 시스템과 같은 규칙)
 function learnCourseName_(raw) {
   return String(raw || '').replace(/^\[(월|화|수|목|금)\]\s*/, '').split('|')[0].trim();
 }
@@ -1107,7 +1161,7 @@ function learnIsExempt_(benefit) {
   return b !== '' && b.indexOf('해당없음') === -1 && b !== '일반';
 }
 
-// 이름 가운데 가리기: 홍길동 → 홍*동, 생년월일 앞 2자리, 전화 뒤 4자리 (배움터 추첨 화면과 같은 형식)
+// 이름 가운데 가리기: 홍길동 → 홍*동, 생년월일 앞 2자리, 전화 뒤 4자리
 function learnMask_(a) {
   const n = String(a.name || '');
   const masked = n.length <= 2 ? n.charAt(0) + '*' : n.charAt(0) + '*'.repeat(n.length - 2) + n.slice(-1);
@@ -1115,10 +1169,9 @@ function learnMask_(a) {
   return masked + ' (' + String(a.dob || '').slice(0, 2) + '**** / ' + phone.slice(-4) + ')';
 }
 
-function learnCourses_(info) {
-  let sheet = info.getSheetByName(LEARN.COURSE_SHEET);
-  if (!sheet) sheet = info.getSheets().filter(s => s.getName().indexOf('강좌정보') !== -1).pop();
-  if (!sheet) throw new Error("배움터 강좌정보 탭을 찾을 수 없습니다. (" + LEARN.COURSE_SHEET + ")");
+function learnCourses_(info, t) {
+  const sheet = info.getSheetByName(t.courseTab);
+  if (!sheet) throw new Error("배움터 강좌정보 탭을 찾을 수 없습니다. (" + t.courseTab + ")");
   const data = sheet.getDataRange().getDisplayValues();
   const qIdx = data[0].indexOf('정원') !== -1 ? data[0].indexOf('정원') : 4;
   return data.slice(1)
@@ -1138,9 +1191,9 @@ function learnCourses_(info) {
 }
 
 // 신청자 전체를 읽어 사람별 신청 강좌 목록으로
-function learnApplicants_(form) {
-  const sheet = form.getSheetByName(LEARN.RESP_SHEET);
-  if (!sheet) throw new Error("배움터 신청 시트에 '" + LEARN.RESP_SHEET + "' 탭이 없습니다.");
+function learnApplicants_(form, t) {
+  const sheet = form.getSheetByName(t.respTab);
+  if (!sheet) throw new Error("배움터 신청 시트에 '" + t.respTab + "' 탭이 없습니다.");
   const range = sheet.getDataRange();
   const values = range.getValues();
   const disp = range.getDisplayValues();
@@ -1214,11 +1267,12 @@ function learnAgeGroup_(dob) {
   return age >= 90 ? '90대 이상' : age >= 80 ? '80대' : age >= 70 ? '70대' : age >= 60 ? '60대' : '60세 미만';
 }
 
-function getLearnStatus() {
+function getLearnStatus(termId) {
   requireUser_();
-  const form = learnForm_(), info = learnInfo_();
-  const courses = learnCourses_(info);
-  const apps = learnApplicants_(form);
+  const t = getLearnTerm_(termId);
+  const form = learnForm_(t), info = learnInfo_(t);
+  const courses = learnCourses_(info, t);
+  const apps = learnApplicants_(form, t);
   const sheetNames = form.getSheets().map(s => s.getName());
 
   const stat = {};
@@ -1260,6 +1314,12 @@ function getLearnStatus() {
 
   return {
     checkedAt: fmt_(new Date(), 'yyyy-MM-dd HH:mm'),
+    term: t.name,
+    termId: t.id,
+    links: {
+      formUrl: 'https://docs.google.com/spreadsheets/d/' + t.formId + '/edit',
+      infoUrl: 'https://docs.google.com/spreadsheets/d/' + t.infoId + '/edit'
+    },
     schedule: learnSchedule_(info),
     actual: apps.length,
     enrollment: enrollment,
@@ -1272,70 +1332,75 @@ function getLearnStatus() {
   };
 }
 
-function getLearnApplicants() {
+function getLearnApplicants(termId) {
   requireUser_();
-  return learnApplicants_(learnForm_())
+  const t = getLearnTerm_(termId);
+  return learnApplicants_(learnForm_(t), t)
     .map(a => ({ row: a.row, date: a.date, name: a.name, dob: a.dob, gender: a.gender, phone: a.phone, benefit: a.benefit, courses: a.courses }))
     .reverse();
 }
 
-// 지우기 전에 배움터 앱과 같은 백업대장 탭에 그대로 옮겨 적음
+// 지우기 전에 배움터 접수 시스템과 같은 백업대장 탭에 그대로 옮겨 적음
 function learnBackupRow_(sheet, row, type) {
   const ss = sheet.getParent();
-  let backup = ss.getSheetByName(LEARN.BACKUP_SHEET);
+  let backup = ss.getSheetByName(LEARN_BACKUP_SHEET);
   const lastCol = sheet.getLastColumn();
   if (!backup) {
-    backup = ss.insertSheet(LEARN.BACKUP_SHEET);
+    backup = ss.insertSheet(LEARN_BACKUP_SHEET);
     backup.appendRow(['백업일시', '변경구분'].concat(sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0]));
   }
   backup.appendRow([fmt_(new Date(), 'yyyy-MM-dd HH:mm:ss'), type].concat(sheet.getRange(row, 1, 1, lastCol).getDisplayValues()[0]));
 }
 
-function cancelLearnApplicant(row, name, dob) {
+function cancelLearnApplicant(row, name, dob, termId) {
   requireUser_();
   return withLock_(() => {
-    const sheet = learnForm_().getSheetByName(LEARN.RESP_SHEET);
-    const target = learnApplicants_(learnForm_()).find(a => a.row === Number(row));
+    const t = getLearnTerm_(termId);
+    const form = learnForm_(t);
+    const sheet = form.getSheetByName(t.respTab);
+    const target = learnApplicants_(form, t).find(a => a.row === Number(row));
     if (!target || learnNormName_(target.name) !== learnNormName_(name) || learnNormDob_(target.dob) !== learnNormDob_(dob)) {
       throw new Error('그 사이에 명단이 바뀌었습니다. 새로고침 후 다시 시도해 주세요.');
     }
     learnBackupRow_(sheet, target.row, '관리자접수취소(대시보드)');
     sheet.deleteRow(target.row);
-    log_('배움터 접수 취소', target.name + ' (' + target.dob + ') ' + target.courses.join(', '));
-    return getLearnApplicants();
+    log_('배움터 접수 취소', t.name + ' / ' + target.name + ' (' + target.dob + ') ' + target.courses.join(', '));
+    return getLearnApplicants(t.id);
   });
 }
 
 // ---------- 추첨 ----------
 
-function learnCourseApplicants_(form, course) {
-  return learnApplicants_(form).filter(a => a.courses.indexOf(course) !== -1);
+function learnCourseApplicants_(form, course, t) {
+  return learnApplicants_(form, t).filter(a => a.courses.indexOf(course) !== -1);
 }
 
-function getLotteryCourses() {
+function getLotteryCourses(termId) {
   requireUser_();
-  const form = learnForm_();
-  const apps = learnApplicants_(form);
+  const t = getLearnTerm_(termId);
+  const form = learnForm_(t);
+  const apps = learnApplicants_(form, t);
   const sheetNames = form.getSheets().map(s => s.getName());
-  return learnCourses_(learnInfo_()).map(c => {
+  return learnCourses_(learnInfo_(t), t).map(c => {
     const count = apps.filter(a => a.courses.indexOf(c.name) !== -1).length;
     return { name: c.name, day: c.day, quota: c.quota, count: count, needed: count > c.quota, done: sheetNames.indexOf(learnResultSheetName_(c.name)) !== -1 };
   }).filter(c => c.needed || c.done);
 }
 
 // 서버에서 섞고 30분 동안 보관 → 저장할 때 그대로 씀 (화면에서 순서를 바꿀 수 없음)
-function drawLottery(course) {
+function drawLottery(course, termId) {
   requireUser_();
-  const c = learnCourses_(learnInfo_()).find(x => x.name === course);
+  const t = getLearnTerm_(termId);
+  const c = learnCourses_(learnInfo_(t), t).find(x => x.name === course);
   if (!c) throw new Error('강좌를 찾을 수 없습니다.');
-  const pool = learnCourseApplicants_(learnForm_(), course).map(a => ({ name: a.name, dob: a.dob, phone: a.phone }));
+  const pool = learnCourseApplicants_(learnForm_(t), course, t).map(a => ({ name: a.name, dob: a.dob, phone: a.phone }));
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+    const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
   }
   const token = Utilities.getUuid();
-  CacheService.getScriptCache().put('lottery_' + token, JSON.stringify({ course: course, quota: c.quota, list: pool }), 1800);
-  log_('배움터 추첨', course + ' (정원 ' + c.quota + ' / 신청 ' + pool.length + ')');
+  CacheService.getScriptCache().put('lottery_' + token, JSON.stringify({ termId: t.id, course: course, quota: c.quota, list: pool }), 1800);
+  log_('배움터 추첨', t.name + ' / ' + course + ' (정원 ' + c.quota + ' / 신청 ' + pool.length + ')');
   return {
     token: token, course: course, quota: c.quota, total: pool.length,
     list: pool.map((a, i) => ({ pass: i < c.quota, label: i < c.quota ? '합격 ' + (i + 1) + '번' : '대기 ' + (i - c.quota + 1) + '번', display: learnMask_(a) }))
@@ -1348,7 +1413,8 @@ function saveLottery(token, overwrite) {
   if (!raw) throw new Error('추첨한 지 30분이 지나 결과가 만료되었습니다. 다시 추첨해 주세요.');
   const draw = JSON.parse(raw);
   return withLock_(() => {
-    const form = learnForm_();
+    const t = getLearnTerm_(draw.termId);
+    const form = learnForm_(t);
     const name = learnResultSheetName_(draw.course);
     let sheet = form.getSheetByName(name);
     if (sheet && !overwrite) return { exists: true };
@@ -1357,14 +1423,15 @@ function saveLottery(token, overwrite) {
     const rows = draw.list.map((a, i) => [i + 1, a.name, a.dob, "'" + String(a.phone).replace(/[^0-9]/g, ''), i < draw.quota ? '합격자' : '대기자(' + (i - draw.quota + 1) + '번)']);
     sheet.getRange(1, 1, rows.length + 1, 5).setValues([['순번', '성명', '생년월일', '전화번호', '결과']].concat(rows))
       .setHorizontalAlignment('center').setBorder(true, true, true, true, true, true);
-    log_('배움터 추첨 결과 저장', draw.course + ' (' + rows.length + '명)');
+    log_('배움터 추첨 결과 저장', t.name + ' / ' + draw.course + ' (' + rows.length + '명)');
     return { saved: true, sheetName: name };
   });
 }
 
-function getLotteryResult(course) {
+function getLotteryResult(course, termId) {
   requireUser_();
-  const sheet = learnForm_().getSheetByName(learnResultSheetName_(course));
+  const t = getLearnTerm_(termId);
+  const sheet = learnForm_(t).getSheetByName(learnResultSheetName_(course));
   if (!sheet || sheet.getLastRow() < 2) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getDisplayValues().map(r => ({
     pass: String(r[4]).indexOf('합격') !== -1,
@@ -1373,20 +1440,21 @@ function getLotteryResult(course) {
   }));
 }
 
-// ---------- 합격자 대장 (배움터 앱 getAllPassList 와 같은 규칙) ----------
+// ---------- 합격자 대장 (배움터 접수 시스템 getAllPassList 와 같은 규칙) ----------
 
-function getLearnWinners() {
+function getLearnWinners(termId) {
   requireUser_();
-  const form = learnForm_();
+  const t = getLearnTerm_(termId);
+  const form = learnForm_(t);
   const feeOf = {};
-  learnCourses_(learnInfo_()).forEach(c => { feeOf[c.name] = c.fee; });
+  learnCourses_(learnInfo_(t), t).forEach(c => { feeOf[c.name] = c.fee; });
   const results = {};
   form.getSheets().forEach(s => {
     if (s.getName().indexOf('결과_') === 0) results[s.getName().replace('결과_', '').trim()] = s.getDataRange().getValues();
   });
 
   const people = {};
-  learnApplicants_(form).forEach(a => {
+  learnApplicants_(form, t).forEach(a => {
     const key = learnNormName_(a.name) + '_' + learnNormDob_(a.dob) + '_' + String(a.phone).replace(/[^0-9]/g, '');
     if (!people[key]) people[key] = { name: a.name, dob: a.dob, phone: a.phone, benefit: a.benefit, passed: [], waiting: [], fee: 0 };
     const p = people[key];
@@ -1420,9 +1488,9 @@ function getLearnWinners() {
 
 // ---------- 일정 / 시트 만들기 ----------
 
-function getLearnSettings() {
+function getLearnSettings(termId) {
   requireUser_();
-  return learnSchedule_(learnInfo_());
+  return learnSchedule_(learnInfo_(getLearnTerm_(termId)));
 }
 
 // 'yyyy-MM-ddTHH:mm' (스크립트 시간대 기준)
@@ -1432,29 +1500,31 @@ function learnParseInput_(s) {
   return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0);
 }
 
-function saveLearnSchedule(start, end, result) {
+function saveLearnSchedule(start, end, result, termId) {
   requireUser_();
   const s = learnParseInput_(start), e = learnParseInput_(end), r = learnParseInput_(result);
   if (!s || !e || !r) throw new Error('접수 시작, 마감, 결과 발표 일시를 모두 선택해 주세요.');
   if (s >= e) throw new Error('마감은 접수 시작보다 늦어야 합니다.');
   if (r < e) throw new Error('결과 발표는 마감 이후여야 합니다.');
-  const config = learnInfo_().getSheetByName('환경설정');
-  if (!config) throw new Error("배움터 강좌정보 시트에 '환경설정' 탭이 없습니다.");
+  const t = getLearnTerm_(termId);
+  const config = learnInfo_(t).getSheetByName('환경설정');
+  if (!config) throw new Error("강좌정보 시트에 '환경설정' 탭이 없습니다.");
   config.getRange('A2:C2').setValues([[s, e, r]]);
   SpreadsheetApp.flush();
-  log_('배움터 일정', fmt_(s, 'MM/dd HH:mm') + ' ~ ' + fmt_(e, 'MM/dd HH:mm') + ', 발표 ' + fmt_(r, 'MM/dd HH:mm'));
-  return learnSchedule_(learnInfo_());
+  log_('배움터 일정', t.name + ' / ' + fmt_(s, 'MM/dd HH:mm') + ' ~ ' + fmt_(e, 'MM/dd HH:mm') + ', 발표 ' + fmt_(r, 'MM/dd HH:mm'));
+  return learnSchedule_(learnInfo_(t));
 }
 
-// 접수 분석 보고서 탭 (★보고서_MMdd) - 배움터 앱의 보고서와 같은 내용, 날짜는 실제 접수일 기준
-function createLearnReport() {
+// 접수 분석 보고서 탭 (★보고서_MMdd) - 배움터 접수 시스템의 보고서와 같은 내용
+function createLearnReport(termId) {
   requireUser_();
-  const s = getLearnStatus();
-  const form = learnForm_();
+  const t = getLearnTerm_(termId);
+  const s = getLearnStatus(t.id);
+  const form = learnForm_(t);
   const name = '★보고서_' + fmt_(new Date(), 'MMdd');
   const sheet = form.getSheetByName(name) || form.insertSheet(name);
   sheet.clear();
-  sheet.getRange('A1').setValue('📊 어르신 배움터 접수 분석 보고 (' + fmt_(new Date(), 'MM월 dd일') + ')').setFontSize(14).setFontWeight('bold');
+  sheet.getRange('A1').setValue('📊 ' + t.name + ' 접수 분석 보고 (' + fmt_(new Date(), 'MM월 dd일') + ')').setFontSize(14).setFontWeight('bold');
   sheet.getRange('A2').setValue('※ 기준시각 ' + s.checkedAt).setFontSize(9).setFontColor('#8b95a1');
 
   const block = (row, col, title, pairs) => {
@@ -1475,19 +1545,20 @@ function createLearnReport() {
     sheet.getRange(top + 2, 5, rows.length, 1).setNumberFormat('0.0%');
   }
   sheet.autoResizeColumns(1, head.length);
-  log_('배움터 보고서', name);
+  log_('배움터 보고서', t.name + ' / ' + name);
   return name;
 }
 
-// 강좌별 신청자 명단 탭 (★전체마감명단) - 배움터 앱의 '전체 마감 명단 생성'과 같은 형식
-function createLearnFinalLists() {
+// 강좌별 신청자 명단 탭 (★전체마감명단) - 배움터 접수 시스템의 '전체 마감 명단 생성'과 같은 형식
+function createLearnFinalLists(termId) {
   requireUser_();
-  const form = learnForm_();
-  const apps = learnApplicants_(form);
+  const t = getLearnTerm_(termId);
+  const form = learnForm_(t);
+  const apps = learnApplicants_(form, t);
   const sheet = form.getSheetByName('★전체마감명단') || form.insertSheet('★전체마감명단');
   sheet.clear();
   const rows = [['강좌 정보', '접수 일시', '성 명', '성 별', '생년월일', '연락처', '비고']];
-  learnCourses_(learnInfo_()).forEach(c => {
+  learnCourses_(learnInfo_(t), t).forEach(c => {
     const list = apps.filter(a => a.courses.indexOf(c.name) !== -1);
     if (!list.length) rows.push([c.name, '-', '신청자 없음', '-', '-', '-', '정원 미달 자동 확정']);
     list.forEach(a => rows.push([c.name, a.date, a.name, a.gender, a.dob, a.phone, '']));
@@ -1496,8 +1567,18 @@ function createLearnFinalLists() {
   sheet.getRange(1, 1, rows.length, 7).setValues(rows);
   sheet.getRange(1, 1, 1, 7).setBackground('#f1c40f').setFontWeight('bold');
   sheet.autoResizeColumns(1, 7);
-  log_('배움터 전체마감명단', rows.length - 1 + '줄');
+  log_('배움터 전체마감명단', t.name + ' / ' + (rows.length - 1) + '줄');
   return '★전체마감명단';
+}
+
+// 부서: 직장 정보(조직 정보)의 부서를 먼저 쓰고, 없으면 조직 단위(OU) 마지막 이름을 씀
+// 예) 조직 단위 '/거제시종합사회복지관/5.사례관리팀' → '5.사례관리팀'
+function deptOf_(user, org) {
+  if (org && org.department) return String(org.department);
+  const path = String(user.orgUnitPath || '').replace(/^\/+|\/+$/g, '');
+  if (!path) return '';
+  const parts = path.split('/');
+  return parts[parts.length - 1];
 }
 
 // 직원 목록: 정지되었거나 보관된 계정은 뺌. 이름 순으로 정렬됨
@@ -1520,7 +1601,7 @@ function getStaffList() {
       users.push({
         email: String(u.primaryEmail || '').toLowerCase(),
         name: (u.name && u.name.fullName) || u.primaryEmail,
-        dept: org.department || '',
+        dept: deptOf_(u, org),
         title: org.title || ''
       });
     });
@@ -1542,7 +1623,7 @@ function userProfile_(email) {
     const u = AdminDirectory.Users.get(email, { projection: 'full' });
     const orgs = u.organizations || [];
     const org = orgs.find(o => o.primary) || orgs[0] || {};
-    profile = { name: (u.name && u.name.fullName) || '', dept: org.department || '', title: org.title || '' };
+    profile = { name: (u.name && u.name.fullName) || '', dept: deptOf_(u, org), title: org.title || '' };
     cache.put(key, JSON.stringify(profile), 21600);
   } catch (e) {
     Logger.log('사용자 정보 조회 실패 (' + email + '): ' + e.message);
@@ -1983,6 +2064,18 @@ function deleteRepair(no) {
   });
 }
 
+// 파일이 시설보수 사진 폴더 안에 있는지 확인 (바로 아래, 또는 보수 건별 폴더 한 단계 안)
+function isInRepairFolder_(file, rootId) {
+  const parents = file.getParents();
+  while (parents.hasNext()) {
+    const p = parents.next();
+    if (p.getId() === rootId) return true;
+    const grand = p.getParents();
+    while (grand.hasNext()) { if (grand.next().getId() === rootId) return true; }
+  }
+  return false;
+}
+
 // 보수 사진을 화면에 보여줄 이미지 데이터로 돌려줌
 // 대시보드 화면은 구글의 별도 주소 안에서 열려 drive.google.com 미리보기 주소가 로그인 문제로 막히므로 서버에서 읽어 보냄
 // thumb=true 면 작은 미리보기(드라이브 썸네일), 아니면 원본(입력할 때 이미 1600px로 줄여 둔 사진)
@@ -1992,11 +2085,8 @@ function getRepairPhotoData(url, thumb) {
   if (!m) throw new Error('사진 주소를 확인할 수 없습니다.');
   const file = DriveApp.getFileById(m[1]);
   // 시설보수 사진 폴더의 파일만 보여줌 (다른 드라이브 파일을 읽는 데 쓰이지 않도록)
-  const folderId = repairFolder_().getId();
-  let inFolder = false;
-  const parents = file.getParents();
-  while (parents.hasNext()) { if (parents.next().getId() === folderId) { inFolder = true; break; } }
-  if (!inFolder) throw new Error('시설보수 사진이 아닙니다.');
+  // 사진은 '시설보수 사진' 폴더 바로 아래(이전 기록)나 그 안의 '날짜_분야_위치' 폴더 안에 있음
+  if (!isInRepairFolder_(file, repairFolder_().getId())) throw new Error('시설보수 사진이 아닙니다.');
   let blob = null;
   if (thumb) { try { blob = file.getThumbnail(); } catch (e) { blob = null; } }
   if (!blob) blob = file.getBlob();
@@ -2091,6 +2181,24 @@ function getHomeSummary() {
     repairThisYear: repairs.length,
     lastRepair: lastRepair
   };
+}
+
+// 홈: 최근 6개월 시설보수 건수·비용, 이번 달 비용, 올해 '조치 전 사진만 있는' 기록 수
+// (예전 방식으로 올린 기록은 조치 전·후 구분이 없어서 세지 않음)
+function getRepairTrend() {
+  requireUser_();
+  const now = new Date();
+  const months = [];
+  for (let i = 5; i >= 0; i--) months.push(fmt_(new Date(now.getFullYear(), now.getMonth() - i, 1), 'yyyy-MM'));
+  const rows = repairRows_();
+  const toNumber = v => Number(String(v || '').replace(/[^0-9.-]/g, '')) || 0;
+  const trend = months.map(m => {
+    const hit = rows.filter(r => r.date.indexOf(m) === 0);
+    return { month: m, count: hit.length, cost: hit.reduce((sum, r) => sum + toNumber(r.cost), 0) };
+  });
+  const year = fmt_(now, 'yyyy');
+  const noAfter = rows.filter(r => r.date.indexOf(year) === 0 && r.before.length > 0 && r.after.length === 0).length;
+  return { trend: trend, thisMonthCost: trend[trend.length - 1].cost, noAfter: noAfter };
 }
 
 // =====================================================================
@@ -2840,6 +2948,101 @@ function saveShuttleSignage(on, lead, base) {
     SpreadsheetApp.flush();
     log_('셔틀 지도 사이니지 표시', (on ? 'ON' : 'OFF') + ' / ' + baseLabel + ' ' + minutes + '분 전');
     return { on: !!on, lead: minutes, base: baseLabel };
+  });
+}
+
+
+// =================================================================
+// 8. 회의 안내 (회의 시간과 화면에 나오는 표출 기간을 따로 정함)
+// =================================================================
+
+const MEETING_HEADERS_ = ['회의명', '장소', '회의날짜', '회의시작', '회의종료', '표출시작날짜', '표출시작시간', '표출종료날짜', '표출종료시간', '사용'];
+
+function meetingSheet_() {
+  const ss = lobbySs_();
+  let sheet = ss.getSheetByName('회의안내');
+  if (!sheet) {
+    sheet = ss.insertSheet('회의안내');
+    sheet.getRange(1, 1, 1, MEETING_HEADERS_.length).setValues([MEETING_HEADERS_]);
+  }
+  return sheet;
+}
+
+function readMeetings_() {
+  const sheet = meetingSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  return sheet.getRange(2, 1, lastRow - 1, 10).getDisplayValues()
+    .map((r, i) => ({
+      row: i + 2,
+      raw: String(r[0]).trim(),
+      name: String(r[0]).trim(),
+      place: String(r[1]).trim(),
+      date: normalizeDate_(r[2]),
+      start: String(r[3]).trim().slice(0, 5),
+      end: String(r[4]).trim().slice(0, 5),
+      showStartDate: normalizeDate_(r[5]),
+      showStartTime: String(r[6]).trim().slice(0, 5),
+      showEndDate: normalizeDate_(r[7]),
+      showEndTime: String(r[8]).trim().slice(0, 5),
+      use: String(r[9] || 'Y').trim().toUpperCase() === 'N' ? 'N' : 'Y'
+    }))
+    .filter(m => m.raw !== '');
+}
+
+function getMeetingNotices() {
+  requireUser_();
+  return readMeetings_().sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
+}
+
+function saveMeetingNotice(m) {
+  requireUser_();
+  const name = String(m.name || '').trim().slice(0, 60);
+  const place = String(m.place || '').trim().slice(0, 60);
+  const date = String(m.date || '').trim();
+  const start = String(m.start || '').trim();
+  const end = String(m.end || '').trim();
+  const showStartDate = String(m.showStartDate || '').trim();
+  const showStartTime = String(m.showStartTime || '').trim();
+  const showEndDate = String(m.showEndDate || '').trim();
+  const showEndTime = String(m.showEndTime || '').trim();
+  const use = m.use === 'N' ? 'N' : 'Y';
+  if (!name) throw new Error('회의명을 적어 주세요.');
+  if (!validDate_(date)) throw new Error('회의 날짜를 선택해 주세요.');
+  if (!validTime_(start) || !validTime_(end) || toMinutes_(start) >= toMinutes_(end)) throw new Error('회의 시작과 종료 시간을 확인해 주세요.');
+  if (!validDate_(showStartDate) || !validTime_(showStartTime) || !validDate_(showEndDate) || !validTime_(showEndTime)) {
+    throw new Error('표출 시작과 종료 날짜·시간을 모두 선택해 주세요.');
+  }
+  const showStartStamp = showStartDate + ' ' + showStartTime;
+  const showEndStamp = showEndDate + ' ' + showEndTime;
+  if (showStartStamp >= showEndStamp) throw new Error('표출 종료는 표출 시작보다 늦어야 합니다.');
+
+  return withLock_(() => {
+    const sheet = meetingSheet_();
+    let row;
+    if (m.row) {
+      row = Number(m.row);
+      checkRow_(sheet, row, 1, m.raw);
+    } else {
+      row = sheet.getLastRow() + 1;
+    }
+    const values = [[name, place, date, start, end, showStartDate, showStartTime, showEndDate, showEndTime, use]];
+    sheet.getRange(row, 1, 1, 10).setNumberFormat('@').setValues(values);
+    log_(m.row ? '회의 안내 수정' : '회의 안내 추가', name + ' / 표출 ' + showStartStamp + '~' + showEndStamp + ' / ' + use);
+    return getMeetingNotices();
+  });
+}
+
+function deleteMeetingNotice(row, raw) {
+  requireUser_();
+  return withLock_(() => {
+    const sheet = meetingSheet_();
+    row = Number(row);
+    checkRow_(sheet, row, 1, raw);
+    const name = sheet.getRange(row, 1).getDisplayValue();
+    sheet.deleteRow(row);
+    log_('회의 안내 삭제', name);
+    return getMeetingNotices();
   });
 }
 

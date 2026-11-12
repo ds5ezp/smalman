@@ -36,6 +36,7 @@
         <div class="menu-items">
           <a class="module" href="#" data-module="lobby" onclick="showModule('lobby'); return false;"><i class="bi bi-display"></i>로비 사이니지</a>
           <a class="module" href="#" data-module="rooms" onclick="showModule('rooms'); return false;"><i class="bi bi-tablet"></i>각 실 사이니지</a>
+          <a class="module" href="#" data-module="cafe" onclick="showModule('cafe'); return false;"><i class="bi bi-cup-hot"></i>꽃다비 카페 사이니지</a>
           <a class="module" href="#" data-module="led" onclick="showModule('led'); return false;"><i class="bi bi-easel"></i>전광판 관리</a>
           <a class="module" href="#" data-module="survey" onclick="showModule('survey'); return false;"><i class="bi bi-emoji-smile"></i>만족도 조사</a>
         </div>
@@ -51,10 +52,16 @@
         <button class="menu-title" type="button" onclick="toggleGroup(this)"><i class="bi bi-briefcase"></i><span>업무관련</span><i class="bi bi-chevron-down chev"></i></button>
         <div class="menu-items">
           <a class="module" href="#" data-module="meeting" onclick="showModule('meeting'); return false;"><i class="bi bi-journal-text"></i>월례회 자료</a>
-          <a class="module" href="#" data-module="learn" onclick="showModule('learn'); return false;"><i class="bi bi-mortarboard"></i>배움터 접수</a>
-          <a class="module" href="#" data-module="staff" onclick="showModule('staff'); return false;"><i class="bi bi-people"></i>직원 목록</a>
           <a class="module" href="#" data-module="submit" onclick="showModule('submit'); return false;"><i class="bi bi-send-check"></i>제출 자료</a>
-          <a class="module" href="#" data-module="business" onclick="showModule('business'); return false;"><i class="bi bi-kanban"></i>사업 관리</a>
+          <a class="module" href="#" data-module="staff" onclick="showModule('staff'); return false;"><i class="bi bi-people"></i>직원 목록</a>
+          <a class="module" href="#" data-module="mycal" onclick="showModule('mycal'); return false;"><i class="bi bi-calendar3"></i>대관일정</a>
+          <a class="module" href="#" onclick="openElectronicApproval(); return false;"><i class="bi bi-file-earmark-check"></i>전자결재</a>
+          <button class="btn btn-link text-decoration-none small fw-bold text-muted pt-2 pb-1 w-100 text-start" style="padding-left:16px" type="button" onclick="toggleSubGroup(this)">팀 업무 <i class="bi bi-chevron-down small"></i></button>
+          <div style="padding-left:12px">
+            <a class="module" href="#" data-module="learn" onclick="showModule('learn'); return false;"><i class="bi bi-mortarboard"></i>배움터 접수</a>
+            <a class="module" href="#" onclick="openTicket(); return false;"><i class="bi bi-ticket-perforated"></i>발권시스템</a>
+            <a class="module" href="#" data-module="business" onclick="showModule('business'); return false;"><i class="bi bi-kanban"></i>사업 관리</a>
+          </div>
         </div>
       </div>
       <div class="menu-group">
@@ -81,6 +88,7 @@
         <li class="nav-item"><button class="nav-link active" data-tab="status"><i class="bi bi-speedometer2 me-1"></i>현황</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="settings"><i class="bi bi-sliders me-1"></i>운영설정</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="visits"><i class="bi bi-calendar-check me-1"></i>기관방문</button></li>
+        <li class="nav-item"><button class="nav-link" data-tab="meetingNotice"><i class="bi bi-calendar-event me-1"></i>회의 안내</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="files"><i class="bi bi-images me-1"></i>이미지·영상</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="slides"><i class="bi bi-collection-play me-1"></i>슬라이드</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="news"><i class="bi bi-newspaper me-1"></i>언론보도</button></li>
@@ -208,7 +216,20 @@
               <button class="btn btn-light border d-none" onclick="resetVisitForm()" id="visitCancel">취소</button>
             </div>
           </div>
-          <p class="small text-muted mt-2 mb-0">일정 시간 동안 로비 화면이 아래 '환영 이미지'로 바뀝니다.</p>
+          <div class="row g-2 align-items-end mt-1">
+            <div class="col-12">
+              <label class="form-label small">기관명 (환영 화면에 크게 표시됩니다)</label>
+              <input type="text" id="visitName" class="form-control" maxlength="40" placeholder="예: 거제시 ○○초등학교 3학년">
+            </div>
+          </div>
+          <div class="row g-2 align-items-end mt-1">
+            <div class="col-12 col-md-9">
+              <label class="form-label small">이 일정 때 보여 줄 사진 (여러 장 선택 가능, 선택 사항)</label>
+              <input type="file" id="visitPhotos" class="form-control" multiple accept="image/*">
+            </div>
+            <div class="col-12 col-md-3 small text-muted" id="visitPhotoInfo">사진을 고르면 저장할 때 함께 올라갑니다.</div>
+          </div>
+          <p class="small text-muted mt-2 mb-0">일정 시간 동안 로비 화면이 사진으로 바뀝니다. 사진은 이 일정의 날짜와 시간에만 나옵니다. (수정할 때 사진을 고르면 이 일정 시간에 맞춰 추가됩니다)</p>
         </div>
         <div class="card p-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
@@ -235,6 +256,43 @@
           <div id="welcomeProgress" class="small mb-2"></div>
           <div id="welcomeToolbar"></div>
           <div class="row g-3" id="welcomeGrid"></div>
+        </div>
+      </section>
+
+      <section data-panel="meetingNotice" class="d-none">
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-3" id="mtgFormTitle">회의 안내 추가</h6>
+          <div class="row g-2">
+            <div class="col-12 col-md-6"><label class="form-label small">회의명</label><input id="mtgName" class="form-control" maxlength="60" placeholder="예: 11월 월례회"></div>
+            <div class="col-12 col-md-6"><label class="form-label small">장소</label><input id="mtgPlace" class="form-control" maxlength="60" placeholder="예: 3층 대회의실"></div>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6 col-md-3"><label class="form-label small">회의 날짜</label><input type="date" id="mtgDate" class="form-control"></div>
+            <div class="col-3 col-md-2"><label class="form-label small">회의 시작</label><input type="time" id="mtgStart" class="form-control" value="14:00"></div>
+            <div class="col-3 col-md-2"><label class="form-label small">회의 종료</label><input type="time" id="mtgEnd" class="form-control" value="15:00"></div>
+          </div>
+          <hr>
+          <div class="row g-2">
+            <div class="col-6 col-md-3"><label class="form-label small">표출 시작 날짜</label><input type="date" id="mtgShowStartDate" class="form-control"></div>
+            <div class="col-6 col-md-2"><label class="form-label small">표출 시작 시간</label><input type="time" id="mtgShowStartTime" class="form-control" value="09:00"></div>
+            <div class="col-6 col-md-3"><label class="form-label small">표출 종료 날짜</label><input type="date" id="mtgShowEndDate" class="form-control"></div>
+            <div class="col-6 col-md-2"><label class="form-label small">표출 종료 시간</label><input type="time" id="mtgShowEndTime" class="form-control" value="18:00"></div>
+            <div class="col-12 col-md-2"><label class="form-label small">사용</label><select id="mtgUse" class="form-select"><option value="Y">사용</option><option value="N">사용 안 함</option></select></div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button class="btn btn-light border d-none" id="mtgCancel" onclick="resetMeetingForm()">취소</button>
+            <button class="btn btn-primary" id="mtgSubmit" onclick="submitMeeting()">추가</button>
+          </div>
+          <div class="small text-muted mt-2">회의 시간과 표출 시간은 따로 정합니다. 표출 기간 동안만 로비 화면에 회의 안내가 나옵니다. 회의 전에 미리 표출하려면 표출 시작을 앞당기세요.</div>
+        </div>
+        <div class="card p-3">
+          <h6 class="fw-bold mb-2">회의 목록</h6>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead><tr><th>회의</th><th>회의 일시</th><th>표출 기간</th><th>상태</th><th class="text-end">관리</th></tr></thead>
+              <tbody id="mtgRows"><tr class="loading-row"><td colspan="5">불러오는 중…</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -607,7 +665,8 @@
      <div data-module-view="learn" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <h4 class="mb-0">어르신 배움터 접수</h4>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <select id="lTerm" class="form-select form-select-sm" style="max-width:260px" onchange="changeLearnTerm()"></select>
           <a class="btn btn-sm btn-outline-secondary d-none" id="learnAppLink" target="_blank"><i class="bi bi-box-arrow-up-right me-1"></i>신청 화면</a>
           <a class="btn btn-sm btn-outline-secondary" id="learnFormLink" target="_blank"><i class="bi bi-table me-1"></i>신청 시트</a>
         </div>
@@ -844,6 +903,17 @@
      </div>
 
      <!-- ===================== 직원 목록 (Workspace 디렉터리) ===================== -->
+     <div data-module-view="mycal" class="d-none">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h4 class="mb-0">대관일정</h4>
+        <a class="btn btn-sm btn-outline-primary" href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>구글 캘린더 새 창으로 열기</a>
+      </div>
+      <div class="card p-2">
+        <iframe id="mcFrame" title="내 캘린더" style="width:100%; height:720px; border:0;" src="about:blank"></iframe>
+      </div>
+      <div class="small text-muted mt-2">복지관 공용 캘린더를 보여 줍니다. 화면이 비어 있으면 "새 창으로 열기"를 눌러 주세요. 일정 추가와 수정은 구글 캘린더에서 해 주세요.</div>
+     </div>
+
      <div data-module-view="staff" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <h4 class="mb-0">직원 목록</h4>
@@ -903,6 +973,134 @@
       </div>
      </div>
 
+     <!-- ===================== 꽃다비 카페 사이니지 ===================== -->
+     <div data-module-view="cafe" class="d-none">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h4 class="mb-0">꽃다비 카페 사이니지</h4>
+        <div class="d-flex gap-2">
+          <a class="btn btn-sm btn-outline-secondary" href="https://docs.google.com/spreadsheets/d/1duKVFid02qGZYLDuW74b6WiwX8C6CO3P6t9RZ2w1nkQ/edit" target="_blank"><i class="bi bi-table me-1"></i>구글 시트</a>
+        </div>
+      </div>
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><button class="nav-link" data-tab="cafeSettings">운영·슬라이드</button></li>
+        <li class="nav-item"><button class="nav-link" data-tab="cafeFiles">사진 관리</button></li>
+      </ul>
+      <section data-panel="cafeSettings" class="d-none">
+        <div class="card p-3 mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">미리보기</h6>
+            <button class="btn btn-sm btn-outline-primary" id="btnCafePreview" onclick="toggleCafePreview()">미리보기 켜기</button>
+          </div>
+          <div class="preview-wrap" id="cafePreviewWrap" data-w="1920" data-h="1080" style="height:45vh">
+            <div class="preview-placeholder small">미리보기 켜기를 누르면 실제 카페 화면이 여기에 나옵니다. (설정을 저장한 뒤 확인하세요)</div>
+          </div>
+        </div>
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-3">운영 설정</h6>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="cafeEmergency">
+            <label class="form-check-label fw-bold" for="cafeEmergency">비상모드 (켜면 카페 화면에 비상 안내가 뜹니다)</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold" for="cafeEmergencyMsg">비상 안내 문구</label>
+            <textarea class="form-control" id="cafeEmergencyMsg" rows="2"></textarea>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold" for="cafeHours">운영시간</label>
+              <input class="form-control" id="cafeHours" placeholder="09:00 - 18:00">
+              <div class="form-text">이 시간 밖에는 절전 화면이 나오고 슬라이드가 멈춥니다.</div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold" for="cafeFontScale">글자 크기 (%)</label>
+              <input class="form-control" id="cafeFontScale" type="number" min="50" max="150" step="5">
+              <div class="form-text">50~150 사이. 비우면 100%입니다.</div>
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+              <div class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" id="cafeBgm">
+                <label class="form-check-label fw-bold" for="cafeBgm">배경음악 재생</label>
+              </div>
+              <div class="form-text">BGM 폴더의 mp3를 반복 재생합니다 (절전 시간에는 멈춤).</div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="form-check form-switch mt-4">
+                <input class="form-check-input" type="checkbox" id="cafeNoticeOn">
+                <label class="form-check-label fw-bold" for="cafeNoticeOn">우측 공지 목록 표시</label>
+              </div>
+              <div class="form-text">카페 화면 오른쪽 아래의 '최근 공지' 목록입니다.</div>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label small fw-bold" for="cafeNoticeCount">공지 목록 개수</label>
+              <input class="form-control" id="cafeNoticeCount" type="number" min="1" max="10" step="1">
+              <div class="form-text">1~10개. 기본 5개입니다.</div>
+            </div>
+          </div>
+          <div class="text-end"><button class="btn btn-primary btn-sm" onclick="saveCafeSettingsUI()"><i class="bi bi-save me-1"></i>운영 설정 저장</button></div>
+        </div>
+
+        <div class="card p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">슬라이드 목록 <span class="small text-muted fw-normal" id="cafeSlideCount"></span></h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="addCafeSlideRow()"><i class="bi bi-plus-lg me-1"></i>슬라이드 추가</button>
+          </div>
+          <div class="small text-muted mb-2">위에서부터 순서대로 보입니다. 종류: IMAGE(사진), VIDEO(영상), FULLSCREEN(전체 화면), SLIDES(구글 슬라이드). 주소는 https로 시작해야 합니다.</div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-2">
+              <thead><tr><th>제목</th><th>종류</th><th>주소</th><th>초</th><th>QR 주소</th><th>우선</th><th></th></tr></thead>
+              <tbody id="cafeSlideRows"></tbody>
+            </table>
+          </div>
+          <div class="text-end"><button class="btn btn-primary btn-sm" onclick="saveCafeSlidesUI()"><i class="bi bi-save me-1"></i>슬라이드 저장</button></div>
+        </div>
+      </section>
+
+      <section data-panel="cafeFiles" class="d-none">
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-3">사진·영상 올리기</h6>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-bold" for="cafeUpFolder">어디에 올릴까요</label>
+              <select class="form-select" id="cafeUpFolder">
+                <option value="cafeMenu">카페 메뉴 (중간중간 번갈아 나옴)</option>
+                <option value="cafeFullscreen">카페 전체 화면 (화면 가득)</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label small fw-bold" for="cafeUpFile">파일</label>
+              <input class="form-control" type="file" id="cafeUpFile" accept="image/*,video/*">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small fw-bold" for="cafeUpStart">노출 시작</label>
+              <input class="form-control" type="date" id="cafeUpStart">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small fw-bold" for="cafeUpEnd">노출 종료</label>
+              <input class="form-control" type="date" id="cafeUpEnd">
+            </div>
+            <div class="col-12 col-md-1">
+              <button class="btn btn-primary w-100" onclick="uploadCafeFile()">올리기</button>
+            </div>
+          </div>
+          <div class="small text-muted mt-2">기간을 비워 두면 상시 나옵니다. 기간을 정하면 그 날짜 동안만 나옵니다. 한 파일당 20MB 이하.</div>
+        </div>
+
+        <div class="card p-3 mb-3">
+          <h6 class="fw-bold mb-1">카페 메뉴 <span class="small text-muted fw-normal" id="cafeCountCafeMenu"></span></h6>
+          <div class="small text-muted mb-2">카페 메뉴 폴더의 사진입니다. 지우면 휴지통으로 갑니다.</div>
+          <div id="cafeListCafeMenu" class="row g-2"></div>
+        </div>
+
+        <div class="card p-3">
+          <h6 class="fw-bold mb-1">카페 전체 화면 <span class="small text-muted fw-normal" id="cafeCountCafeFullscreen"></span></h6>
+          <div class="small text-muted mb-2">화면 전체를 덮어서 나오는 사진과 영상입니다.</div>
+          <div id="cafeListCafeFullscreen" class="row g-2"></div>
+        </div>
+      </section>
+     </div>
+
      <!-- ===================== 홈 (업무포털) ===================== -->
      <div data-module-view="home" class="d-none">
       <div class="mb-3">
@@ -921,6 +1119,30 @@
         </div>
         <div id="homeShuttle" class="small text-muted">불러오는 중…</div>
       </div>
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">에어컨 상태</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="showModule('aircon')">에어컨 제어</button>
+          </div>
+          <div id="homeAircon" class="small text-muted">불러오는 중…</div>
+        </div></div>
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">공유트럭 처리할 일</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="showModule('truck')">트럭 관리</button>
+          </div>
+          <div id="homeTruck" class="small text-muted">불러오는 중…</div>
+        </div></div>
+      </div>
+      <div class="card p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-bold mb-0">시설보수 현황</h6>
+          <button class="btn btn-sm btn-outline-primary" onclick="showModule('repair')">시설보수대장</button>
+        </div>
+        <div id="homeRepairCost" class="small text-muted mb-3">불러오는 중…</div>
+        <div id="homeRepairChart"></div>
+      </div>
       <div class="card p-3 mb-3">
         <h6 class="fw-bold mb-3">업무 바로 가기</h6>
         <div class="d-flex flex-wrap gap-2">
@@ -929,6 +1151,7 @@
           <button class="btn btn-sm btn-primary" onclick="showModule('learn')"><i class="bi bi-mortarboard me-1"></i>배움터 접수</button>
           <button class="btn btn-sm btn-primary" onclick="showModule('shuttle')"><i class="bi bi-bus-front me-1"></i>셔틀 운행 현황</button>
           <button class="btn btn-sm btn-primary" onclick="showModule('staff')"><i class="bi bi-people me-1"></i>직원 목록</button>
+          <button class="btn btn-sm btn-primary" onclick="openTicket()"><i class="bi bi-ticket-perforated me-1"></i>발권시스템</button>
         </div>
       </div>
       <div class="card p-3">
@@ -1559,11 +1782,14 @@
       eList: loadLed, eSetup: loadLed,
       hStatus: loadHvac, hSetup: loadHvacSetup,
       acStatus: () => loadAirCon(),
+      cafeSettings: loadCafe,
+      cafeFiles: loadCafeFiles,
+      meetingNotice: loadMeetings,
       qList: loadSurveys, qSetup: loadSurveys
     };
     // 열 때마다 새로 읽는 탭
-    const ALWAYS_RELOAD = ['status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'qList', 'qSetup'];
-    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus', survey: 'qList' };
+    const ALWAYS_RELOAD = ['meetingNotice', 'status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings', 'cafeFiles', 'qList', 'qSetup'];
+    const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus', cafe: 'cafeSettings', survey: 'qList' };
 
     function moduleOfTab(tab) {
       if (/^r[A-Z]/.test(tab)) return 'rooms';
@@ -1576,6 +1802,7 @@
       if (/^e[A-Z]/.test(tab)) return 'led';
       if (/^h[A-Z]/.test(tab)) return 'hvac';
       if (/^ac[A-Z]/.test(tab)) return 'aircon';
+      if (/^cafe[A-Z]/.test(tab)) return 'cafe';
       if (/^q[A-Z]/.test(tab)) return 'survey';
       return 'lobby';
     }
@@ -1594,6 +1821,16 @@
       }
     }
 
+    // ---------- 내 캘린더: 복지관 공용 캘린더(calendar@geojecwc.kr)를 임베드 ----------
+    const MYCAL_EMBED_IDS = ['calendar@geojecwc.kr'];
+    function loadMyCalendar() {
+      const frame = document.getElementById('mcFrame');
+      if (frame.dataset.loaded) return;
+      const srcs = MYCAL_EMBED_IDS.map(id => 'src=' + encodeURIComponent(id)).join('&');
+      frame.src = 'https://calendar.google.com/calendar/embed?' + srcs + '&ctz=Asia%2FSeoul&mode=MONTH&showTitle=0&showPrint=0&showTabs=1&showCalendars=0&showTz=0';
+      frame.dataset.loaded = '1';
+    }
+
     // 왼쪽 메뉴: 로비 사이니지 / 각 실 사이니지
     function showModule(module) {
       document.querySelectorAll('[data-module-view]').forEach(v => v.classList.toggle('d-none', v.dataset.moduleView !== module));
@@ -1606,6 +1843,7 @@
       if (module === 'home') loadHome();
       if (module === 'submit') loadSubmit();
       if (module === 'business') loadBusiness();
+      if (module === 'mycal') loadMyCalendar();
       window.scrollTo(0, 0);
     }
 
@@ -2457,7 +2695,59 @@
     }
 
     // ---------- 홈 (업무포털) ----------
+    // 홈 카드 한 칸 (라벨 + 값)
+    function homeStat_(label, value, cls) {
+      return '<div class="col-4"><div class="small text-muted">' + label + '</div><div class="fw-bold fs-5 ' + (cls || '') + '">' + value + '</div></div>';
+    }
+
     function loadHome() {
+      run('getHomeAircon').then(a => {
+        document.getElementById('homeAircon').innerHTML =
+          '<div class="row g-2">' +
+            homeStat_('켜짐', a.on + ' / ' + a.total + '대') +
+            homeStat_('연결 안 됨', a.offline + '대', a.offline ? 'text-danger' : '') +
+            homeStat_('실패한 예약', a.failed + '건', a.failed ? 'text-danger' : '') +
+          '</div><div class="text-muted mt-2">' + esc(a.checkedAt) + ' 기준</div>';
+      }).catch(err => {
+        document.getElementById('homeAircon').textContent = '에어컨 상태를 불러오지 못했습니다: ' + ((err && err.message) || err);
+      });
+
+      run('getTruckSummary').then(t => {
+        const el = document.getElementById('homeTruck');
+        if (!t.ready) { el.textContent = t.message; return; }
+        const c = t.counts;
+        const next = (t.todo || []).slice(0, 3).map(x =>
+          '<li>' + esc(x.agency) + ' · ' + esc(x.status) + ' · ' + esc(x.start) + '</li>').join('');
+        el.innerHTML =
+          '<div class="row g-2">' +
+            homeStat_('접수 대기', c.pending + '건', c.pending ? 'text-primary' : '') +
+            homeStat_('반납 검토', c.returnReview + '건', c.returnReview ? 'text-primary' : '') +
+            homeStat_('반납 지연', c.overdue + '건', c.overdue ? 'text-danger' : '') +
+          '</div>' +
+          (next ? '<ul class="mt-2 mb-0 ps-3">' + next + '</ul>' : '<div class="mt-2 text-muted">처리할 예약이 없습니다.</div>') +
+          '<div class="text-muted mt-2">이번 달 사용 ' + c.thisMonth + '건 · ' + esc(t.checkedAt) + ' 기준</div>';
+      }).catch(err => {
+        document.getElementById('homeTruck').textContent = '공유트럭 상태를 불러오지 못했습니다: ' + ((err && err.message) || err);
+      });
+
+      run('getRepairTrend').then(r => {
+        document.getElementById('homeRepairCost').innerHTML =
+          '이번 달 보수 비용 <b>' + Number(r.thisMonthCost).toLocaleString() + '원</b>' +
+          ' · 올해 조치 후 사진이 없는 기록 <b class="' + (r.noAfter ? 'text-danger' : '') + '">' + r.noAfter + '건</b>';
+        const max = Math.max(1, ...r.trend.map(t => t.cost));
+        document.getElementById('homeRepairChart').innerHTML =
+          '<div class="d-flex align-items-end gap-2" style="height:170px">' +
+          r.trend.map(t =>
+            '<div class="flex-fill text-center" style="min-width:0">' +
+              '<div class="small fw-bold text-truncate">' + Number(t.cost).toLocaleString() + '</div>' +
+              '<div class="bg-primary rounded-top mx-auto" style="width:70%;height:' + Math.max(2, Math.round(t.cost / max * 110)) + 'px"></div>' +
+              '<div class="small text-muted mt-1">' + Number(t.month.slice(5)) + '월 · ' + t.count + '건</div>' +
+            '</div>').join('') +
+          '</div>';
+      }).catch(err => {
+        document.getElementById('homeRepairCost').textContent = '시설보수 현황을 불러오지 못했습니다: ' + ((err && err.message) || err);
+      });
+
       // 셔틀 상태는 따로 불러옴: 셔틀 쪽이 실패해도 홈의 나머지는 그대로 나오게
       run('getShuttleSummary').then(sh => {
         const el = document.getElementById('homeShuttle');
@@ -2495,6 +2785,303 @@
           '</div></div>'
         ).join('') : '<span class="text-muted small">표시할 바로가기가 없습니다. 바로가기 탭에 주소를 입력해 주세요.</span>';
       }).catch(fail);
+    }
+
+    // ---------- 꽃다비 카페 사이니지 ----------
+    var cafeSlides = [];
+    var cafeFileLists = {};
+    var CAFE_TYPES = ['IMAGE', 'VIDEO', 'FULLSCREEN', 'SLIDES'];
+
+    function loadCafe() {
+      run('getCafeSettings').then(s => {
+        document.getElementById('cafeEmergency').checked = !!s.emergency;
+        document.getElementById('cafeEmergencyMsg').value = s.emergencyMsg || '';
+        document.getElementById('cafeHours').value = s.hours || '';
+        document.getElementById('cafeFontScale').value = s.fontScale || 100;
+        document.getElementById('cafeBgm').checked = !!s.bgm;
+        document.getElementById('cafeNoticeOn').checked = s.noticeListOn !== false;
+        document.getElementById('cafeNoticeCount').value = s.noticeListCount || 5;
+        cafeSlides = s.slides || [];
+        renderCafeSlides();
+      }).catch(fail);
+    }
+
+    function cafeTypeOptions(selected) {
+      return CAFE_TYPES.map(t => '<option' + (t === selected ? ' selected' : '') + '>' + t + '</option>').join('');
+    }
+
+    function renderCafeSlides() {
+      document.getElementById('cafeSlideCount').textContent = cafeSlides.length + '개';
+      const tbody = document.getElementById('cafeSlideRows');
+      tbody.innerHTML = cafeSlides.map((s, i) =>
+        '<tr>' +
+          '<td><input class="form-control form-control-sm cafe-f" data-i="' + i + '" data-k="title" value="' + esc(s.title) + '"></td>' +
+          '<td><select class="form-select form-select-sm cafe-f" data-i="' + i + '" data-k="type">' + cafeTypeOptions(s.type) + '</select></td>' +
+          '<td><input class="form-control form-control-sm cafe-f" data-i="' + i + '" data-k="path" value="' + esc(s.path) + '"></td>' +
+          '<td style="width:70px"><input class="form-control form-control-sm cafe-f" data-i="' + i + '" data-k="seconds" type="number" min="1" max="600" value="' + esc(s.seconds) + '"></td>' +
+          '<td><input class="form-control form-control-sm cafe-f" data-i="' + i + '" data-k="qr" value="' + esc(s.qr) + '"></td>' +
+          '<td style="width:70px"><select class="form-select form-select-sm cafe-f" data-i="' + i + '" data-k="priority"><option' + (s.priority !== 'Y' ? ' selected' : '') + '>N</option><option' + (s.priority === 'Y' ? ' selected' : '') + '>Y</option></select></td>' +
+          '<td class="text-nowrap">' +
+            '<button class="btn btn-sm btn-outline-secondary" onclick="moveCafeSlide(' + i + ', -1)" ' + (i === 0 ? 'disabled' : '') + '><i class="bi bi-arrow-up"></i></button> ' +
+            '<button class="btn btn-sm btn-outline-secondary" onclick="moveCafeSlide(' + i + ', 1)" ' + (i === cafeSlides.length - 1 ? 'disabled' : '') + '><i class="bi bi-arrow-down"></i></button> ' +
+            '<button class="btn btn-sm btn-outline-danger" onclick="removeCafeSlide(' + i + ')"><i class="bi bi-trash"></i></button>' +
+          '</td>' +
+        '</tr>'
+      ).join('') || '<tr><td colspan="7" class="text-muted small">슬라이드가 없습니다. 추가해 주세요.</td></tr>';
+      // 입력한 값을 목록에 보관 (위/아래 이동이나 삭제 전에 반영)
+      tbody.querySelectorAll('.cafe-f').forEach(el => {
+        el.addEventListener('change', () => { cafeSlides[+el.dataset.i][el.dataset.k] = el.value; });
+      });
+    }
+
+    function collectCafeSlides() {
+      document.querySelectorAll('#cafeSlideRows .cafe-f').forEach(el => {
+        const row = cafeSlides[+el.dataset.i];
+        if (row) row[el.dataset.k] = el.value;
+      });
+      return cafeSlides;
+    }
+
+    function addCafeSlideRow() {
+      collectCafeSlides();
+      cafeSlides.push({ title: '', type: 'IMAGE', path: '', seconds: '10', qr: '', priority: 'N' });
+      renderCafeSlides();
+    }
+
+    function removeCafeSlide(i) {
+      collectCafeSlides();
+      cafeSlides.splice(i, 1);
+      renderCafeSlides();
+    }
+
+    function moveCafeSlide(i, dir) {
+      collectCafeSlides();
+      const j = i + dir;
+      if (j < 0 || j >= cafeSlides.length) return;
+      const t = cafeSlides[i]; cafeSlides[i] = cafeSlides[j]; cafeSlides[j] = t;
+      renderCafeSlides();
+    }
+
+    function saveCafeSettingsUI() {
+      const scaleRaw = document.getElementById('cafeFontScale').value;
+      save('saveCafeSettings', {
+        emergency: document.getElementById('cafeEmergency').checked,
+        emergencyMsg: document.getElementById('cafeEmergencyMsg').value,
+        hours: document.getElementById('cafeHours').value,
+        fontScale: scaleRaw === '' ? '' : Number(scaleRaw),
+        bgm: document.getElementById('cafeBgm').checked,
+        noticeListOn: document.getElementById('cafeNoticeOn').checked,
+        noticeListCount: Number(document.getElementById('cafeNoticeCount').value)
+      }).then(s => { toast('운영 설정을 저장했습니다. 카페 화면에 1분 안에 반영됩니다.'); loadCafe(); }).catch(fail);
+    }
+
+    function saveCafeSlidesUI() {
+      save('saveCafeSlides', collectCafeSlides()).then(rows => {
+        cafeSlides = rows;
+        renderCafeSlides();
+        toast('슬라이드를 저장했습니다. 카페 화면에 1분 안에 반영됩니다.');
+      }).catch(fail);
+    }
+
+    // ---------- 회의 안내 ----------
+    var mtgItems = [];
+    var mtgEditing = null;
+
+    function loadMeetings() {
+      run('getMeetingNotices').then(list => { mtgItems = list; renderMeetings(); }).catch(fail);
+    }
+
+    function mtgStatus(v) {
+      if (v.use !== 'Y') return '<span class="badge text-bg-light border">사용 안 함</span>';
+      const d = new Date();
+      const nowStr = todayStr() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      const from = v.showStartDate + ' ' + v.showStartTime;
+      const to = v.showEndDate + ' ' + v.showEndTime;
+      if (nowStr < from) return '<span class="badge text-bg-info">표출 예정</span>';
+      if (nowStr > to) return '<span class="badge text-bg-secondary">표출 끝남</span>';
+      return '<span class="badge text-bg-warning">지금 표출 중</span>';
+    }
+
+    function renderMeetings() {
+      document.getElementById('mtgRows').innerHTML = mtgItems.length ? mtgItems.map((v, i) =>
+        '<tr><td><div class="fw-bold">' + esc(v.name) + '</div><div class="small text-muted">' + esc(v.place) + '</div></td>' +
+        '<td class="small">' + esc(v.date) + '<br>' + esc(v.start) + ' ~ ' + esc(v.end) + '</td>' +
+        '<td class="small">' + esc(v.showStartDate) + ' ' + esc(v.showStartTime) + '<br>~ ' + esc(v.showEndDate) + ' ' + esc(v.showEndTime) + '</td>' +
+        '<td>' + mtgStatus(v) + '</td>' +
+        '<td class="text-end text-nowrap">' +
+          '<button class="btn btn-sm btn-light border me-1" onclick="toggleMeeting(' + i + ')">' + (v.use === 'Y' ? '사용 끄기' : '사용 켜기') + '</button>' +
+          '<button class="btn btn-sm btn-outline-primary me-1" onclick="editMeeting(' + i + ')"><i class="bi bi-pencil"></i></button>' +
+          '<button class="btn btn-sm btn-outline-danger" onclick="removeMeeting(' + i + ')"><i class="bi bi-trash"></i></button></td></tr>'
+      ).join('') : '<tr class="loading-row"><td colspan="5">등록된 회의 안내가 없습니다.</td></tr>';
+    }
+
+    function resetMeetingForm() {
+      mtgEditing = null;
+      document.getElementById('mtgFormTitle').textContent = '회의 안내 추가';
+      document.getElementById('mtgSubmit').textContent = '추가';
+      document.getElementById('mtgCancel').classList.add('d-none');
+      document.getElementById('mtgName').value = '';
+      document.getElementById('mtgPlace').value = '';
+      document.getElementById('mtgDate').value = '';
+      document.getElementById('mtgStart').value = '14:00';
+      document.getElementById('mtgEnd').value = '15:00';
+      document.getElementById('mtgShowStartDate').value = '';
+      document.getElementById('mtgShowStartTime').value = '09:00';
+      document.getElementById('mtgShowEndDate').value = '';
+      document.getElementById('mtgShowEndTime').value = '18:00';
+      document.getElementById('mtgUse').value = 'Y';
+    }
+
+    function editMeeting(idx) {
+      const v = mtgItems[idx];
+      mtgEditing = v;
+      document.getElementById('mtgFormTitle').textContent = '회의 안내 수정';
+      document.getElementById('mtgSubmit').textContent = '수정 저장';
+      document.getElementById('mtgCancel').classList.remove('d-none');
+      document.getElementById('mtgName').value = v.name;
+      document.getElementById('mtgPlace').value = v.place;
+      document.getElementById('mtgDate').value = v.date;
+      document.getElementById('mtgStart').value = v.start;
+      document.getElementById('mtgEnd').value = v.end;
+      document.getElementById('mtgShowStartDate').value = v.showStartDate;
+      document.getElementById('mtgShowStartTime').value = v.showStartTime;
+      document.getElementById('mtgShowEndDate').value = v.showEndDate;
+      document.getElementById('mtgShowEndTime').value = v.showEndTime;
+      document.getElementById('mtgUse').value = v.use;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function meetingPayload() {
+      return {
+        name: document.getElementById('mtgName').value.trim(),
+        place: document.getElementById('mtgPlace').value.trim(),
+        date: document.getElementById('mtgDate').value,
+        start: document.getElementById('mtgStart').value,
+        end: document.getElementById('mtgEnd').value,
+        showStartDate: document.getElementById('mtgShowStartDate').value,
+        showStartTime: document.getElementById('mtgShowStartTime').value,
+        showEndDate: document.getElementById('mtgShowEndDate').value,
+        showEndTime: document.getElementById('mtgShowEndTime').value,
+        use: document.getElementById('mtgUse').value
+      };
+    }
+
+    function submitMeeting() {
+      const p = meetingPayload();
+      if (mtgEditing) { p.row = mtgEditing.row; p.raw = mtgEditing.raw; }
+      save('saveMeetingNotice', p).then(list => {
+        mtgItems = list; renderMeetings(); resetMeetingForm();
+        toast('회의 안내를 저장했습니다. 표출 기간에 로비 화면에 나옵니다.');
+      }).catch(fail);
+    }
+
+    function toggleMeeting(idx) {
+      const v = mtgItems[idx];
+      const p = { row: v.row, raw: v.raw, name: v.name, place: v.place, date: v.date, start: v.start, end: v.end,
+        showStartDate: v.showStartDate, showStartTime: v.showStartTime, showEndDate: v.showEndDate, showEndTime: v.showEndTime,
+        use: v.use === 'Y' ? 'N' : 'Y' };
+      save('saveMeetingNotice', p).then(list => { mtgItems = list; renderMeetings(); toast('변경했습니다.'); }).catch(fail);
+    }
+
+    function removeMeeting(idx) {
+      const v = mtgItems[idx];
+      if (!confirm('"' + v.name + '" 회의 안내를 삭제할까요?')) return;
+      save('deleteMeetingNotice', v.row, v.raw).then(list => { mtgItems = list; renderMeetings(); toast('삭제했습니다.'); }).catch(fail);
+    }
+
+    // ---------- 꽃다비 카페 사이니지: 미리보기와 사진 관리 ----------
+    function toggleCafePreview() {
+      const wrap = document.getElementById('cafePreviewWrap');
+      const btn = document.getElementById('btnCafePreview');
+      if (wrap.querySelector('iframe')) {
+        wrap.innerHTML = '<div class="preview-placeholder small">미리보기 켜기를 누르면 실제 카페 화면이 여기에 나옵니다. (설정을 저장한 뒤 확인하세요)</div>';
+        btn.textContent = '미리보기 켜기';
+        return;
+      }
+      run('getCafeSettings').then(s => {
+        wrap.innerHTML = '<iframe src="' + esc(s.displayUrl) + '"></iframe>';
+        btn.textContent = '미리보기 끄기';
+        fitPreview();
+      }).catch(fail);
+    }
+
+    function cafeCap_(key) {
+      return key.charAt(0).toUpperCase() + key.slice(1);
+    }
+
+    function loadCafeFiles() {
+      ['cafeMenu', 'cafeFullscreen'].forEach(key => {
+        run('getFolderFiles', key).then(list => renderCafeFileList(key, list)).catch(fail);
+      });
+    }
+
+    function openCafePeriod(key, idx) {
+      const f = cafeFileLists[key][idx];
+      state.periodTarget = { view: null, key: key, file: f, after: loadCafeFiles };
+      document.getElementById('periodFileName').textContent = f.name;
+      document.getElementById('periodEditor').innerHTML = periodEditorHtml('pm', f.period);
+      syncPeriodFields('pm');
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('periodModal')).show();
+    }
+
+    function renderCafeFileList(key, list) {
+      cafeFileLists[key] = list;
+      cafeFileLists[key] = list;
+      document.getElementById('cafeCount' + cafeCap_(key)).textContent = list.length + '개';
+      const box = document.getElementById('cafeList' + cafeCap_(key));
+      const badges = {
+        always: '<span class="badge text-bg-secondary">상시</span>',
+        active: '<span class="badge text-bg-success">나오는 중</span>',
+        scheduled: '<span class="badge text-bg-info">예정</span>',
+        expired: '<span class="badge text-bg-dark">기간 지남</span>'
+      };
+      box.innerHTML = list.length ? list.map((f, i) => {
+        const period = f.period
+          ? f.period.start + (f.period.end && f.period.end !== f.period.start ? ' ~ ' + f.period.end : '')
+          : '';
+        const thumb = f.isVideo
+          ? '<div class="d-flex align-items-center justify-content-center bg-dark text-white" style="height:110px"><i class="bi bi-play-circle fs-2"></i></div>'
+          : '<img src="' + esc(f.thumb) + '" style="width:100%;height:110px;object-fit:cover;' + (f.status === 'expired' ? 'filter:grayscale(100%);opacity:.6;' : '') + '" alt="">';
+        return '<div class="col-6 col-md-3 col-xl-2"><div class="card h-100">' + thumb +
+          '<div class="p-2">' +
+            '<div class="small fw-bold text-truncate" title="' + esc(f.name) + '">' + esc(f.title) + '</div>' +
+            '<div class="small text-muted">' + esc(period) + '</div>' +
+            '<div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mt-1">' + (badges[f.status] || '') +
+              '<span class="d-flex gap-1 text-nowrap"><button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="openCafePeriod(\'' + key + '\', ' + i + ')"><i class="bi bi-calendar-event"></i> 기간</button>' +
+              '<button class="btn btn-sm btn-outline-danger" onclick="trashCafeFile(\'' + key + '\', \'' + esc(f.id) + '\', \'' + esc(f.title) + '\')"><i class="bi bi-trash"></i></button></span>' +
+            '</div>' +
+          '</div></div></div>';
+      }).join('') : '<div class="text-muted small">아직 올라간 파일이 없습니다.</div>';
+    }
+
+    function trashCafeFile(key, id, title) {
+      if (!confirm('"' + title + '" 파일을 휴지통으로 옮길까요?\n(드라이브 휴지통에서 30일 안에 되돌릴 수 있습니다)')) return;
+      save('trashFile', key, id).then(() => {
+        toast('휴지통으로 옮겼습니다. 카페 화면에서는 곧 빠집니다.');
+        loadCafeFiles();
+      }).catch(fail);
+    }
+
+    function uploadCafeFile() {
+      const key = document.getElementById('cafeUpFolder').value;
+      const input = document.getElementById('cafeUpFile');
+      const file = input.files && input.files[0];
+      if (!file) return fail(new Error('올릴 파일을 골라 주세요.'));
+      if (file.size > 20 * 1024 * 1024) return fail(new Error('파일이 너무 큽니다. 20MB 이하로 올려 주세요.'));
+      const start = document.getElementById('cafeUpStart').value;
+      const end = document.getElementById('cafeUpEnd').value;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const data = String(reader.result).split(',')[1] || '';
+        const period = start ? { start: start, end: end || start, startTime: '', endTime: '' } : null;
+        save('uploadFile', key, { name: file.name, mime: file.type, data: data, period: period }).then(() => {
+          toast('올렸습니다. 카페 화면에 1분 안에 나옵니다.');
+          input.value = '';
+          loadCafeFiles();
+        }).catch(fail);
+      };
+      reader.onerror = () => fail(new Error('파일을 읽지 못했습니다.'));
+      reader.readAsDataURL(file);
     }
 
     // ---------- 현황 ----------
@@ -2628,7 +3215,7 @@
       const list = state.visits.filter(v => !hidePast || v.date >= today);
       document.getElementById('visitRows').innerHTML = list.length ? list.map(v => {
         const idx = state.visits.indexOf(v);
-        return '<tr><td>' + esc(v.date) + '</td><td>' + esc(v.start) + ' ~ ' + esc(v.end) + '</td><td>' + visitStatus(v) + '</td><td class="text-end text-nowrap">' +
+        return '<tr><td>' + esc(v.date) + (v.name ? '<div class="small text-muted">' + esc(v.name) + '</div>' : '') + '</td><td>' + esc(v.start) + ' ~ ' + esc(v.end) + '</td><td>' + visitStatus(v) + '</td><td class="text-end text-nowrap">' +
           '<button class="btn btn-sm btn-light border me-1" onclick="toggleVisitUse(' + idx + ')">' + (v.use === 'Y' ? '사용 끄기' : '사용 켜기') + '</button>' +
           '<button class="btn btn-sm btn-outline-primary me-1" onclick="editVisit(' + idx + ')"><i class="bi bi-pencil"></i></button>' +
           '<button class="btn btn-sm btn-outline-danger" onclick="removeVisit(' + idx + ')"><i class="bi bi-trash"></i></button></td></tr>';
@@ -2644,6 +3231,9 @@
       document.getElementById('visitStart').value = '09:00';
       document.getElementById('visitEnd').value = '18:00';
       document.getElementById('visitUse').value = 'Y';
+      document.getElementById('visitName').value = '';
+      document.getElementById('visitPhotos').value = '';
+      document.getElementById('visitPhotoInfo').textContent = '사진을 고르면 저장할 때 함께 올라갑니다.';
     }
 
     function editVisit(idx) {
@@ -2656,22 +3246,63 @@
       document.getElementById('visitStart').value = v.start;
       document.getElementById('visitEnd').value = v.end;
       document.getElementById('visitUse').value = v.use;
+      document.getElementById('visitName').value = v.name || '';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    // 일정과 사진을 한 번에 저장: 일정을 먼저 저장하고, 고른 사진을 그 일정의 날짜·시간 기간으로 올림
     function submitVisit() {
       const v = {
         date: document.getElementById('visitDate').value,
         start: document.getElementById('visitStart').value,
         end: document.getElementById('visitEnd').value,
-        use: document.getElementById('visitUse').value
+        use: document.getElementById('visitUse').value,
+        name: document.getElementById('visitName').value.trim()
       };
+      const files = Array.from(document.getElementById('visitPhotos').files || []);
+      if (files.some(f => f.size > 20 * 1024 * 1024)) return fail(new Error('사진은 한 장당 20MB 이하로 골라 주세요.'));
       if (state.editingVisit) { v.row = state.editingVisit.row; v.raw = state.editingVisit.raw; }
-      save('saveVisit', v).then(list => {
-        state.visits = list; renderVisits(); resetVisitForm();
-        toast('기관방문 일정을 저장했습니다.');
+
+      save('saveVisit', v).then(async list => {
+        state.visits = list; renderVisits();
+        let uploaded = 0;
+        if (files.length) {
+          uploaded = await uploadVisitPhotos(files, { start: v.date, end: v.date, startTime: v.start, endTime: v.end });
+          loadFiles('welcome');
+        }
+        resetVisitForm();
+        toast(files.length ? '일정과 사진 ' + uploaded + '장을 저장했습니다.' : '기관방문 일정을 저장했습니다.');
       }).catch(fail);
     }
+
+    // 사진을 한 장씩 환영 이미지 폴더에 올림 (같은 기간을 모든 사진에 붙임)
+    async function uploadVisitPhotos(files, period) {
+      const info = document.getElementById('visitPhotoInfo');
+      let n = 0;
+      for (const file of files) {
+        n++;
+        info.textContent = '사진 올리는 중 (' + n + '/' + files.length + ')…';
+        const data = await readFileBase64_(file);
+        await save('uploadFile', 'welcome', { name: file.name, mime: file.type, data: data, period: period });
+      }
+      info.textContent = '사진 ' + n + '장을 올렸습니다.';
+      return n;
+    }
+
+    function readFileBase64_(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = () => reject(new Error('사진 파일을 읽지 못했습니다.'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 사진을 고르면 몇 장인지 바로 보여 줌
+    document.getElementById('visitPhotos').addEventListener('change', function () {
+      const n = this.files ? this.files.length : 0;
+      document.getElementById('visitPhotoInfo').textContent = n ? n + '장 선택됨 (저장할 때 함께 올라갑니다)' : '사진을 고르면 저장할 때 함께 올라갑니다.';
+    });
 
     function toggleVisitUse(idx) {
       const v = state.visits[idx];
@@ -2922,7 +3553,7 @@
       save('setFilePeriod', t.key, t.file.id, readPeriod('pm')).then(() => {
         bootstrap.Modal.getOrCreateInstance(document.getElementById('periodModal')).hide();
         toast('노출 기간을 바꿨습니다.');
-        loadFiles(t.view);
+        if (t.after) t.after(); else loadFiles(t.view);
       }).catch(fail);
     }
 
@@ -3470,9 +4101,43 @@
     state.winners = null;
     state.draw = null;
 
+    // 학기 선택: 선택한 학기의 ID를 모든 배움터 호출에 넘김 (처음에는 사용 중인 학기)
+    function learnTermId() { return state.learnTerm; }
+
+    function loadLearnTerms() {
+      run('listLearnTerms').then(list => {
+        const sel = document.getElementById('lTerm');
+        sel.innerHTML = list.map(t => '<option value="' + esc(t.id) + '">' + esc(t.name) + (t.active ? ' (사용 중)' : '') + '</option>').join('');
+        const active = list.find(t => t.active) || list[0];
+        state.learnTerm = active ? active.id : undefined;
+        if (state.learnTerm) sel.value = state.learnTerm;
+        loadLearnStatus();
+      }).catch(fail);
+    }
+
+    function changeLearnTerm() {
+      state.learnTerm = document.getElementById('lTerm').value;
+      state.learnList = [];
+      state.learnStatus = null;
+      state.lotteryCourses = null;
+      state.winners = null;
+      state.draw = null;
+      loadLearnStatus();
+      loadLearnList();
+    }
+
     function loadLearnStatus() {
-      run('getLearnStatus').then(s => {
+      if (state.learnTerm === undefined && !state.learnTermsLoading) {
+        state.learnTermsLoading = true;
+        return loadLearnTerms();
+      }
+      run('getLearnStatus', learnTermId()).then(s => {
         state.learnStatus = s;
+        if (s.links) {
+          document.getElementById('learnFormLink').href = s.links.formUrl;
+          document.getElementById('learnFormLink2').href = s.links.formUrl;
+          document.getElementById('learnInfoLink').href = s.links.infoUrl;
+        }
         document.getElementById('lCheckedAt').textContent = s.checkedAt + ' 기준';
         const phaseClass = { '접수 중': 'text-bg-success', '접수 전': 'text-bg-warning', '접수 마감': 'text-bg-secondary', '결과 발표됨': 'text-bg-primary' }[s.schedule.phase] || 'text-bg-secondary';
         document.getElementById('lPhase').innerHTML = '<span class="mode-pill ' + phaseClass + '">' + esc(s.schedule.phase) + '</span>';
@@ -3514,7 +4179,7 @@
     // ---------- 접수자 명단 ----------
     function loadLearnList() {
       if (!state.learnStatus) loadLearnStatus();
-      run('getLearnApplicants').then(list => { state.learnList = list; renderLearnList(); }).catch(fail);
+      run('getLearnApplicants', learnTermId()).then(list => { state.learnList = list; renderLearnList(); }).catch(fail);
     }
 
     function renderLearnList() {
@@ -3536,7 +4201,7 @@
     function cancelLearn(idx) {
       const a = state.learnList[idx];
       if (!confirm(a.name + ' (' + a.dob + ') 님의 접수를 취소할까요?\n신청 강좌: ' + a.courses.join(', ') + '\n\n원래 내용은 백업대장 탭에 남습니다.')) return;
-      save('cancelLearnApplicant', a.row, a.name, a.dob).then(list => {
+      save('cancelLearnApplicant', a.row, a.name, a.dob, learnTermId()).then(list => {
         state.learnList = list;
         renderLearnList();
         toast('접수를 취소했습니다.');
@@ -3545,7 +4210,7 @@
 
     // ---------- 추첨 ----------
     function loadLotteryCourses() {
-      run('getLotteryCourses').then(list => {
+      run('getLotteryCourses', learnTermId()).then(list => {
         state.lotteryCourses = list;
         document.getElementById('lLotteryCourses').innerHTML = list.length ? list.map((c, idx) =>
           '<div class="col-12 col-md-6 col-xl-4"><div class="card p-3 h-100">' +
@@ -3563,7 +4228,7 @@
     function startDraw(idx) {
       const c = state.lotteryCourses[idx];
       if (c.done && !confirm("'" + c.name + "'은(는) 이미 추첨 결과가 저장되어 있어요. 다시 추첨할까요?\n(새 결과를 저장해야 바뀝니다)")) return;
-      save('drawLottery', c.name).then(d => {
+      save('drawLottery', c.name, learnTermId()).then(d => {
         state.draw = { token: d.token, course: d.course, quota: d.quota, total: d.total, list: d.list, saved: false };
         renderDraw();
         toast('추첨했습니다. 확인 후 결과 저장을 눌러 주세요.');
@@ -3572,7 +4237,7 @@
 
     function showSavedDraw(idx) {
       const c = state.lotteryCourses[idx];
-      run('getLotteryResult', c.name).then(list => {
+      run('getLotteryResult', c.name, learnTermId()).then(list => {
         state.draw = { token: null, course: c.name, quota: c.quota, total: list.length, list: list, saved: true };
         renderDraw();
       }).catch(fail);
@@ -3634,7 +4299,7 @@
 
     // ---------- 합격자 대장 ----------
     function loadWinners() {
-      run('getLearnWinners').then(w => {
+      run('getLearnWinners', learnTermId()).then(w => {
         state.winners = w;
         document.getElementById('lwCount').textContent = w.stats.count + '명';
         document.getElementById('lwOriginal').textContent = won(w.stats.original);
@@ -3665,7 +4330,7 @@
 
     // ---------- 일정·시트 ----------
     function loadLearnSettings() {
-      run('getLearnSettings').then(renderLearnSettings).catch(fail);
+      run('getLearnSettings', learnTermId()).then(renderLearnSettings).catch(fail);
     }
 
     function renderLearnSettings(s) {
@@ -3677,12 +4342,12 @@
     }
 
     function saveLearnScheduleValue() {
-      save('saveLearnSchedule', document.getElementById('lsStart').value, document.getElementById('lsEnd').value, document.getElementById('lsResult').value)
+      save('saveLearnSchedule', document.getElementById('lsStart').value, document.getElementById('lsEnd').value, document.getElementById('lsResult').value, learnTermId())
         .then(s => { renderLearnSettings(s); toast('접수 일정을 저장했습니다.'); }).catch(fail);
     }
 
     function makeLearnSheet(fn) {
-      save(fn).then(name => toast("신청 시트에 '" + name + "' 탭을 만들었습니다.")).catch(fail);
+      save(fn, learnTermId()).then(name => toast("신청 시트에 '" + name + "' 탭을 만들었습니다.")).catch(fail);
     }
 
     // =====================================================================
@@ -4208,8 +4873,6 @@
       document.getElementById('linkSheet').href = boot.lobby.sheetUrl;
       document.getElementById('roomSheetLink').href = boot.rooms.sheetUrl;
       document.getElementById('truckAppLink').href = boot.truck.appUrl;
-      ['learnFormLink', 'learnFormLink2'].forEach(id => { document.getElementById(id).href = boot.learn.formUrl; });
-      document.getElementById('learnInfoLink').href = boot.learn.infoUrl;
       document.getElementById('shuttleMapLink').href = boot.shuttle.mapUrl;
       document.getElementById('shuttleSheetLink').href = boot.shuttle.sheetUrl;
       document.getElementById('shuttleAdminNewTab').href = boot.shuttle.adminUrl;
@@ -4226,6 +4889,27 @@
       });
       showTab('status');
     }).catch(fail);
+  </script>
+
+  <script>
+    // 발권시스템은 새 창으로 엶 (사이트가 다른 페이지 안에 띄우는 것을 막아 두었기 때문)
+    // 팀 업무 묶음만 접고 펼침 (다른 메뉴 묶음은 그대로)
+    function toggleSubGroup(btn) {
+      var box = btn.nextElementSibling;
+      box.classList.toggle('d-none');
+      var icon = btn.querySelector('i');
+      if (icon) icon.classList.toggle('bi-chevron-down', box.classList.contains('d-none') === false);
+      if (icon) icon.classList.toggle('bi-chevron-right', box.classList.contains('d-none'));
+    }
+
+    // 전자결재: 발권시스템과 같은 방식으로 프로그램 오른쪽 화면에 열림
+    function openElectronicApproval() {
+      window.open('http://gw.gjchwf.or.kr/', '_blank', 'noopener');
+    }
+
+    function openTicket() {
+      window.open('https://selfdesk.e-ncom.co.kr/', '_blank', 'noopener');
+    }
   </script>
 </body>
 </html>
