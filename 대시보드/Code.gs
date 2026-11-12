@@ -3058,8 +3058,14 @@ const SURVEY = {
   LIST_HEADERS: ['키', '이름', '템플릿', '상태', '설정', '회차', '만든사람', '만든일시', '수정일시'],
   RESPONSE_TAB: '응답',
   RESPONSE_HEADERS: ['키', '회차', '칸', '스티커', 'x', 'y', '회전', '시각', '응답ID'],
-  TEMPLATES: ['festival', 'thanks'],
-  STATUS: ['진행', '종료']
+  TEMPLATES: ['festival', 'thanks', 'custom'],
+  STATUS: ['진행', '종료'],
+  // 직접 꾸미기: 저장해 둔 디자인(내 템플릿)과 올린 그림
+  DESIGN_TAB: '내 템플릿',
+  DESIGN_HEADERS: ['이름', '디자인', '만든사람', '만든일시'],
+  FOLDER_NAME: '만족도 조사 그림',
+  BUILTIN_STICKERS: ['heart', 'pinkheart', 'star', 'smile', 'flower', 'thumb', 'clover', 'blueheart', 'snowflake', 'maple', 'sun', 'gift', 'balloon'],
+  MAX_IMAGE_BYTES: 3 * 1024 * 1024
 };
 
 // 파일 ID는 스크립트 속성(SURVEY_SHEET_ID)에 저장. 없거나 열 수 없으면 새로 만듦
@@ -3119,7 +3125,7 @@ function surveys_() {
       createdAt: surveyTime_(v[7]),
       updatedAt: surveyTime_(v[8])
     };
-  }).filter(s => s.key && s.status !== '삭제');
+  }).filter(s => s.key && s.status !== '삭제' && s.status !== '미리보기');
 }
 
 function findSurveyRow_(key) {
@@ -3171,6 +3177,7 @@ function getSurveyData() {
       yes: counts[s.key].yes, no: counts[s.key].no,
       url: surveyLink_(s.key, false), previewUrl: surveyLink_(s.key, true)
     })).reverse(),
+    designs: surveyDesigns_().map(t => ({ name: t.name, design: t.design, author: t.author, createdAt: t.createdAt })),
     displayUrl: surveyDisplayUrl_(),
     sheetId: ss.getId(),
     sheetUrl: ss.getUrl()
@@ -3204,8 +3211,145 @@ function cleanSurveyConfig_(c) {
     musicUrl: /^https:\/\//.test(musicUrl) ? musicUrl : '',
     showCount: !!c.showCount,
     soundVolume: num(c.soundVolume, 0, 1, 0.6),
-    musicVolume: num(c.musicVolume, 0, 1, 0.25)
+    musicVolume: num(c.musicVolume, 0, 1, 0.25),
+    design: cleanSurveyDesign_(c.design)
   };
+}
+
+// 직접 꾸미기 설정 정리. 그림은 '만족도 조사 그림' 폴더에 올린 파일만 허용
+// (조사 화면은 로그인 없이 열리므로, 다른 드라이브 파일이 들어가지 않게)
+function cleanSurveyDesign_(d) {
+  d = d || {};
+  const hex = v => /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? String(v).toLowerCase() : '';
+  const folderId = surveyFolder_().getId();
+  const okIds = {};
+  const img = v => {
+    v = String(v || '');
+    if (!/^[\w-]{10,80}$/.test(v)) return '';
+    if (!(v in okIds)) {
+      try {
+        const parents = DriveApp.getFileById(v).getParents();
+        okIds[v] = false;
+        while (parents.hasNext()) if (parents.next().getId() === folderId) okIds[v] = true;
+      } catch (e) { okIds[v] = false; }
+    }
+    return okIds[v] ? v : '';
+  };
+  const pal = d.palette || {}, deco = d.deco || {}, st = d.stickers || {}, bg = d.background || {}, hd = d.header || {};
+  const headerImage = img(hd.imageId);
+  return {
+    header: { mode: hd.mode === 'image' && headerImage ? 'image' : 'text', imageId: headerImage },
+    palette: { main: hex(pal.main), yes: hex(pal.yes), no: hex(pal.no), ink: hex(pal.ink), bg: hex(pal.bg) },
+    background: { pattern: ['plain', 'dots', 'grid', 'stripes', 'image'].indexOf(bg.pattern) !== -1 ? bg.pattern : 'dots', imageId: img(bg.imageId) },
+    deco: {
+      bunting: !!deco.bunting, burst: !!deco.burst, confetti: !!deco.confetti, chars: !!deco.chars,
+      snow: !!deco.snow, petals: !!deco.petals, hearts: !!deco.hearts
+    },
+    stickers: {
+      builtin: (Array.isArray(st.builtin) ? st.builtin : []).filter(x => SURVEY.BUILTIN_STICKERS.indexOf(x) !== -1),
+      custom: (Array.isArray(st.custom) ? st.custom : []).map(img).filter(Boolean).slice(0, 8)
+    },
+    ratio: ['1:1', '3:2', '2:1'].indexOf(d.ratio) !== -1 ? d.ratio : '3:2'
+  };
+}
+
+// 그림을 올리는 드라이브 폴더 (ID는 스크립트 속성 SURVEY_FOLDER_ID)
+function surveyFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('SURVEY_FOLDER_ID');
+  if (id) {
+    try { return DriveApp.getFolderById(id); } catch (e) { /* 없으면 새로 만듦 */ }
+  }
+  const folder = DriveApp.createFolder(SURVEY.FOLDER_NAME);
+  props.setProperty('SURVEY_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+// 꾸미기 창에서 고른 그림 저장 (화면에서 미리 크기를 줄여 보냄). 파일 ID를 돌려줌
+function uploadSurveyImage(name, mime, data) {
+  requireUser_();
+  mime = String(mime || '');
+  if (!/^image\/(png|jpeg|gif|webp)$/.test(mime)) throw new Error('그림 파일(PNG, JPG)만 올릴 수 있습니다.');
+  const bytes = Utilities.base64Decode(String(data || ''));
+  if (bytes.length > SURVEY.MAX_IMAGE_BYTES) throw new Error('그림이 너무 큽니다. 3MB 이하로 올려 주세요.');
+  const file = surveyFolder_().createFile(Utilities.newBlob(bytes, mime, String(name || '그림').slice(0, 80)));
+  return file.getId();
+}
+
+// 꾸미기 창의 작은 그림 보기용
+function getSurveyImage(fileId) {
+  requireUser_();
+  if (!cleanSurveyDesign_({ stickers: { custom: [fileId] } }).stickers.custom.length) throw new Error('그림을 찾을 수 없습니다.');
+  const blob = DriveApp.getFileById(fileId).getBlob();
+  return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
+// ---------- 내 템플릿 (저장해 둔 디자인) ----------
+function surveyDesignSheet_() {
+  return surveyTab_(SURVEY.DESIGN_TAB, SURVEY.DESIGN_HEADERS);
+}
+
+function surveyDesigns_() {
+  return surveyDesignSheet_().getDataRange().getValues().slice(1).map((v, i) => {
+    let design = {};
+    try { design = JSON.parse(String(v[1] || '{}')); } catch (e) { design = {}; }
+    return { row: i + 2, name: String(v[0] || '').trim(), design: design, author: String(v[2] || ''), createdAt: surveyTime_(v[3]) };
+  }).filter(t => t.name);
+}
+
+// 같은 이름이 있으면 덮어씀
+function saveSurveyDesign(name, design) {
+  const email = requireUser_();
+  name = String(name || '').trim().slice(0, 30);
+  if (!name) throw new Error('템플릿 이름을 입력해 주세요.');
+  const json = JSON.stringify(cleanSurveyDesign_(design));
+  return withLock_(() => {
+    const sheet = surveyDesignSheet_();
+    const old = surveyDesigns_().find(t => t.name === name);
+    if (old) sheet.getRange(old.row, 2, 1, 3).setValues([[json, email, new Date()]]);
+    else sheet.appendRow([name, json, email, new Date()]);
+    log_('만족도 조사 템플릿 저장', name);
+    return name;
+  });
+}
+
+function deleteSurveyDesign(name) {
+  requireUser_();
+  return withLock_(() => {
+    const t = surveyDesigns_().find(x => x.name === String(name || ''));
+    if (!t) throw new Error('템플릿을 찾을 수 없습니다.');
+    surveyDesignSheet_().deleteRow(t.row);
+    log_('만족도 조사 템플릿 삭제', t.name);
+    return true;
+  });
+}
+
+// ---------- 꾸미기 창 미리보기 ----------
+// 저장하기 전 내용을 사람마다 하나씩 있는 '미리보기' 줄에 넣고, 그 줄을 조사 화면 주소(&preview=1)로 보여 줌
+function saveSurveyPreview(input) {
+  const email = requireUser_();
+  if (!surveyDisplayUrl_()) throw new Error('처음 설정 탭에서 조사 화면 주소를 먼저 저장해 주세요.');
+  input = input || {};
+  const template = SURVEY.TEMPLATES.indexOf(input.template) !== -1 ? input.template : 'festival';
+  const config = JSON.stringify(cleanSurveyConfig_(input.config));
+  const propKey = 'SURVEY_PREVIEW_' + email;
+  const props = PropertiesService.getScriptProperties();
+  return withLock_(() => {
+    const sheet = surveyListSheet_();
+    let key = props.getProperty(propKey);
+    const rows = sheet.getDataRange().getValues();
+    let row = 0;
+    if (key) rows.forEach((v, i) => { if (i && String(v[0]).trim() === key && String(v[3]).trim() === '미리보기') row = i + 1; });
+    if (!row) {
+      key = 'p' + Utilities.getUuid().replace(/-/g, '').slice(0, 11);
+      props.setProperty(propKey, key);
+      sheet.appendRow([key, '(미리보기) ' + email, template, '미리보기', config, 1, email, new Date(), new Date()]);
+    } else {
+      sheet.getRange(row, 2, 1, 4).setValues([['(미리보기) ' + email, template, '미리보기', config]]);
+      sheet.getRange(row, 9).setValue(new Date());
+    }
+    return surveyLink_(key, true);
+  });
 }
 
 // 새 조사 만들기 / 고치기. input = { key(고칠 때), name, template, config }

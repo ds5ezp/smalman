@@ -15,7 +15,9 @@ const SHEET_ID = '';
 const SURVEY_TAB = '조사';      // 키, 이름, 템플릿, 상태, 설정, 회차, 만든사람, 만든일시, 수정일시
 const RESPONSE_TAB = '응답';    // 키, 회차, 칸, 스티커, x, y, 회전, 시각, 응답ID
 const RESPONSE_HEADERS = ['키', '회차', '칸', '스티커', 'x', 'y', '회전', '시각', '응답ID'];
-const STICKER_TYPES = ['heart', 'pinkheart', 'star', 'smile', 'flower', 'thumb', 'clover', 'blueheart'];
+const STICKER_TYPES = ['heart', 'pinkheart', 'star', 'smile', 'flower', 'thumb', 'clover', 'blueheart', 'snowflake', 'maple', 'sun', 'gift', 'balloon',
+  'u0', 'u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'];   // u0~u7: 업무포털에서 올린 그림 스티커
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_ITEMS_PER_CALL = 50;
 
 function doGet(e) {
@@ -92,6 +94,7 @@ function findSurvey_(key) {
       name: String(v[1] || ''),
       template: String(v[2] || 'festival'),
       open: status !== '종료',
+      draft: status === '미리보기',   // 업무포털 꾸미기 창의 미리보기용 (결과에 저장 안 함)
       config: config,
       round: Number(v[5]) || 1,
       version: v[8] instanceof Date ? v[8].toISOString() : String(v[8] || '')
@@ -144,7 +147,7 @@ function addResponses(key, round, items) {
     const survey = findSurvey_(key);
     if (!survey) return { missing: true };
     // 종료됐거나 그 사이 리셋돼 회차가 바뀌었으면 저장하지 않고 지금 상태만 돌려줌
-    if (!survey.open || Number(round) !== survey.round) return { stale: true, state: surveyState_(survey) };
+    if (!survey.open || survey.draft || Number(round) !== survey.round) return { stale: true, state: surveyState_(survey) };
 
     const sheet = responseSheet_();
     const seen = {};
@@ -174,4 +177,19 @@ function addResponses(key, round, items) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// 업무포털에서 올린 그림(상단 그림·배경 사진·그림 스티커)을 화면에 보내 줌.
+// 그 조사의 디자인에 들어 있는 그림만 보내므로, 주소를 알아도 다른 드라이브 파일은 볼 수 없음
+function getImage(key, fileId) {
+  const survey = findSurvey_(String(key || ''));
+  if (!survey) return '';
+  const d = survey.config.design || {};
+  const allowed = [d.header && d.header.imageId, d.background && d.background.imageId]
+    .concat((d.stickers && d.stickers.custom) || []).filter(Boolean);
+  if (allowed.indexOf(String(fileId)) === -1) return '';
+  const blob = DriveApp.getFileById(String(fileId)).getBlob();
+  const bytes = blob.getBytes();
+  if (bytes.length > MAX_IMAGE_BYTES) return '';
+  return 'data:' + (blob.getContentType() || 'image/png') + ';base64,' + Utilities.base64Encode(bytes);
 }

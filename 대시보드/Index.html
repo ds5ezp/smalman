@@ -1610,10 +1610,12 @@
 
   <!-- 만족도 조사 만들기 / 고치기 -->
   <div class="modal fade" id="surveyModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header"><h6 class="modal-title fw-bold" id="surveyModalTitle">새 조사 만들기</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body">
+         <div class="row g-4">
+          <div class="col-lg-7" id="qFormCol">
           <div class="mb-3">
             <label class="form-label small fw-bold">조사 이름 <span class="text-muted fw-normal">(목록에서 구분하는 이름, 화면에는 안 나옴)</span></label>
             <input id="qName" class="form-control" maxlength="60" placeholder="예: 제14회 교육문화축제">
@@ -1621,6 +1623,65 @@
           <label class="form-label small fw-bold">화면 디자인 (템플릿)</label>
           <div class="row g-2 mb-2" id="qTemplates"></div>
           <div class="text-end mb-3"><button type="button" class="btn btn-sm btn-light border" onclick="fillSurveyDefaults()"><i class="bi bi-magic me-1"></i>이 템플릿의 기본 문구 넣기</button></div>
+
+          <!-- 직접 꾸미기 -->
+          <div class="p-3 rounded border border-primary-subtle bg-primary-subtle bg-opacity-25 mb-3 d-none" id="qDesign">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-bold small"><i class="bi bi-palette me-1"></i>꾸미기</div>
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="saveDesignAsTemplate()"><i class="bi bi-bookmark-plus me-1"></i>내 템플릿으로 저장</button>
+            </div>
+
+            <div class="small fw-bold mb-1">상단</div>
+            <div class="d-flex flex-wrap gap-3 small mb-2">
+              <div class="form-check"><input class="form-check-input" type="radio" name="qHead" id="qHeadText" value="text" onchange="designChanged()"><label class="form-check-label" for="qHeadText">글자 제목 (아래 '제목' 칸)</label></div>
+              <div class="form-check"><input class="form-check-input" type="radio" name="qHead" id="qHeadImage" value="image" onchange="designChanged()"><label class="form-check-label" for="qHeadImage">그림 올리기 (미리캔버스·캔바로 만든 제목 그림)</label></div>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-3" id="qHeadImageRow">
+              <input type="file" class="form-control form-control-sm" accept="image/*" style="max-width:300px" onchange="pickDesignImage(this, 'header')">
+              <img id="qHeadThumb" alt="" class="rounded border d-none" style="height:48px;max-width:180px;object-fit:cover">
+              <span class="small text-muted">가로로 긴 그림 (예: 1080×500)</span>
+            </div>
+
+            <div class="small fw-bold mb-1">색</div>
+            <div class="d-flex flex-wrap gap-1 mb-2" id="qPresets"></div>
+            <div class="d-flex flex-wrap gap-3 small mb-3">
+              <label class="d-flex align-items-center gap-1">주제색 <input type="color" id="qColMain" class="form-control form-control-color form-control-sm" oninput="designChanged()"></label>
+              <label class="d-flex align-items-center gap-1">왼쪽 칸 <input type="color" id="qColYes" class="form-control form-control-color form-control-sm" oninput="designChanged()"></label>
+              <label class="d-flex align-items-center gap-1">오른쪽 칸 <input type="color" id="qColNo" class="form-control form-control-color form-control-sm" oninput="designChanged()"></label>
+              <label class="d-flex align-items-center gap-1">글자 <input type="color" id="qColInk" class="form-control form-control-color form-control-sm" oninput="designChanged()"></label>
+              <label class="d-flex align-items-center gap-1">바탕 <input type="color" id="qColBg" class="form-control form-control-color form-control-sm" oninput="designChanged()"></label>
+            </div>
+
+            <div class="row g-2 mb-3 small">
+              <div class="col-sm-6">
+                <div class="fw-bold mb-1">배경 무늬</div>
+                <select id="qBgPattern" class="form-select form-select-sm" onchange="designChanged()">
+                  <option value="plain">무늬 없음</option><option value="dots">점무늬</option><option value="grid">모눈</option><option value="stripes">사선 줄무늬</option><option value="image">배경 사진</option>
+                </select>
+                <div class="d-flex align-items-center gap-2 mt-1" id="qBgImageRow">
+                  <input type="file" class="form-control form-control-sm" accept="image/*" onchange="pickDesignImage(this, 'background')">
+                  <img id="qBgThumb" alt="" class="rounded border d-none" style="height:40px;width:40px;object-fit:cover">
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="fw-bold mb-1">칸 너비 (왼쪽 : 오른쪽)</div>
+                <select id="qRatio" class="form-select form-select-sm" onchange="designChanged()">
+                  <option value="1:1">1 : 1 (같게)</option><option value="3:2">3 : 2</option><option value="2:1">2 : 1 (왼쪽을 넓게)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="small fw-bold mb-1">장식</div>
+            <div class="d-flex flex-wrap gap-3 small mb-3" id="qDeco"></div>
+
+            <div class="small fw-bold mb-1">스티커 <span class="fw-normal text-muted">(받침에 나올 스티커, 많으면 한 줄에 5개씩)</span></div>
+            <div class="d-flex flex-wrap gap-1 mb-2" id="qStickers"></div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1" id="qCustomStickers"></div>
+            <div class="d-flex align-items-center gap-2">
+              <input type="file" class="form-control form-control-sm" accept="image/*" multiple style="max-width:300px" onchange="pickStickerImages(this)">
+              <span class="small text-muted">우리 스티커 그림 올리기 (최대 8개, 배경이 투명한 PNG가 예뻐요)</span>
+            </div>
+          </div>
 
           <div class="p-3 rounded bg-light mb-3">
             <div class="fw-bold small mb-2">제목</div>
@@ -1671,6 +1732,21 @@
             </div>
             <div class="form-text">음성은 엣지 브라우저 + 인터넷이면 사람처럼 자연스러운 AI 목소리로 나옵니다. 소리는 행사장 노트북의 관리자 메뉴에서도 잠깐 끄고 켤 수 있습니다.</div>
           </div>
+          </div>
+          <!-- 미리보기: 저장 전 내용을 실제 조사 화면으로 보여 줌 -->
+          <div class="col-lg-5">
+            <div class="position-sticky" style="top:0">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="small fw-bold">미리보기 <span class="text-muted fw-normal" id="qPreviewState"></span></div>
+                <button type="button" class="btn btn-sm btn-light border" onclick="refreshSurveyPreview()"><i class="bi bi-arrow-clockwise"></i> 새로 고침</button>
+              </div>
+              <div id="qPreviewBox" class="rounded border bg-light position-relative overflow-hidden mx-auto" style="aspect-ratio:9/16;max-height:72vh">
+                <div class="small text-muted p-3" id="qPreviewMsg">내용을 바꾸면 잠시 뒤 실제 조사 화면 모양이 여기에 나옵니다.</div>
+              </div>
+              <div class="form-text">미리보기에서 붙인 스티커는 결과에 들어가지 않습니다.</div>
+            </div>
+          </div>
+         </div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-light border" data-bs-dismiss="modal">취소</button>
@@ -1687,6 +1763,7 @@
         <div class="modal-header"><h6 class="modal-title fw-bold" id="surveyResultTitle">결과</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body" id="surveyResultBody">불러오는 중…</div>
         <div class="modal-footer">
+          <button class="btn btn-outline-secondary" onclick="printSurveyResult()"><i class="bi bi-printer me-1"></i>인쇄</button>
           <button class="btn btn-outline-success" onclick="downloadSurveyCsv()"><i class="bi bi-file-earmark-excel me-1"></i>엑셀용 파일(CSV) 받기</button>
           <button class="btn btn-light border" data-bs-dismiss="modal">닫기</button>
         </div>
@@ -4558,7 +4635,57 @@
         }
       }
     };
+    SURVEY_TEMPLATES.custom = {
+      name: '직접 꾸미기', icon: 'bi-palette', desc: '상단 그림·색·배경·장식·스티커를 직접 고름',
+      fields: { subTitle: '맨 위 작은 글', titleLead: '제목 앞 작은 글', titleMain: '큰 제목', titleTail: '아래 제목' },
+      defaults: {
+        subTitle: '거제시종합사회복지관', titleLead: '', titleMain: '행사 만족도 조사', titleTail: '',
+        question: '오늘 행사가 *즐거우셨나요?*',
+        thanksYes: '참여해 주셔서 감사합니다! 💛\n즐거우셨다니 기뻐요! 😊\n함께해 주셔서 고맙습니다! 🌼',
+        thanksNo: '소중한 의견 감사합니다. / 다음엔 더 좋게 준비할게요! 🌱\n아쉬운 마음 잘 새겨들을게요. / 고맙습니다! 🙏'
+      }
+    };
     const SURVEY_FIELD_IDS = { subTitle: 'qSubTitle', titleLead: 'qTitleLead', titleMain: 'qTitleMain', titleTail: 'qTitleTail' };
+    // 직접 꾸미기
+    const DESIGN_STICKERS = { heart: '❤️ 하트', pinkheart: '🩷 분홍 하트', star: '⭐ 별', smile: '😊 웃음', flower: '🌸 꽃', thumb: '👍 최고', clover: '🍀 클로버',
+      blueheart: '💙 파란 하트', snowflake: '❄️ 눈송이', maple: '🍁 단풍', sun: '☀️ 해', gift: '🎁 선물', balloon: '🎈 풍선' };
+    const DESIGN_DECO = { bunting: '깃발 가랜드', burst: '금색 햇살', confetti: '색종이', chars: '파란·주황 캐릭터', snow: '눈 내리기', petals: '꽃잎 날리기', hearts: '하트 날리기' };
+    const DESIGN_PRESETS = [
+      { name: '축제', main: '#7cb342', yes: '#7cb342', no: '#ffb14a', ink: '#4a3b33', bg: '#fffaf3' },
+      { name: '봄', main: '#ec6a9c', yes: '#66bb6a', no: '#ffb74d', ink: '#4e342e', bg: '#fff6f8', fall: 'petals' },
+      { name: '여름', main: '#0288d1', yes: '#26a69a', no: '#ffca28', ink: '#12395b', bg: '#f2fbff' },
+      { name: '가을', main: '#e65100', yes: '#8d6e63', no: '#f9a825', ink: '#4e2c1a', bg: '#fff8ef' },
+      { name: '겨울', main: '#1e88e5', yes: '#42a5f5', no: '#90a4ae', ink: '#1a2b48', bg: '#f4f8ff', fall: 'snow' },
+      { name: '크리스마스', main: '#c62828', yes: '#2e7d32', no: '#c62828', ink: '#3b1d1d', bg: '#fffaf5', fall: 'snow' },
+      { name: '감사', main: '#f7896b', yes: '#f7896b', no: '#f8a12c', ink: '#1d1d1d', bg: '#fdf0c4' }
+    ];
+    function defaultDesign() {
+      return {
+        header: { mode: 'text', imageId: '' },
+        palette: Object.assign({}, DESIGN_PRESETS[0]),
+        background: { pattern: 'dots', imageId: '' },
+        deco: { bunting: true, burst: true, confetti: true, chars: false, snow: false, petals: false, hearts: false },
+        stickers: { builtin: Object.keys(DESIGN_STICKERS).slice(0, 8), custom: [] },
+        ratio: '3:2'
+      };
+    }
+    function normalizeDesign(d) {
+      const base = defaultDesign();
+      d = JSON.parse(JSON.stringify(d || {}));
+      const pal = Object.assign({}, base.palette);
+      Object.keys(d.palette || {}).forEach(k => { if (d.palette[k]) pal[k] = d.palette[k]; });
+      delete pal.name; delete pal.fall;
+      return {
+        header: Object.assign(base.header, d.header || {}),
+        palette: pal,
+        background: Object.assign(base.background, d.background || {}),
+        deco: d.deco ? Object.assign({}, d.deco) : base.deco,
+        stickers: { builtin: (d.stickers && d.stickers.builtin) || base.stickers.builtin, custom: (d.stickers && d.stickers.custom) || [] },
+        ratio: d.ratio || base.ratio
+      };
+    }
+    state.design = defaultDesign();
+    state.designThumbs = {};
     state.survey = null;
     state.surveyEditing = null;
     state.surveyTemplate = 'festival';
@@ -4654,7 +4781,14 @@
         return '<div class="col-md-6"><button type="button" class="btn w-100 text-start p-2 ' + (on ? 'btn-primary' : 'btn-light border') + '" onclick="pickSurveyTemplate(\'' + key + '\')">' +
           '<div class="fw-bold"><i class="bi ' + t.icon + ' me-1"></i>' + esc(t.name) + (on ? ' <i class="bi bi-check-lg"></i>' : '') + '</div>' +
           '<div class="small ' + (on ? '' : 'text-muted') + '">' + esc(t.desc) + '</div></button></div>';
-      }).join('') + '<div class="col-12 small text-muted">템플릿은 계속 추가할 수 있습니다.</div>';
+      }).join('') + ((state.survey && state.survey.designs) || []).map((t, i) =>
+        '<div class="col-md-6"><div class="btn btn-light border w-100 text-start p-2 d-flex align-items-center gap-2" onclick="applySavedDesign(' + i + ')">' +
+          '<span class="rounded-circle d-inline-block" style="width:22px;height:22px;background:' + esc((t.design.palette || {}).main || '#7cb342') + '"></span>' +
+          '<div class="flex-fill"><div class="fw-bold small"><i class="bi bi-bookmark-star me-1"></i>내 템플릿 · ' + esc(t.name) + '</div><div class="small text-muted">직접 꾸미기로 저장한 디자인</div></div>' +
+          '<button type="button" class="btn btn-sm btn-link text-danger p-0" title="템플릿 삭제" onclick="event.stopPropagation(); removeSavedDesign(' + i + ')"><i class="bi bi-x-lg"></i></button></div></div>'
+      ).join('') + '<div class="col-12 small text-muted">\'직접 꾸미기\'에서 꾸민 디자인을 \'내 템플릿으로 저장\'하면 여기에 생겨 다음 행사에 다시 쓸 수 있습니다.</div>';
+      document.getElementById('qDesign').classList.toggle('d-none', state.surveyTemplate !== 'custom');
+      if (state.surveyTemplate === 'custom') renderDesignForm();
       const fields = SURVEY_TEMPLATES[state.surveyTemplate].fields;
       document.querySelectorAll('[data-qfield]').forEach(el => {
         const label = fields[el.dataset.qfield];
@@ -4666,7 +4800,220 @@
     function pickSurveyTemplate(key) {
       state.surveyTemplate = key;
       renderSurveyTemplates();
+      schedulePreview();
     }
+
+    // ---------- 직접 꾸미기 창 ----------
+    function renderDesignForm() {
+      const d = state.design;
+      document.getElementById(d.header.mode === 'image' ? 'qHeadImage' : 'qHeadText').checked = true;
+      document.getElementById('qHeadImageRow').classList.toggle('d-none', d.header.mode !== 'image');
+      setDesignThumb('qHeadThumb', d.header.imageId);
+      document.getElementById('qPresets').innerHTML = DESIGN_PRESETS.map((p, i) =>
+        '<button type="button" class="btn btn-sm btn-light border d-flex align-items-center gap-1" onclick="applyPreset(' + i + ')">' +
+        '<span class="rounded-circle" style="width:12px;height:12px;background:' + p.main + '"></span><span class="rounded-circle" style="width:12px;height:12px;background:' + p.yes + '"></span><span class="rounded-circle" style="width:12px;height:12px;background:' + p.no + '"></span>' +
+        esc(p.name) + '</button>').join('');
+      document.getElementById('qColMain').value = d.palette.main;
+      document.getElementById('qColYes').value = d.palette.yes;
+      document.getElementById('qColNo').value = d.palette.no;
+      document.getElementById('qColInk').value = d.palette.ink;
+      document.getElementById('qColBg').value = d.palette.bg;
+      document.getElementById('qBgPattern').value = d.background.pattern;
+      document.getElementById('qBgImageRow').classList.toggle('d-none', d.background.pattern !== 'image');
+      setDesignThumb('qBgThumb', d.background.imageId);
+      document.getElementById('qRatio').value = d.ratio;
+      document.getElementById('qDeco').innerHTML = Object.keys(DESIGN_DECO).map(k =>
+        '<div class="form-check"><input class="form-check-input" type="checkbox" id="qDeco_' + k + '"' + (d.deco[k] ? ' checked' : '') + ' onchange="designChanged()">' +
+        '<label class="form-check-label" for="qDeco_' + k + '">' + DESIGN_DECO[k] + '</label></div>').join('');
+      document.getElementById('qStickers').innerHTML = Object.keys(DESIGN_STICKERS).map(k =>
+        '<input type="checkbox" class="btn-check" id="qSt_' + k + '"' + (d.stickers.builtin.indexOf(k) !== -1 ? ' checked' : '') + ' onchange="designChanged()">' +
+        '<label class="btn btn-sm btn-outline-secondary" for="qSt_' + k + '">' + DESIGN_STICKERS[k] + '</label>').join('');
+      renderCustomStickers();
+    }
+
+    function renderCustomStickers() {
+      const list = state.design.stickers.custom;
+      document.getElementById('qCustomStickers').innerHTML = list.map((id, i) =>
+        '<div class="position-relative border rounded bg-white" style="width:56px;height:56px">' +
+          '<img id="qCs_' + i + '" alt="" style="width:100%;height:100%;object-fit:contain">' +
+          '<button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 px-1 lh-1" title="빼기" onclick="removeStickerImage(' + i + ')">×</button></div>'
+      ).join('');
+      list.forEach((id, i) => setDesignThumb('qCs_' + i, id));
+    }
+
+    // 올린 그림의 작은 보기 (방금 올린 것은 화면에 있는 그림, 예전 것은 서버에서 받아 옴)
+    function setDesignThumb(elId, fileId) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.classList.toggle('d-none', !fileId);
+      if (!fileId) return;
+      if (state.designThumbs[fileId]) { el.src = state.designThumbs[fileId]; return; }
+      run('getSurveyImage', fileId).then(src => { state.designThumbs[fileId] = src; el.src = src; }).catch(() => {});
+    }
+
+    // 꾸미기 칸에서 값을 읽어 state.design 에 넣음
+    function readDesignForm() {
+      const d = state.design;
+      d.header.mode = document.getElementById('qHeadImage').checked ? 'image' : 'text';
+      d.palette = {
+        main: document.getElementById('qColMain').value, yes: document.getElementById('qColYes').value, no: document.getElementById('qColNo').value,
+        ink: document.getElementById('qColInk').value, bg: document.getElementById('qColBg').value
+      };
+      d.background.pattern = document.getElementById('qBgPattern').value;
+      d.ratio = document.getElementById('qRatio').value;
+      Object.keys(DESIGN_DECO).forEach(k => { d.deco[k] = document.getElementById('qDeco_' + k).checked; });
+      d.stickers.builtin = Object.keys(DESIGN_STICKERS).filter(k => document.getElementById('qSt_' + k).checked);
+    }
+
+    function designChanged() {
+      readDesignForm();
+      document.getElementById('qHeadImageRow').classList.toggle('d-none', state.design.header.mode !== 'image');
+      document.getElementById('qBgImageRow').classList.toggle('d-none', state.design.background.pattern !== 'image');
+      schedulePreview();
+    }
+
+    function applyPreset(i) {
+      const p = DESIGN_PRESETS[i];
+      readDesignForm();
+      state.design.palette = { main: p.main, yes: p.yes, no: p.no, ink: p.ink, bg: p.bg };
+      ['snow', 'petals'].forEach(k => { state.design.deco[k] = p.fall === k; });
+      renderDesignForm();
+      schedulePreview();
+    }
+
+    // 그림 크기를 줄여서 올림 (상단 그림·배경 사진은 넓게, 스티커는 작게). 투명한 PNG 는 PNG 그대로
+    function shrinkImage(file, maxW, maxH) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const k = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.naturalWidth * k);
+          c.height = Math.round(img.naturalHeight * k);
+          const g = c.getContext('2d');
+          g.imageSmoothingQuality = 'high';
+          g.drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          const png = /png|gif|webp/.test(file.type);
+          resolve({ dataUrl: c.toDataURL(png ? 'image/png' : 'image/jpeg', 0.88), mime: png ? 'image/png' : 'image/jpeg' });
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(file.name + ' 그림을 읽을 수 없습니다.')); };
+        img.src = url;
+      });
+    }
+
+    async function uploadDesignImage(file, maxW, maxH) {
+      const out = await shrinkImage(file, maxW, maxH);
+      const id = await save('uploadSurveyImage', file.name, out.mime, out.dataUrl.split(',')[1]);
+      state.designThumbs[id] = out.dataUrl;
+      return id;
+    }
+
+    async function pickDesignImage(input, where) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      try {
+        if (where === 'header') {
+          state.design.header.imageId = await uploadDesignImage(file, 1400, 1200);
+          state.design.header.mode = 'image';
+        } else {
+          state.design.background.imageId = await uploadDesignImage(file, 1600, 1600);
+          state.design.background.pattern = 'image';
+        }
+        renderDesignForm();
+        schedulePreview();
+      } catch (err) { fail(err); }
+      input.value = '';
+    }
+
+    async function pickStickerImages(input) {
+      readDesignForm();
+      const files = Array.from(input.files || []);
+      const room = 8 - state.design.stickers.custom.length;
+      if (files.length > room) toast('그림 스티커는 8개까지입니다. 앞의 ' + Math.max(0, room) + '개만 올립니다.', 'warning');
+      try {
+        for (const f of files.slice(0, Math.max(0, room))) state.design.stickers.custom.push(await uploadDesignImage(f, 360, 360));
+      } catch (err) { fail(err); }
+      input.value = '';
+      renderCustomStickers();
+      schedulePreview();
+    }
+
+    function removeStickerImage(i) {
+      readDesignForm();
+      state.design.stickers.custom.splice(i, 1);
+      renderCustomStickers();
+      schedulePreview();
+    }
+
+    function saveDesignAsTemplate() {
+      readDesignForm();
+      const name = prompt('내 템플릿 이름을 정해 주세요. (예: 겨울 행사, 복지관 기본)\n같은 이름이 있으면 덮어씁니다.');
+      if (!name || !name.trim()) return;
+      save('saveSurveyDesign', name.trim(), state.design).then(n => {
+        toast('\'' + n + '\' 템플릿을 저장했습니다.');
+        return run('getSurveyData').then(data => { state.survey = data; renderSurveyTemplates(); });
+      }).catch(fail);
+    }
+
+    function applySavedDesign(i) {
+      const t = state.survey.designs[i];
+      state.surveyTemplate = 'custom';
+      state.design = normalizeDesign(t.design);
+      renderSurveyTemplates();
+      schedulePreview();
+      toast('\'' + t.name + '\' 디자인을 불러왔습니다. 문구는 그대로입니다.');
+    }
+
+    function removeSavedDesign(i) {
+      const t = state.survey.designs[i];
+      if (!confirm('내 템플릿 \'' + t.name + '\'을(를) 지울까요? (이 템플릿으로 만든 조사는 그대로입니다)')) return;
+      save('deleteSurveyDesign', t.name).then(() => run('getSurveyData')).then(data => {
+        state.survey = data;
+        renderSurveyTemplates();
+        toast('지웠습니다.');
+      }).catch(fail);
+    }
+
+    // ---------- 꾸미기 창 미리보기 ----------
+    // 저장 전 내용을 서버의 '미리보기' 줄에 넣고 조사 화면을 1080×1920 크기로 띄워 칸에 맞게 줄임
+    state.previewTimer = null;
+    state.previewSeq = 0;
+    function schedulePreview() {
+      clearTimeout(state.previewTimer);
+      if (!document.getElementById('surveyModal').classList.contains('show')) return;
+      document.getElementById('qPreviewState').textContent = '· 바뀐 내용 반영 대기';
+      state.previewTimer = setTimeout(refreshSurveyPreview, 1800);
+    }
+
+    function refreshSurveyPreview() {
+      clearTimeout(state.previewTimer);
+      const box = document.getElementById('qPreviewBox');
+      const seq = ++state.previewSeq;
+      document.getElementById('qPreviewState').textContent = '· 불러오는 중…';
+      if (state.surveyTemplate === 'custom') readDesignForm();
+      run('saveSurveyPreview', { template: state.surveyTemplate, config: readSurveyForm() }).then(url => {
+        if (seq !== state.previewSeq) return;
+        let frame = box.querySelector('iframe');
+        if (!frame) {
+          box.innerHTML = '<iframe title="미리보기" style="position:absolute;left:0;top:0;width:1080px;height:1920px;border:0;transform-origin:0 0"></iframe>';
+          frame = box.querySelector('iframe');
+        }
+        frame.style.transform = 'scale(' + (box.clientWidth / 1080) + ')';
+        frame.src = url + '&t=' + Date.now();
+        document.getElementById('qPreviewState').textContent = '';
+      }).catch(err => {
+        if (seq !== state.previewSeq) return;
+        box.innerHTML = '<div class="small text-muted p-3">' + esc((err && err.message || String(err)).replace(/^Exception:\s*/, '')) + '</div>';
+        document.getElementById('qPreviewState').textContent = '';
+      });
+    }
+    window.addEventListener('resize', () => {
+      const box = document.getElementById('qPreviewBox');
+      const frame = box && box.querySelector('iframe');
+      if (frame) frame.style.transform = 'scale(' + (box.clientWidth / 1080) + ')';
+    });
 
     function setSurveyForm(c) {
       Object.keys(SURVEY_FIELD_IDS).forEach(f => { document.getElementById(SURVEY_FIELD_IDS[f]).value = c[f] || ''; });
@@ -4685,6 +5032,10 @@
       document.getElementById('qShowCount').checked = !!c.showCount;
       document.getElementById('qIdle').value = c.idleSec == null ? 15 : c.idleSec;
     }
+
+    document.addEventListener('input', e => {
+      if (e.target.closest && e.target.closest('#qFormCol') && !e.target.closest('#qDesign')) schedulePreview();
+    });
 
     function readSurveyForm() {
       const c = {};
@@ -4705,6 +5056,7 @@
       c.musicUrl = document.getElementById('qMusicUrl').value.trim();
       c.showCount = document.getElementById('qShowCount').checked;
       c.idleSec = Number(document.getElementById('qIdle').value) || 0;
+      c.design = state.design;
       return c;
     }
 
@@ -4722,16 +5074,31 @@
       state.surveyTemplate = s && SURVEY_TEMPLATES[s.template] ? s.template : 'festival';
       document.getElementById('surveyModalTitle').textContent = s ? '조사 수정 · ' + s.name : '새 조사 만들기';
       document.getElementById('qName').value = s ? s.name : '';
+      state.design = normalizeDesign(s && s.config.design && Object.keys(s.config.design).length ? s.config.design : null);
+      const box = document.getElementById('qPreviewBox');
+      box.innerHTML = '<div class="small text-muted p-3">미리보기를 준비하는 중…</div>';
       renderSurveyTemplates();
       setSurveyForm(s ? s.config : Object.assign({}, SURVEY_COMMON_DEFAULTS, SURVEY_TEMPLATES.festival.defaults));
       bootstrap.Modal.getOrCreateInstance(document.getElementById('surveyModal')).show();
     }
+    // 창이 다 열린 뒤 첫 미리보기 (칸 크기를 알아야 줄일 수 있음)
+    document.getElementById('surveyModal').addEventListener('shown.bs.modal', refreshSurveyPreview);
+    document.getElementById('surveyModal').addEventListener('hidden.bs.modal', () => {
+      clearTimeout(state.previewTimer);
+      state.previewSeq++;
+      document.getElementById('qPreviewBox').innerHTML = '';
+    });
 
     function submitSurvey() {
       const name = document.getElementById('qName').value.trim();
       if (!name) { toast('조사 이름을 입력해 주세요.', 'warning'); return; }
       const config = readSurveyForm();
       if (!config.question) { toast('질문을 입력해 주세요.', 'warning'); return; }
+      if (state.surveyTemplate === 'custom') {
+        readDesignForm();
+        if (state.design.header.mode === 'image' && !state.design.header.imageId) { toast('상단 그림을 올리거나 \'글자 제목\'을 골라 주세요.', 'warning'); return; }
+        if (!state.design.stickers.builtin.length && !state.design.stickers.custom.length) { toast('스티커를 하나 이상 골라 주세요.', 'warning'); return; }
+      }
       const editing = state.surveyEditing;
       save('saveSurvey', { key: editing, name: name, template: state.surveyTemplate, config: config }).then(() => {
         bootstrap.Modal.getOrCreateInstance(document.getElementById('surveyModal')).hide();
@@ -4831,6 +5198,35 @@
             r.responses.map((x, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(label(x.zone)) + '</td><td>' + esc(x.type) + '</td><td>' + esc(x.time) + '</td></tr>').join('') +
             '</tbody></table></div>' : '<div class="small text-muted">아직 붙은 스티커가 없습니다.</div>');
       }).catch(err => { document.getElementById('surveyResultBody').textContent = ''; fail(err); });
+    }
+
+    // 결과 인쇄: 개수·비율 막대·회차별 합계·붙인 순서를 한 장으로
+    function printSurveyResult() {
+      const r = state.surveyResult;
+      if (!r) return;
+      const yes = r.responses.filter(x => x.zone === 'yes').length, no = r.responses.length - yes, total = yes + no;
+      const yp = total ? Math.round(yes / total * 100) : 0;
+      const label = z => z === 'yes' ? r.yesLabel : r.noLabel;
+      const w = window.open('', '_blank');
+      if (!w) { toast('팝업이 막혀 있습니다. 브라우저 주소창 오른쪽에서 팝업을 허용해 주세요.', 'warning'); return; }
+      w.document.write('<html><head><meta charset="utf-8"><title>' + esc(r.name) + ' 결과</title><style>' +
+        'body{font-family:"Malgun Gothic",sans-serif;padding:28px;color:#222}h2{margin:0 0 4px}.q{color:#555;margin-bottom:18px}' +
+        '.cards{display:flex;gap:12px;margin-bottom:14px}.card{flex:1;border:1px solid #ccc;border-radius:10px;padding:12px;text-align:center}.card b{display:block;font-size:30px}' +
+        '.bar{display:flex;height:22px;border-radius:11px;overflow:hidden;margin-bottom:20px;border:1px solid #ccc}.bar i{display:block}' +
+        'table{border-collapse:collapse;width:100%;font-size:12px;margin-bottom:16px}th,td{border:1px solid #aaa;padding:4px 6px;text-align:left}th{background:#f1f1f1}' +
+        '.foot{font-size:11px;color:#888}</style></head><body>' +
+        '<h2>' + esc(r.name) + ' 만족도 조사 결과</h2><div class="q">' + esc(r.question.replace(/\*/g, '').replace(/\n/g, ' ')) + '</div>' +
+        '<div class="cards"><div class="card">' + esc(r.yesLabel) + '<b>' + yes + '</b>' + (total ? yp : 0) + '%</div>' +
+        '<div class="card">' + esc(r.noLabel) + '<b>' + no + '</b>' + (total ? 100 - yp : 0) + '%</div>' +
+        '<div class="card">합계 (' + r.round + '회차)<b>' + total + '</b>명</div></div>' +
+        '<div class="bar"><i style="width:' + (total ? yp : 0) + '%;background:#7cb342"></i><i style="width:' + (total ? 100 - yp : 0) + '%;background:#ffb14a"></i></div>' +
+        (r.rounds.length > 1 ? '<table><tr><th>회차</th><th>' + esc(r.yesLabel) + '</th><th>' + esc(r.noLabel) + '</th><th>합계</th></tr>' +
+          r.rounds.map(x => '<tr><td>' + x.round + '회차</td><td>' + x.yes + '</td><td>' + x.no + '</td><td>' + (x.yes + x.no) + '</td></tr>').join('') + '</table>' : '') +
+        '<table><tr><th>순번</th><th>응답</th><th>시각</th></tr>' +
+        r.responses.map((x, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(label(x.zone)) + '</td><td>' + esc(x.time) + '</td></tr>').join('') + '</table>' +
+        '<div class="foot">' + esc(todayStr()) + ' 출력 · 거제시종합사회복지관 업무포털</div></body></html>');
+      w.document.close();
+      setTimeout(() => w.print(), 300);
     }
 
     function downloadSurveyCsv() {
