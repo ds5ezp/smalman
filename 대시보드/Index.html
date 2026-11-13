@@ -38,6 +38,7 @@
           <a class="module" href="#" data-module="rooms" onclick="showModule('rooms'); return false;"><i class="bi bi-tablet"></i>각 실 사이니지</a>
           <a class="module" href="#" data-module="cafe" onclick="showModule('cafe'); return false;"><i class="bi bi-cup-hot"></i>꽃다비 카페 사이니지</a>
           <a class="module" href="#" data-module="led" onclick="showModule('led'); return false;"><i class="bi bi-easel"></i>전광판 관리</a>
+          <a class="module" href="#" data-module="press" onclick="showModule('press'); return false;"><i class="bi bi-newspaper"></i>언론보도 모니터링</a>
         </div>
       </div>
       <div class="menu-group">
@@ -933,6 +934,51 @@
       </section>
      </div>
 
+     <!-- ===================== 언론보도 모니터링 (구글 문서「거제시복지관_뉴스모니터링」) ===================== -->
+     <div data-module-view="press" class="d-none">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h4 class="mb-0">언론보도 모니터링</h4>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <span class="small text-muted" id="pressFetchedAt"></span>
+          <a class="btn btn-sm btn-outline-secondary" id="pressDocLink" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text me-1"></i>원본 문서</a>
+          <button class="btn btn-sm btn-light border" onclick="loadPress(true)"><i class="bi bi-arrow-clockwise"></i> 새로고침</button>
+        </div>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-4">
+          <div class="card p-3 h-100">
+            <div class="stat-label mb-1">최근 모니터링</div>
+            <div id="pressStatLatest" class="stat-value">-</div>
+            <div id="pressStatLatestDetail" class="small text-muted mt-1"></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="card p-3 h-100">
+            <div class="stat-label mb-1">이번 달 보도</div>
+            <div id="pressStatMonth" class="stat-value">-</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="card p-3 h-100">
+            <div class="stat-label mb-1">기록된 보도 전체</div>
+            <div id="pressStatTotal" class="stat-value">-</div>
+            <div id="pressStatPeriod" class="small text-muted mt-1"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card p-3 mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <select class="form-select form-select-sm" id="pressMonth" style="width:auto" onchange="renderPress()"><option value="">전체 기간</option></select>
+          <input type="search" class="form-control form-control-sm" id="pressSearch" placeholder="제목, 언론사, 요약 검색" style="max-width:260px" oninput="renderPress()">
+          <span class="small text-muted" id="pressSummary"></span>
+          <button class="btn btn-sm btn-outline-primary ms-auto" onclick="copyPressList()" title="발행일, 언론사, 제목, 링크를 엑셀·한글에 붙여넣을 수 있게 복사"><i class="bi bi-clipboard me-1"></i>목록 복사</button>
+        </div>
+        <textarea id="pressCopyBuf" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px"></textarea>
+      </div>
+      <div class="row g-3" id="pressCards"><div class="col-12"><div class="card p-3 small text-muted">불러오는 중…</div></div></div>
+      <div class="small text-muted mt-3">매일 아침 자동으로 기록되는 구글 문서를 읽어 보여줍니다. 문서 내용은 30분마다 새로 읽고, 바로 보려면 '새로고침'을 눌러 주세요. 기사를 고치거나 지우려면 원본 문서에서 수정하면 됩니다.</div>
+     </div>
+
      <!-- ===================== 사업 관리 ===================== -->
      <div data-module-view="business" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -1703,6 +1749,7 @@
       if (module === 'home') loadHome();
       if (module === 'submit') loadSubmit();
       if (module === 'business') loadBusiness();
+      if (module === 'press' && !state.press) loadPress(false);
       if (module === 'mycal') loadMyCalendar();
       window.scrollTo(0, 0);
     }
@@ -3509,6 +3556,97 @@
       const n = state.news[idx];
       if (!confirm('이 기사를 목록에서 삭제할까요?\n' + n.title)) return;
       save('deleteNews', n.row, n.link).then(data => { setNews(data); toast('삭제했습니다.'); }).catch(fail);
+    }
+
+    // ---------- 언론보도 모니터링 (홍보관리) ----------
+    // state.press = { docUrl, fetchedAt, articles: [{date, title, source, published, publishedKey, link, summary[], dupes[], notes[]}], days: [{date, count, result}] }
+    state.press = null;
+
+    function loadPress(force) {
+      if (force || !state.press) {
+        document.getElementById('pressCards').innerHTML = '<div class="col-12"><div class="card p-3 small text-muted">불러오는 중…</div></div>';
+      }
+      run('getPressMonitor', !!force).then(data => {
+        state.press = data;
+        document.getElementById('pressDocLink').href = data.docUrl;
+        document.getElementById('pressFetchedAt').textContent = data.fetchedAt + ' 기준';
+        renderPressStats();
+        renderPressMonths();
+        renderPress();
+        if (force) toast('문서를 다시 읽었습니다.');
+      }).catch(err => {
+        document.getElementById('pressCards').innerHTML = '<div class="col-12"><div class="card p-3 small text-danger">' + esc((err && err.message) || err) + '</div></div>';
+        fail(err);
+      });
+    }
+
+    function pressMonthOf(a) {
+      return String(a.publishedKey || a.date).slice(0, 7);
+    }
+
+    function renderPressStats() {
+      const p = state.press;
+      const latest = p.days[0];
+      document.getElementById('pressStatLatest').textContent = latest ? latest.date.slice(5).replace('-', '월 ') + '일' : '-';
+      document.getElementById('pressStatLatestDetail').textContent = !latest ? '기록이 없습니다.'
+        : latest.count ? '새 기사 ' + latest.count + '건' : (latest.result || '관련 보도 없음');
+      const thisMonth = todayStr().slice(0, 7);
+      document.getElementById('pressStatMonth').textContent = p.articles.filter(a => pressMonthOf(a) === thisMonth).length + '건';
+      document.getElementById('pressStatTotal').textContent = p.articles.length + '건';
+      document.getElementById('pressStatPeriod').textContent = p.days.length
+        ? p.days[p.days.length - 1].date + ' ~ ' + p.days[0].date + ' (' + p.days.length + '일 모니터링)' : '';
+    }
+
+    function renderPressMonths() {
+      const sel = document.getElementById('pressMonth');
+      const keep = sel.value;
+      const counts = {};
+      state.press.articles.forEach(a => { const m = pressMonthOf(a); counts[m] = (counts[m] || 0) + 1; });
+      sel.innerHTML = '<option value="">전체 기간</option>' + Object.keys(counts).sort().reverse().map(m =>
+        '<option value="' + esc(m) + '">' + esc(m.slice(0, 4) + '년 ' + Number(m.slice(5, 7))) + '월 (' + counts[m] + '건)</option>').join('');
+      if (keep && counts[keep]) sel.value = keep;
+    }
+
+    function filteredPress() {
+      if (!state.press) return [];
+      const month = document.getElementById('pressMonth').value;
+      const q = document.getElementById('pressSearch').value.trim().toLowerCase();
+      return state.press.articles.filter(a =>
+        (!month || pressMonthOf(a) === month) &&
+        (!q || [a.title, a.source, a.summary.join(' ')].join(' ').toLowerCase().indexOf(q) !== -1));
+    }
+
+    function renderPress() {
+      if (!state.press) return;
+      const list = filteredPress();
+      document.getElementById('pressSummary').textContent = list.length + '건';
+      document.getElementById('pressCards').innerHTML = list.length ? list.map(a => {
+        const title = a.link
+          ? '<a href="' + esc(a.link) + '" target="_blank" rel="noopener" class="text-decoration-none">' + esc(a.title) + ' <i class="bi bi-box-arrow-up-right small"></i></a>'
+          : esc(a.title);
+        const summary = a.summary.length
+          ? '<ul class="small mb-2 ps-3">' + a.summary.map(s => '<li class="mb-1">' + esc(s) + '</li>').join('') + '</ul>' : '';
+        const dupes = a.dupes.length
+          ? '<div class="small text-muted border-top pt-2 mt-auto">같은 내용 보도 ' + a.dupes.length + '곳: ' +
+            a.dupes.map(d => '<a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.name) + '</a>').join(', ') + '</div>' : '';
+        const notes = a.notes.filter(n => !/^동일 행사 중복 보도/.test(n));
+        const noteHtml = notes.length ? '<div class="small text-muted mt-1">' + notes.map(esc).join('<br>') + '</div>' : '';
+        return '<div class="col-12 col-xl-6"><div class="card p-3 h-100 d-flex flex-column">' +
+          '<div class="d-flex justify-content-between align-items-center gap-2 mb-2"><span class="badge text-bg-primary">' + esc(a.source || '언론사 미상') + '</span>' +
+          '<span class="small text-muted">' + esc(a.published || a.date) + '</span></div>' +
+          '<h6 class="fw-bold mb-2">' + title + '</h6>' + summary + dupes + noteHtml +
+          '</div></div>';
+      }).join('') : '<div class="col-12"><div class="card p-3 small text-muted">조건에 맞는 기사가 없습니다.</div></div>';
+    }
+
+    // 보고서나 엑셀에 붙여넣기 좋게 탭으로 구분해 복사
+    function copyPressList() {
+      const list = filteredPress();
+      if (!list.length) { toast('복사할 기사가 없습니다.', 'warning'); return; }
+      const clean = s => String(s || '').replace(/[\t\n]+/g, ' ');
+      document.getElementById('pressCopyBuf').value = ['발행일시\t언론사\t제목\t링크']
+        .concat(list.map(a => [a.published || a.date, a.source, a.title, a.link].map(clean).join('\t'))).join('\n');
+      copyField('pressCopyBuf');
     }
 
     // ---------- 변경기록 ----------
