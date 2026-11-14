@@ -6,245 +6,673 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <style>
     :root {
-      --bg: #f2f4f6;
-      --card: #ffffff;
-      --text: #191f28;
-      --sub: #6b7684;
-      --muted: #8b95a1;
-      --line: #e5e8eb;
-      --blue: #3182f6;
-      --blue-soft: #e8f3ff;
-      --green: #02a262;
-      --green-soft: #e6f7ef;
-      --orange: #f76808;
-      --orange-soft: #fff1e6;
-      --red: #f04452;
-      --red-soft: #feeceb;
+      --bg: #f2f4f6; --card: #ffffff; --text: #191f28; --sub: #4e5968; --muted: #8b95a1; --line: #e5e8eb;
+      --blue: #3182f6; --blue-dark: #1b64da; --blue-soft: #e8f3ff;
+      --green: #02a262; --green-soft: #e6f7ef; --orange: #f76808; --orange-soft: #fff1e6; --red: #f04452; --red-soft: #feeceb;
+      --key: #ffffff; --key-press: #dbe1e8;
     }
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]) { --bg: #17181c; --card: #22242a; --text: #f2f4f6; --sub: #b0b8c1; --muted: #8b95a1; --line: #33363d; --blue-soft: #1d2d44; --green-soft: #16372a; --orange-soft: #3d2a18; --red-soft: #3d1f22; }
-    }
-    :root[data-theme="dark"] { --bg: #17181c; --card: #22242a; --text: #f2f4f6; --sub: #b0b8c1; --muted: #8b95a1; --line: #33363d; --blue-soft: #1d2d44; --green-soft: #16372a; --orange-soft: #3d2a18; --red-soft: #3d1f22; }
-
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; }
     body {
-      margin: 0; background: var(--bg); color: var(--text);
+      background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
-      letter-spacing: -0.2px; -webkit-font-smoothing: antialiased;
+      font-size: 26px; letter-spacing: -0.3px; -webkit-font-smoothing: antialiased; user-select: none;
     }
-    .page { max-width: 520px; margin: 0 auto; padding: 24px 16px 140px; min-height: 100vh; }
+    input { font-family: inherit; }
+    .kiosk { max-width: 1080px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; padding: 0 28px; }
     .hidden { display: none !important; }
 
-    /* 헤더 */
-    .brand { text-align: center; padding-top: 8px; }
-    .brand img { max-height: 44px; width: auto; object-fit: contain; }
-    .title { margin: 18px 4px 6px; font-size: 26px; font-weight: 800; line-height: 1.35; letter-spacing: -0.6px; }
-    .subtitle { margin: 0 4px 20px; font-size: 15px; color: var(--sub); line-height: 1.5; }
-    .pill-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
-    .pill {
-      border: 0; background: var(--card); color: var(--text); font-size: 14px; font-weight: 600;
-      padding: 9px 14px; border-radius: 999px; box-shadow: 0 1px 3px rgba(0,0,0,.06); cursor: pointer;
-    }
-    .pill:active { transform: scale(.98); }
+    /* 상단 */
+    .top { display: flex; align-items: center; justify-content: space-between; padding: 26px 0 18px; gap: 16px; }
+    .top img { max-height: 58px; width: auto; object-fit: contain; }
+    .term { font-size: 24px; font-weight: 700; color: var(--sub); text-align: right; line-height: 1.3; }
 
-    /* 카드와 입력 */
-    .card { background: var(--card); border-radius: 20px; padding: 22px 18px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
-    .section-title { font-size: 17px; font-weight: 700; margin: 0 0 14px; }
-    .field { margin-bottom: 18px; }
-    .field:last-child { margin-bottom: 0; }
-    .label { display: block; font-size: 14px; font-weight: 600; color: var(--sub); margin: 0 2px 8px; }
-    .input {
-      width: 100%; height: 56px; border: 0; border-radius: 14px; background: var(--bg); color: var(--text);
-      padding: 0 16px; font-size: 17px; font-weight: 500; outline: none; transition: box-shadow .15s, background .15s;
-    }
-    .input::placeholder { color: var(--muted); font-weight: 400; }
-    .input:focus { background: var(--card); box-shadow: 0 0 0 2px var(--blue); }
-    select.input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--sub) 50%), linear-gradient(135deg, var(--sub) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+    /* 진행 표시 */
+    .progress { display: flex; gap: 10px; margin-bottom: 8px; }
+    .progress span { flex: 1; height: 10px; border-radius: 99px; background: #d1d6dc; }
+    .progress span.on { background: var(--blue); }
+    .step-label { font-size: 24px; font-weight: 700; color: var(--blue); margin: 10px 4px 0; }
+    h1.q { font-size: 50px; font-weight: 800; line-height: 1.3; letter-spacing: -1px; margin: 8px 4px 26px; }
+    .hint { font-size: 24px; color: var(--sub); margin: -10px 4px 26px; line-height: 1.5; }
 
-    /* 성별 선택 (세그먼트) */
-    .segment { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .segment input { position: absolute; opacity: 0; pointer-events: none; }
-    .segment label {
-      height: 52px; border-radius: 14px; background: var(--bg); color: var(--sub); font-size: 16px; font-weight: 600;
-      display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s;
+    /* 단계 */
+    .step { display: flex; flex-direction: column; flex: 1; padding-bottom: 150px; }
+
+    /* 홈 */
+    .home { display: flex; flex-direction: column; gap: 26px; flex: 1; justify-content: center; padding-bottom: 60px; }
+    .home h1 { font-size: 66px; font-weight: 800; line-height: 1.25; margin: 0; letter-spacing: -1.6px; }
+    .home .lead { font-size: 30px; color: var(--sub); margin: -8px 0 10px; }
+    .hcard {
+      border: 0; text-align: left; width: 100%; border-radius: 32px; padding: 40px 38px; background: var(--card); color: var(--text);
+      box-shadow: 0 2px 10px rgba(0,0,0,.05); cursor: pointer; display: flex; align-items: center; gap: 28px; min-height: 176px;
     }
-    .segment input:checked + label { background: var(--blue); color: #fff; }
+    .hcard .ic { font-size: 72px; line-height: 1; }
+    .hcard b { display: block; font-size: 42px; font-weight: 800; letter-spacing: -0.8px; }
+    .hcard small { display: block; font-size: 24px; color: var(--sub); margin-top: 8px; }
+    .hcard.primary { background: var(--blue); color: #fff; }
+    .hcard.primary small { color: #dbe9ff; }
+    .hcard:active { transform: scale(.985); }
+
+    /* 입력 */
+    .field-label { font-size: 26px; font-weight: 700; color: var(--sub); margin: 0 4px 12px; }
+    .text-input {
+      width: 100%; height: 110px; border: 0; border-radius: 22px; background: var(--card); color: var(--text);
+      padding: 0 26px; font-size: 38px; font-weight: 600; outline: none; box-shadow: 0 0 0 3px transparent; margin-bottom: 30px;
+    }
+    .text-input:focus { box-shadow: 0 0 0 4px var(--blue); }
+    .text-input::placeholder { color: #aab2bd; font-weight: 500; }
+
+    .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 30px; }
+    .choice {
+      min-height: 120px; border: 3px solid transparent; border-radius: 26px; background: var(--card); color: var(--text);
+      font-size: 36px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+    .choice:active { transform: scale(.985); }
+    .choice.on { border-color: var(--blue); background: var(--blue-soft); color: var(--blue-dark); }
+    .choice.wide { grid-column: 1 / -1; min-height: 100px; font-size: 32px; }
+    .choice-grid.benefit .choice { min-height: 104px; font-size: 32px; }
+
+    /* 숫자 입력 칸 */
+    .fbox {
+      width: 100%; border: 3px solid transparent; border-radius: 24px; background: var(--card); padding: 22px 28px; text-align: left;
+      cursor: pointer; margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.04); display: block;
+    }
+    .fbox.active { border-color: var(--blue); background: var(--blue-soft); }
+    .fbox .flabel { display: block; font-size: 24px; font-weight: 700; color: var(--sub); }
+    .fbox .fval { display: block; font-size: 52px; font-weight: 800; letter-spacing: 1px; margin-top: 6px; min-height: 62px; }
+    .fval.ph { color: #aab2bd; font-weight: 600; font-size: 36px; }
+
+    /* 키패드 */
+    .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 8px; }
+    .kp {
+      height: 112px; border: 0; border-radius: 24px; background: var(--key); color: var(--text); font-size: 52px; font-weight: 700;
+      box-shadow: 0 2px 0 #d7dce2; cursor: pointer;
+    }
+    .kp:active { background: var(--key-press); transform: translateY(2px); box-shadow: none; }
+    .kp.sub { font-size: 34px; color: var(--sub); }
 
     /* 강좌 */
-    .day-title { font-size: 15px; font-weight: 700; color: var(--sub); margin: 22px 4px 10px; }
-    .day-title:first-child { margin-top: 4px; }
-    .course-card {
-      background: var(--card); border-radius: 18px; padding: 16px 18px; margin-bottom: 10px; cursor: pointer;
-      border: 2px solid transparent; box-shadow: 0 1px 4px rgba(0,0,0,.05); transition: border-color .15s, background .15s;
+    .day-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 22px; }
+    .day-tab {
+      height: 96px; border: 0; border-radius: 24px; background: var(--card); color: var(--sub); font-size: 34px; font-weight: 800; cursor: pointer; position: relative;
     }
-    .course-card:active { transform: scale(.995); }
-    .course-card.selected { border-color: var(--blue); background: var(--blue-soft); }
-    .cc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-    .cc-name { font-size: 17px; font-weight: 700; line-height: 1.4; }
-    .cc-check { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-    .cc-meta { font-size: 14px; color: var(--sub); margin-top: 6px; line-height: 1.5; }
-    .cc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-    .badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 8px; }
+    .day-tab.on { background: var(--text); color: #fff; }
+    .day-tab .cnt { position: absolute; top: 10px; right: 14px; min-width: 36px; height: 36px; border-radius: 99px; background: var(--blue); color: #fff; font-size: 22px; font-weight: 800; line-height: 36px; text-align: center; padding: 0 8px; }
+    .course {
+      border: 3px solid transparent; border-radius: 28px; background: var(--card); padding: 26px 28px; margin-bottom: 18px; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05); display: flex; align-items: center; gap: 22px; min-height: 150px;
+    }
+    .course:active { transform: scale(.99); }
+    .course.on { border-color: var(--blue); background: var(--blue-soft); }
+    .course .mark {
+      flex: 0 0 auto; width: 56px; height: 56px; border-radius: 50%; border: 3px solid #c9ced6; color: transparent; font-size: 34px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .course.on .mark { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .course .body { flex: 1; min-width: 0; }
+    .course .cname { font-size: 36px; font-weight: 800; line-height: 1.3; letter-spacing: -0.6px; word-break: keep-all; }
+    .course .cmeta { font-size: 25px; color: var(--sub); margin-top: 8px; line-height: 1.4; }
+    .course .badge { display: inline-block; margin-top: 12px; font-size: 24px; font-weight: 800; padding: 8px 16px; border-radius: 12px; }
     .badge.ok { background: var(--green-soft); color: var(--green); }
     .badge.warn { background: var(--orange-soft); color: var(--orange); }
     .badge.bad { background: var(--red-soft); color: var(--red); }
-    .fee { font-size: 14px; font-weight: 600; color: var(--sub); }
-    .empty { text-align: center; color: var(--muted); padding: 32px 0; font-size: 15px; }
+    .empty { font-size: 30px; color: var(--muted); text-align: center; padding: 60px 0; }
 
-    /* 동의 */
-    .consent { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
-    .consent input { width: 22px; height: 22px; accent-color: var(--blue); margin: 0; }
-
-    /* 하단 고정 버튼 */
-    .bottom-bar {
-      position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, var(--bg) 70%, rgba(242,244,246,0));
-      padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); z-index: 20;
+    /* 확인 */
+    .sum-card { background: var(--card); border-radius: 28px; padding: 28px 30px; margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+    .sum-row { display: flex; justify-content: space-between; gap: 20px; padding: 14px 0; border-bottom: 2px solid var(--line); font-size: 30px; }
+    .sum-row:last-child { border-bottom: 0; }
+    .sum-row .k { color: var(--sub); font-weight: 600; white-space: nowrap; }
+    .sum-row .v { font-weight: 800; text-align: right; word-break: keep-all; }
+    .sum-course { font-size: 30px; font-weight: 700; padding: 10px 0; line-height: 1.4; }
+    .sum-course small { display: block; font-size: 24px; color: var(--sub); font-weight: 600; }
+    .consent-box {
+      display: flex; align-items: center; gap: 22px; background: var(--card); border-radius: 28px; padding: 30px 30px; font-size: 32px; font-weight: 700;
+      border: 3px solid transparent; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.04);
     }
-    .bottom-inner { max-width: 520px; margin: 0 auto; }
-    .summary { font-size: 14px; color: var(--sub); margin: 0 4px 8px; text-align: center; }
-    .btn-primary {
-      width: 100%; height: 56px; border: 0; border-radius: 16px; background: var(--blue); color: #fff; font-size: 17px; font-weight: 700;
-      cursor: pointer; transition: opacity .15s, transform .05s;
+    .consent-box.on { border-color: var(--blue); background: var(--blue-soft); }
+    .consent-box .mark { flex: 0 0 auto; width: 58px; height: 58px; border-radius: 16px; border: 3px solid #c9ced6; background: #fff; color: transparent; font-size: 40px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+    .consent-box.on .mark { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .consent-box small { display: block; font-size: 22px; color: var(--sub); font-weight: 500; margin-top: 6px; }
+
+    /* 하단 버튼 */
+    .foot {
+      position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, var(--bg) 78%, rgba(242,244,246,0));
+      padding: 18px 28px 26px; z-index: 10;
     }
-    .btn-primary:active { transform: scale(.99); }
-    .btn-primary:disabled { background: #c9ced6; cursor: default; }
-    .btn-ghost {
-      width: 100%; height: 52px; border: 0; border-radius: 14px; background: var(--card); color: var(--text); font-size: 16px; font-weight: 600;
-      cursor: pointer; margin-top: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    .foot-inner { max-width: 1080px; margin: 0 auto; display: flex; gap: 16px; }
+    .btn {
+      flex: 1; height: 110px; border: 0; border-radius: 28px; font-size: 40px; font-weight: 800; cursor: pointer; letter-spacing: -0.8px;
+      background: var(--card); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,.06);
     }
-    .btn-ghost.plain { background: transparent; box-shadow: none; color: var(--sub); }
+    .btn.primary { background: var(--blue); color: #fff; box-shadow: 0 6px 16px rgba(49,130,246,.35); }
+    .btn.ghost { flex: 0 0 260px; color: var(--sub); }
+    .btn:active { transform: scale(.985); }
+    .btn:disabled { background: #c9ced6; color: #fff; box-shadow: none; cursor: default; }
+    .btn.hidden { display: none !important; }
 
-    /* 완료 화면 */
-    .done { text-align: center; padding: 56px 12px 24px; }
-    .done-icon { width: 84px; height: 84px; border-radius: 50%; background: var(--green-soft); color: var(--green); font-size: 44px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
-    .done h2 { font-size: 24px; font-weight: 800; margin: 22px 0 8px; }
-    .done p { color: var(--sub); font-size: 15px; line-height: 1.6; margin: 0 0 28px; }
+    /* 완료 */
+    .done { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-bottom: 120px; }
+    .done .big-check { width: 200px; height: 200px; border-radius: 50%; background: var(--green-soft); color: var(--green); font-size: 120px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+    .done h1 { font-size: 60px; font-weight: 800; margin: 40px 0 16px; letter-spacing: -1.2px; }
+    .done p { font-size: 32px; color: var(--sub); line-height: 1.6; margin: 0; }
 
-    /* 결과 조회 */
-    .result-wrap .card { margin-bottom: 12px; }
-
-    @media (max-width: 380px) { .title { font-size: 23px; } .cc-name { font-size: 16px; } }
+    /* 결과 */
+    .result-wrap { flex: 1; }
   </style>
 </head>
 <body>
 <?!= include('navbar'); ?>
+<div class="kiosk">
 
-<!-- 신청 화면 -->
-<div class="page" id="mainView">
-  <div class="brand"><img id="mainLogoImg" src="" alt="거제시종합사회복지관 로고"></div>
-  <h1 class="title"><?= termName ?> 수강신청</h1>
-  <p class="subtitle">신청 정보를 입력하고 원하는 강좌를 선택해 주세요. 최대 5개까지 고를 수 있어요.</p>
-  <div class="pill-row">
-    <button type="button" class="pill" onclick="goToCheckPage()">🔍 내 신청 확인</button>
-    <button type="button" class="pill" onclick="safeRefresh()">🔄 새로고침</button>
-  </div>
+  <header class="top">
+    <img id="mainLogoImg" src="" alt="거제시종합사회복지관">
+    <div class="term"><?= termName ?></div>
+  </header>
 
-  <section class="card">
-    <h2 class="section-title">신청자 정보</h2>
-    <div class="field">
-      <label class="label" for="userName">성명</label>
-      <input type="text" id="userName" class="input" placeholder="실명을 입력해 주세요" onchange="checkJobTimeRealtime()">
+  <!-- 0. 처음 화면 -->
+  <section class="step home" id="sHome">
+    <h1>어서 오세요</h1>
+    <p class="lead">원하시는 메뉴를 눌러 주세요</p>
+    <button class="hcard primary" onclick="startApply()"><span class="ic">✍️</span><div><b>수강 신청하기</b><small>새로 신청해요</small></div></button>
+    <button class="hcard" onclick="startCheck()"><span class="ic">🔍</span><div><b>내 신청 확인</b><small>신청한 내역과 결과를 봐요</small></div></button>
+  </section>
+
+  <!-- 1. 이름 · 성별 · 면제 -->
+  <section class="step hidden" id="sInfo">
+    <div class="progress"><span class="on"></span><span></span><span></span><span></span></div>
+    <div class="step-label">1 / 4 · 기본 정보</div>
+    <h1 class="q">성함을 적어 주세요</h1>
+    <input type="text" id="name" class="text-input" placeholder="실명을 입력해 주세요" autocomplete="off" oninput="form.name=this.value.trim()">
+
+    <div class="field-label">성별을 골라 주세요</div>
+    <div class="choice-grid" id="genderGrid">
+      <button class="choice" data-g="남" onclick="pickGender('남')">남성</button>
+      <button class="choice" data-g="여" onclick="pickGender('여')">여성</button>
     </div>
-    <div class="field">
-      <span class="label">성별</span>
-      <div class="segment">
-        <input type="radio" name="gender" id="m" value="남"><label for="m">남성</label>
-        <input type="radio" name="gender" id="f" value="여"><label for="f">여성</label>
-      </div>
-    </div>
-    <div class="field">
-      <label class="label" for="userDob">생년월일 (6자리)</label>
-      <input type="number" id="userDob" class="input" placeholder="예) 500101" onchange="checkJobTimeRealtime()">
-    </div>
-    <div class="field">
-      <label class="label" for="userPhone">연락처</label>
-      <input type="tel" id="userPhone" class="input" placeholder="010-0000-0000" maxlength="13" oninput="formatPhone(this)">
-    </div>
-    <div class="field">
-      <label class="label" for="benefit">수강료 면제 사유</label>
-      <select id="benefit" class="input">
-        <option value="해당없음">해당없음</option><option value="기초생활수급자">기초생활수급자</option><option value="차상위계층">차상위계층</option><option value="국가유공자">국가유공자</option><option value="중증장애인">중증장애인</option>
-      </select>
+
+    <div class="field-label">수강료 면제 해당 여부</div>
+    <div class="choice-grid benefit" id="benefitGrid">
+      <button class="choice on" data-b="해당없음" onclick="pickBenefit('해당없음')">해당 없음</button>
+      <button class="choice" data-b="기초생활수급자" onclick="pickBenefit('기초생활수급자')">기초생활수급자</button>
+      <button class="choice" data-b="차상위계층" onclick="pickBenefit('차상위계층')">차상위계층</button>
+      <button class="choice" data-b="국가유공자" onclick="pickBenefit('국가유공자')">국가유공자</button>
+      <button class="choice wide" data-b="중증장애인" onclick="pickBenefit('중증장애인')">중증장애인</button>
     </div>
   </section>
 
-  <section class="card">
-    <h2 class="section-title">강좌 선택</h2>
-    <div id="courseList"><div class="empty">강좌를 불러오는 중이에요</div></div>
+  <!-- 2. 생년월일 · 연락처 (키패드) -->
+  <section class="step hidden" id="sNum">
+    <div class="progress"><span class="on"></span><span class="on"></span><span></span><span></span></div>
+    <div class="step-label">2 / 4 · 연락처</div>
+    <h1 class="q">생년월일과 연락처를<br>눌러서 적어 주세요</h1>
+    <button class="fbox active" data-f="dob" onclick="pickField('dob')">
+      <span class="flabel">생년월일 (6자리)</span>
+      <span class="fval ph" id="v-dob" data-ph="예) 500101"></span>
+    </button>
+    <button class="fbox" data-f="phone" onclick="pickField('phone')">
+      <span class="flabel">연락처</span>
+      <span class="fval ph" id="v-phone" data-ph="010-0000-0000"></span>
+    </button>
+    <div class="keypad" data-kp></div>
   </section>
 
-  <section class="card">
-    <label class="consent"><input type="checkbox" id="consent"> 개인정보 수집·이용에 동의합니다 (필수)</label>
+  <!-- 3. 강좌 선택 -->
+  <section class="step hidden" id="sCourse">
+    <div class="progress"><span class="on"></span><span class="on"></span><span class="on"></span><span></span></div>
+    <div class="step-label">3 / 4 · 강좌 선택</div>
+    <h1 class="q">들으실 강좌를 골라 주세요</h1>
+    <div class="hint">최대 5개까지 고를 수 있어요. 한 번 더 누르면 취소돼요.</div>
+    <div class="day-tabs" id="dayTabs"></div>
+    <div id="courseList"></div>
   </section>
-</div>
 
-<div class="bottom-bar" id="bottomBar">
-  <div class="bottom-inner">
-    <div class="summary" id="selSummary">선택한 강좌 0개</div>
-    <button onclick="submitData()" id="submitBtn" class="btn-primary">수강신청 완료하기</button>
-  </div>
-</div>
-
-<!-- 내 신청 및 결과 확인 화면 -->
-<div class="page hidden" id="checkView">
-  <h1 class="title">내 신청 및 결과 확인</h1>
-  <p class="subtitle">신청할 때 입력한 정보를 똑같이 적어 주세요.</p>
-  <section class="card">
-    <div class="field"><label class="label" for="chkName">성명</label><input type="text" id="chkName" class="input" placeholder="실명"></div>
-    <div class="field"><label class="label" for="chkDob">생년월일 (6자리)</label><input type="number" id="chkDob" class="input" placeholder="예) 500101"></div>
-    <div class="field"><label class="label" for="chkPhone">연락처</label><input type="tel" id="chkPhone" class="input" placeholder="010-0000-0000" maxlength="13" oninput="formatPhone(this)"></div>
+  <!-- 4. 확인 -->
+  <section class="step hidden" id="sConfirm">
+    <div class="progress"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></div>
+    <div class="step-label">4 / 4 · 확인</div>
+    <h1 class="q">아래 내용이 맞는지<br>확인해 주세요</h1>
+    <div class="sum-card" id="sumInfo"></div>
+    <div class="sum-card" id="sumCourses"></div>
+    <label class="consent-box" id="consentBox" onclick="toggleConsent()">
+      <span class="mark" id="consentMark">✓</span>
+      <span>개인정보 수집·이용에 동의합니다<small>신청과 결과 안내에만 사용해요 (필수)</small></span>
+    </label>
   </section>
-  <button onclick="checkApp()" id="chkBtn" class="btn-primary">조회하기</button>
-  <button onclick="hideCheckView()" class="btn-ghost">돌아가기</button>
+
+  <!-- 5. 완료 -->
+  <section class="step hidden" id="sDone">
+    <div class="done">
+      <div class="big-check">✓</div>
+      <h1 id="successMsg">접수가 완료되었습니다</h1>
+      <p>처음 화면으로 돌아갑니다.<br>신청 내역은 <b>내 신청 확인</b>에서 볼 수 있어요.</p>
+    </div>
+  </section>
+
+  <!-- 내 신청 확인: 이름 + 키패드 -->
+  <section class="step hidden" id="sCheck">
+    <div class="progress"><span class="on"></span><span></span></div>
+    <div class="step-label">내 신청 확인</div>
+    <h1 class="q">신청할 때 적은 정보를<br>적어 주세요</h1>
+    <input type="text" id="cname" class="text-input" placeholder="실명을 입력해 주세요" autocomplete="off" oninput="form.cname=this.value.trim()">
+    <button class="fbox active" data-f="cdob" onclick="pickField('cdob')">
+      <span class="flabel">생년월일 (6자리)</span>
+      <span class="fval ph" id="v-cdob" data-ph="예) 500101"></span>
+    </button>
+    <button class="fbox" data-f="cphone" onclick="pickField('cphone')">
+      <span class="flabel">연락처</span>
+      <span class="fval ph" id="v-cphone" data-ph="010-0000-0000"></span>
+    </button>
+    <div class="keypad" data-kp></div>
+  </section>
+
+  <!-- 조회 결과 -->
+  <section class="step hidden" id="sResult">
+    <div class="progress"><span class="on"></span><span class="on"></span></div>
+    <div class="step-label">내 신청 결과</div>
+    <div class="result-wrap">
+      <?!= include('resultView'); ?>
+    </div>
+  </section>
+
 </div>
 
-<!-- 조회 결과 화면 -->
-<div class="page hidden" id="resultView">
-  <h1 class="title" id="resTitle">조회 결과</h1>
-  <div class="result-wrap">
-    <?!= include('resultView'); ?>
+<!-- 하단 버튼 (단계마다 바뀜) -->
+<div class="foot hidden" id="foot">
+  <div class="foot-inner">
+    <button class="btn ghost" id="btnBack" onclick="goBack()">이전</button>
+    <button class="btn primary" id="btnNext" onclick="goNext()">다음</button>
   </div>
-  <button onclick="hideCheckView()" class="btn-primary" style="margin-top:12px">확인</button>
-</div>
-
-<!-- 접수 완료 화면 -->
-<div class="page hidden" id="successView">
-  <div class="done">
-    <div class="done-icon">✓</div>
-    <h2 id="successMsg">접수가 완료되었습니다!</h2>
-    <p>신청 내역은 아래에서 언제든지 확인할 수 있어요.</p>
-  </div>
-  <button onclick="goToCheckDirectly()" class="btn-primary">방금 신청한 내역 확인하기</button>
-  <button type="button" onclick="goToNewApplication()" class="btn-ghost">다른 사람 신청하기</button>
 </div>
 
 <script>
   // 학기 ID (웹앱 주소의 ?term= 값, 서버가 채워 줌)
   const TERM = '<?= termId ?>';
+  const IDLE_MS = 90 * 1000;          // 이 시간 동안 아무 입력이 없으면 처음 화면으로 (개인정보 자동 삭제)
+  const DONE_MS = 8 * 1000;           // 신청 완료 후 처음 화면으로 돌아가는 시간
   const PHONE_RE = /^01[016789]-\d{3,4}-\d{4}$/;
+  const DAYS = ['월', '화', '수', '목', '금'];
+  const KEYS = ['1','2','3','4','5','6','7','8','9','지움','0','입력'];
 
   let courses = [];
   let jobTimes = {};
   let restrictions = [];
   let selected = [];
   let currentUserJob = null;
+  let curDay = '월';
+  let stepId = 'sHome';
+  let doneTimer = null;
+  let idleTimer = null;
 
-  // 연락처 입력 시 자동으로 하이픈 넣기
-  function formatPhone(el) {
-    const d = el.value.replace(/\D/g, '').slice(0, 11);
-    if (d.length < 4) el.value = d;
-    else if (d.length < 8) el.value = d.slice(0, 3) + '-' + d.slice(3);
-    else if (d.length < 11) el.value = d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
-    else el.value = d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+  // 입력값 (숫자는 하이픈 없이 숫자만 저장)
+  const form = { name: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' };
+  const FIELDS = {
+    dob:    { max: 6,  fmt: d => d },
+    phone:  { max: 11, fmt: fmtPhone },
+    cdob:   { max: 6,  fmt: d => d },
+    cphone: { max: 11, fmt: fmtPhone }
+  };
+  let kpTarget = 'dob';
+
+  function fmtPhone(d) {
+    if (d.length < 4) return d;
+    if (d.length < 8) return d.slice(0, 3) + '-' + d.slice(3);
+    if (d.length < 11) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+    return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
   }
 
-  // 상단 로고 (구글 드라이브 이미지를 서버에서 받아 표시)
+  // ---------- 화면 전환 ----------
+  function show(id) {
+    stepId = id;
+    document.querySelectorAll('.step').forEach(s => s.classList.toggle('hidden', s.id !== id));
+    window.scrollTo(0, 0);
+    bumpIdle();
+  }
+
+  function setFoot(backText, nextText, nextEnabled, showBack) {
+    document.getElementById('foot').classList.remove('hidden');
+    const b = document.getElementById('btnBack'), n = document.getElementById('btnNext');
+    b.textContent = backText;
+    b.classList.toggle('hidden', !showBack);
+    n.textContent = nextText;
+    n.disabled = !nextEnabled;
+    n.classList.toggle('hidden', !nextText);
+  }
+
+  function hideFoot() { document.getElementById('foot').classList.add('hidden'); }
+
+  // ---------- 키패드 ----------
+  function buildKeypads() {
+    const html = KEYS.map(k => {
+      if (k === '지움') return '<button class="kp sub" data-k="back">지움</button>';
+      if (k === '입력') return '<button class="kp sub" data-k="ok">입력</button>';
+      return '<button class="kp" data-k="' + k + '">' + k + '</button>';
+    }).join('');
+    document.querySelectorAll('[data-kp]').forEach(el => { el.innerHTML = html; });
+  }
+
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.kp');
+    if (!btn) return;
+    const k = btn.dataset.k;
+    if (k === 'ok') { goNext(); return; }
+    pressKey(k === 'back' ? 'back' : k);
+  });
+
+  function pickField(key) {
+    kpTarget = key;
+    document.querySelectorAll('.fbox').forEach(b => b.classList.toggle('active', b.dataset.f === key));
+  }
+
+  function pressKey(k) {
+    const f = FIELDS[kpTarget];
+    if (!f) return;
+    let v = form[kpTarget] || '';
+    if (k === 'back') v = v.slice(0, -1);
+    else if (v.length < f.max) v += k;
+    form[kpTarget] = v;
+    paintFields();
+  }
+
+  function paintFields() {
+    Object.keys(FIELDS).forEach(key => {
+      const el = document.getElementById('v-' + key);
+      if (!el) return;
+      const v = form[key];
+      el.textContent = v ? FIELDS[key].fmt(v) : el.dataset.ph;
+      el.classList.toggle('ph', !v);
+    });
+  }
+
+  // ---------- 선택 버튼 ----------
+  function pickGender(g) {
+    form.gender = g;
+    document.querySelectorAll('#genderGrid .choice').forEach(b => b.classList.toggle('on', b.dataset.g === g));
+  }
+
+  function pickBenefit(b) {
+    form.benefit = b;
+    document.querySelectorAll('#benefitGrid .choice').forEach(x => x.classList.toggle('on', x.dataset.b === b));
+  }
+
+  function toggleConsent() {
+    form.consent = !form.consent;
+    document.getElementById('consentBox').classList.toggle('on', form.consent);
+    document.getElementById('consentMark').textContent = form.consent ? '✓' : '';
+    updateConfirmButtons();
+  }
+
+  // ---------- 처음 · 신청 흐름 ----------
+  function resetAll(toHome) {
+    clearTimeout(doneTimer);
+    Object.assign(form, { name: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' });
+    selected = [];
+    currentUserJob = null;
+    document.getElementById('name').value = '';
+    document.getElementById('cname').value = '';
+    pickGender('');
+    pickBenefit('해당없음');
+    document.getElementById('consentBox').classList.remove('on');
+    document.getElementById('consentMark').textContent = '';
+    paintFields();
+    renderCourses();
+    if (toHome) { hideFoot(); show('sHome'); }
+  }
+
+  function startApply() {
+    resetAll(false);
+    pickField('dob');
+    goStep('sInfo');
+  }
+
+  function startCheck() {
+    resetAll(false);
+    pickField('cdob');
+    goStep('sCheck');
+  }
+
+  function goStep(id) {
+    show(id);
+    if (id === 'sInfo') {
+      setFoot('홈으로', '다음', true, true);
+    } else if (id === 'sNum') {
+      setFoot('이전', '다음', true, true);
+    } else if (id === 'sCourse') {
+      curDay = DAYS.find(d => courses.some(c => c.day === d)) || '월';
+      renderDayTabs();
+      renderCourses();
+      updateCourseButtons();
+    } else if (id === 'sConfirm') {
+      renderConfirm();
+      updateConfirmButtons();
+    } else if (id === 'sCheck') {
+      setFoot('홈으로', '조회하기', true, true);
+    } else if (id === 'sResult') {
+      setFoot('처음으로', '', false, true);
+    }
+  }
+
+  function goNext() {
+    if (stepId === 'sInfo') {
+      if (!form.name) return alert('성함을 적어 주세요.');
+      if (!form.gender) return alert('성별을 골라 주세요.');
+      goStep('sNum');
+    } else if (stepId === 'sNum') {
+      if (form.dob.length !== 6) return alert('생년월일 6자리를 눌러 주세요.');
+      if (!/^01[016789]\d{7,8}$/.test(form.phone)) return alert('연락처를 바르게 눌러 주세요.');
+      checkJobWithName();
+      goStep('sCourse');
+    } else if (stepId === 'sCourse') {
+      if (!selected.length) return alert('강좌를 한 개 이상 골라 주세요.');
+      goStep('sConfirm');
+    } else if (stepId === 'sConfirm') {
+      submitData();
+    } else if (stepId === 'sCheck') {
+      checkApp();
+    }
+  }
+
+  function goBack() {
+    if (stepId === 'sInfo' || stepId === 'sCheck' || stepId === 'sResult') {
+      resetAll(true);
+    } else if (stepId === 'sNum') {
+      pickField('dob');
+      goStep('sInfo');
+    } else if (stepId === 'sCourse') {
+      goStep('sNum');
+    } else if (stepId === 'sConfirm') {
+      goStep('sCourse');
+    }
+  }
+
+  // 노인일자리 참여자 확인 (이름 + 생년월일)
+  function checkJobWithName() {
+    const name = form.name.replace(/\s/g, '');
+    if (name && form.dob.length === 6) {
+      currentUserJob = jobTimes[name + '_' + form.dob] || null;
+    }
+  }
+
+  // ---------- 강좌 ----------
+  function renderDayTabs() {
+    const tabs = document.getElementById('dayTabs');
+    tabs.innerHTML = DAYS.map(d => {
+      const n = selected.filter(i => courses[i].day === d).length;
+      return '<button class="day-tab' + (d === curDay ? ' on' : '') + '" onclick="setDay(\'' + d + '\')">' + d +
+        (n ? '<span class="cnt">' + n + '</span>' : '') + '</button>';
+    }).join('');
+  }
+
+  function setDay(d) {
+    curDay = d;
+    renderDayTabs();
+    renderCourses();
+  }
+
+  function renderCourses() {
+    const list = document.getElementById('courseList');
+    if (!list) return;
+    const items = courses.filter(c => c.day === curDay);
+    if (!items.length) {
+      list.innerHTML = '<div class="empty">이 요일에는 신청할 강좌가 없어요</div>';
+      return;
+    }
+    list.innerHTML = items.map(c => {
+      const idx = courses.indexOf(c);
+      const on = selected.includes(idx);
+      const parts = String(c.display).split('|').map(s => s.trim());
+      const name = parts[0];
+      const fee = parts.length > 1 ? parts[parts.length - 1] : '';
+      let cls = 'ok', text = '여유 ' + c.remaining + '석';
+      if (c.current >= c.quota) { cls = 'bad'; text = '추첨 예정 (정원 초과 ' + (c.current - c.quota) + '명)'; }
+      else if (c.remaining <= 3) { cls = 'warn'; text = '마감 임박 · ' + c.remaining + '석 남음'; }
+      return '<div class="course' + (on ? ' on' : '') + '" onclick="toggleCourse(' + idx + ')">' +
+        '<div class="mark">✓</div>' +
+        '<div class="body"><div class="cname">' + esc(name) + '</div>' +
+        '<div class="cmeta">' + esc(c.start || '미지정') + ' ~ ' + esc(c.end || '미지정') + (fee ? ' · ' + esc(fee) : '') + '</div>' +
+        '<span class="badge ' + cls + '">' + esc(text) + '</span></div></div>';
+    }).join('');
+  }
+
+  function updateCourseButtons() {
+    setFoot('이전', '다음 (' + selected.length + '/5)', selected.length > 0, true);
+  }
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+  }
+
+  function toggleCourse(idx) {
+    const target = courses[idx];
+    const targetName = target.display;
+
+    if (currentUserJob && currentUserJob.start && currentUserJob.end && target.start && target.end) {
+      if (target.start < currentUserJob.end && target.end > currentUserJob.start) {
+        return alert('노인일자리 활동 시간(' + currentUserJob.start + '~' + currentUserJob.end + ')과 겹치는 강좌라 고를 수 없어요.');
+      }
+    }
+
+    if (selected.includes(idx)) {
+      selected = selected.filter(i => i !== idx);
+    } else {
+      if (selected.length >= 5) return alert('최대 5개까지 고를 수 있어요.');
+
+      if (restrictions) {
+        for (let group of restrictions) {
+          const myMatch = group.find(g => targetName.includes(g));
+          if (myMatch) {
+            for (let sIdx of selected) {
+              const selName = courses[sIdx].display;
+              const otherMatch = group.find(g => selName.includes(g));
+              if (otherMatch && otherMatch !== myMatch) {
+                return alert("'" + myMatch + "' 강좌는 '" + otherMatch + "' 강좌와 함께 들을 수 없어요.\n둘 중 하나만 골라 주세요.");
+              }
+            }
+          }
+        }
+      }
+
+      const overlap = selected.some(sIdx => {
+        const s = courses[sIdx];
+        if (s.day !== target.day) return false;
+        if (!target.start || !target.end || !s.start || !s.end) return false;
+        return target.start < s.end && target.end > s.start;
+      });
+      if (overlap) return alert('이미 고른 강좌와 시간이 겹쳐요.');
+
+      selected.push(idx);
+    }
+    renderDayTabs();
+    renderCourses();
+    updateCourseButtons();
+  }
+
+  // ---------- 확인 ----------
+  function renderConfirm() {
+    const info = [
+      ['성함', form.name],
+      ['성별', form.gender],
+      ['생년월일', form.dob],
+      ['연락처', fmtPhone(form.phone)],
+      ['면제 해당', form.benefit]
+    ];
+    document.getElementById('sumInfo').innerHTML = info.map(r =>
+      '<div class="sum-row"><span class="k">' + r[0] + '</span><span class="v">' + esc(r[1]) + '</span></div>').join('');
+    document.getElementById('sumCourses').innerHTML = '<div class="sum-row" style="border:0;padding-bottom:6px"><span class="k">선택한 강좌 ' + selected.length + '개</span></div>' +
+      selected.map(i => {
+        const c = courses[i];
+        return '<div class="sum-course">' + esc(String(c.display).split('|')[0].trim()) +
+          '<small>' + esc(c.day) + '요일 · ' + esc(c.start) + ' ~ ' + esc(c.end) + '</small></div>';
+      }).join('');
+  }
+
+  function updateConfirmButtons() {
+    setFoot('이전', '신청 완료', form.consent, true);
+  }
+
+  // ---------- 서버 ----------
+  function submitData() {
+    if (!form.consent) return alert('개인정보 동의에 체크해 주세요.');
+    const phone = fmtPhone(form.phone);
+    if (!PHONE_RE.test(phone)) return alert('연락처를 바르게 눌러 주세요.');
+    const btn = document.getElementById('btnNext');
+    btn.disabled = true;
+    btn.textContent = '접수 중...';
+    google.script.run
+      .withSuccessHandler(msg => {
+        document.getElementById('successMsg').textContent = msg || '접수가 완료되었습니다';
+        hideFoot();
+        show('sDone');
+        clearTimeout(doneTimer);
+        doneTimer = setTimeout(() => resetAll(true), DONE_MS);
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.textContent = '신청 완료';
+        alert(err.message);
+      })
+      .submitForm({
+        name: form.name, dob: form.dob, phone: phone, gender: form.gender, benefit: form.benefit,
+        term: TERM, selectedCourses: selected.map(i => courses[i].display)
+      });
+  }
+
+  function checkApp() {
+    const name = form.cname.trim();
+    const dob = form.cdob;
+    const phone = fmtPhone(form.cphone);
+    if (!name) return alert('성함을 적어 주세요.');
+    if (dob.length !== 6) return alert('생년월일 6자리를 눌러 주세요.');
+    if (!PHONE_RE.test(phone)) return alert('연락처를 바르게 눌러 주세요.');
+
+    google.script.run
+      .withSuccessHandler(res => {
+        if (!res.applied) return alert('입력하신 정보와 맞는 신청 내역이 없어요.');
+        goStep('sResult');
+        renderUnifiedResultUI(res, name, dob, true);
+      })
+      .withFailureHandler(err => alert('조회 중 오류가 생겼어요: ' + err.message))
+      .checkTotalStatus(name, phone, dob, TERM);
+  }
+
+  // ---------- 화면 멈춤 자동 처리 ----------
+  function bumpIdle() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      if (stepId !== 'sHome' && stepId !== 'sDone') resetAll(true);
+    }, IDLE_MS);
+  }
+  ['pointerdown', 'keydown', 'input'].forEach(ev => document.addEventListener(ev, bumpIdle, true));
+
+  // ---------- 시작 ----------
   window.addEventListener('DOMContentLoaded', () => {
+    buildKeypads();
+    paintFields();
     google.script.run
       .withSuccessHandler(base64Data => {
         if (base64Data) document.getElementById('mainLogoImg').src = base64Data;
       })
-      .withFailureHandler(err => console.log('로고 로딩 실패: ' + err.message))
+      .withFailureHandler(() => {})
       .getWelfareLogoData();
   });
 
@@ -256,209 +684,9 @@
         restrictions = data.restrictions || [];
         renderCourses();
       })
-      .withFailureHandler(err => alert('강좌 정보를 불러오지 못했습니다: ' + err.message))
+      .withFailureHandler(err => alert('강좌 정보를 불러오지 못했어요: ' + err.message))
       .getInitialData(TERM);
   };
-
-  function checkJobTimeRealtime() {
-    const name = document.getElementById('userName').value.trim().replace(/\s/g, '');
-    const dob = document.getElementById('userDob').value.trim().replace(/[^0-9]/g, '');
-    if (name && dob.length === 6) {
-      const key = name + '_' + dob;
-      if (jobTimes[key]) {
-        currentUserJob = jobTimes[key];
-        alert('[확인] 노인일자리 참여자입니다.\n활동시간(' + currentUserJob.start + '~' + currentUserJob.end + ')과 겹치는 강좌는 요일 상관없이 제외됩니다.');
-      } else {
-        currentUserJob = null;
-      }
-    }
-    selected = [];
-    renderCourses();
-  }
-
-  // 정원 초과 시 '추첨예정(정원초과 X명)'으로 표시
-  function renderCourses() {
-    const list = document.getElementById('courseList');
-    list.innerHTML = '';
-    ['월', '화', '수', '목', '금'].forEach(d => {
-      const items = courses.filter(c => c.day === d);
-      if (!items.length) return;
-      const h = document.createElement('div');
-      h.className = 'day-title';
-      h.textContent = d + '요일';
-      list.appendChild(h);
-
-      items.forEach(c => {
-        const idx = courses.indexOf(c);
-        const isSel = selected.includes(idx);
-        const parts = String(c.display).split('|').map(s => s.trim());
-        const name = parts[0];
-        const fee = parts.length > 1 ? parts[parts.length - 1] : '';
-
-        let badgeCls = 'ok';
-        let statusText = '잔여 ' + c.remaining + '석 · 신청 ' + c.current + '명';
-        if (c.current >= c.quota) {
-          badgeCls = 'bad';
-          statusText = '추첨예정 · 정원초과 ' + (c.current - c.quota) + '명';
-        } else if (c.remaining <= 3) {
-          badgeCls = 'warn';
-          statusText = '마감임박 · ' + c.remaining + '석 남음';
-        }
-
-        const div = document.createElement('div');
-        div.className = 'course-card' + (isSel ? ' selected' : '');
-        div.innerHTML =
-          '<div class="cc-top"><div class="cc-name">' + escapeText(name) + '</div>' +
-          (isSel ? '<span class="cc-check">✓</span>' : '') + '</div>' +
-          '<div class="cc-meta">' + escapeText(c.start || '미지정') + ' ~ ' + escapeText(c.end || '미지정') + ' · 정원 ' + c.quota + '명</div>' +
-          '<div class="cc-foot"><span class="badge ' + badgeCls + '">' + escapeText(statusText) + '</span>' +
-          (fee ? '<span class="fee">' + escapeText(fee) + '</span>' : '') + '</div>';
-        div.onclick = () => toggleCourse(idx);
-        list.appendChild(div);
-      });
-    });
-    if (!list.children.length) list.innerHTML = '<div class="empty">신청 가능한 강좌가 없어요</div>';
-    updateSummary();
-  }
-
-  function updateSummary() {
-    document.getElementById('selSummary').textContent = '선택한 강좌 ' + selected.length + '개' + (selected.length ? '' : ' · 강좌를 골라 주세요');
-  }
-
-  function escapeText(v) {
-    return String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
-  }
-
-  function toggleCourse(idx) {
-    const target = courses[idx];
-    const targetName = target.display;
-
-    // 노인일자리 시간 중복 체크
-    if (currentUserJob && currentUserJob.start && currentUserJob.end) {
-      if (target && target.start && target.end) {
-        if (target.start < currentUserJob.end && target.end > currentUserJob.start) {
-          return alert('[선택 불가] 노인일자리 시간(' + currentUserJob.start + '~' + currentUserJob.end + ')과 중복됩니다.');
-        }
-      }
-    }
-
-    if (selected.includes(idx)) {
-      selected = selected.filter(i => i !== idx);
-    } else {
-      if (selected.length >= 5) return alert('최대 5개 가능합니다.');
-
-      // 중복 신청 제한 그룹 체크
-      if (restrictions) {
-        for (let group of restrictions) {
-          const myMatch = group.find(gName => targetName.includes(gName));
-          if (myMatch) {
-            for (let sIdx of selected) {
-              const selName = courses[sIdx].display;
-              const otherMatch = group.find(gName => selName.includes(gName));
-              if (otherMatch && otherMatch !== myMatch) {
-                return alert("[중복 신청 제한]\n\n'" + myMatch + "' 강좌는 '" + otherMatch + "' 강좌와 동시에 신청할 수 없습니다.\n둘 중 하나만 선택해 주세요.");
-              }
-            }
-          }
-        }
-      }
-
-      // 선택한 다른 강좌와 시간 중복 체크
-      const isOverlap = selected.some(sIdx => {
-        const selC = courses[sIdx];
-        if (selC.day !== target.day) return false;
-        if (!target.start || !target.end || !selC.start || !selC.end) return false;
-        return (target.start < selC.end && target.end > selC.start);
-      });
-      if (isOverlap) return alert('선택한 다른 강좌와 시간이 겹칩니다.');
-
-      selected.push(idx);
-    }
-    renderCourses();
-  }
-
-  function goToCheckPage() {
-    window.top.location.href = '__WEB_APP_URL__?mode=check&term=' + encodeURIComponent(TERM);
-  }
-
-  function submitData() {
-    const name = document.getElementById('userName').value.trim();
-    const dob = document.getElementById('userDob').value.trim();
-    const phone = document.getElementById('userPhone').value.trim();
-    const gender = document.querySelector('input[name="gender"]:checked')?.value;
-    const benefit = document.getElementById('benefit').value;
-    const consent = document.getElementById('consent').checked;
-    if (!name || !dob || !phone || !gender || !consent) return alert('필수 항목을 입력하세요.');
-    if (!PHONE_RE.test(phone)) return alert('연락처는 010-0000-0000 형식으로 입력해 주세요.');
-    if (selected.length === 0) return alert('과목을 선택하세요.');
-
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.textContent = '신청 중...';
-    google.script.run
-      .withSuccessHandler(msg => {
-        document.getElementById('mainView').classList.add('hidden');
-        document.getElementById('bottomBar').classList.add('hidden');
-        document.getElementById('successView').classList.remove('hidden');
-        document.getElementById('successMsg').textContent = msg;
-        window.scrollTo(0, 0);
-      })
-      .withFailureHandler(err => {
-        btn.disabled = false;
-        btn.textContent = '수강신청 완료하기';
-        alert(err.message);
-      })
-      .submitForm({ name, dob, phone, gender, benefit, term: TERM, selectedCourses: selected.map(i => courses[i].display) });
-  }
-
-  function showCheckView() {
-    document.getElementById('mainView').classList.add('hidden');
-    document.getElementById('bottomBar').classList.add('hidden');
-    document.getElementById('checkView').classList.remove('hidden');
-  }
-
-  function hideCheckView() {
-    document.getElementById('checkView').classList.add('hidden');
-    document.getElementById('resultView').classList.add('hidden');
-    document.getElementById('mainView').classList.remove('hidden');
-    document.getElementById('bottomBar').classList.remove('hidden');
-    window.scrollTo(0, 0);
-  }
-
-  function goToNewApplication() {
-    window.top.location.href = '__WEB_APP_URL__?term=' + encodeURIComponent(TERM);
-  }
-
-  function goToCheckDirectly() {
-    document.getElementById('chkName').value = document.getElementById('userName').value.trim();
-    document.getElementById('chkDob').value = document.getElementById('userDob').value.trim();
-    document.getElementById('chkPhone').value = document.getElementById('userPhone').value.trim();
-    document.getElementById('successView').classList.add('hidden');
-    showCheckView();
-  }
-
-  function checkApp() {
-    const name = document.getElementById('chkName').value.trim();
-    const dob = document.getElementById('chkDob').value.trim();
-    const phone = document.getElementById('chkPhone').value.trim();
-    if (!name || !dob || !phone) return alert('정보를 모두 입력하세요.');
-    if (!PHONE_RE.test(phone)) return alert('연락처는 010-0000-0000 형식으로 입력해 주세요.');
-
-    google.script.run
-      .withSuccessHandler(res => {
-        if (!res.applied) return alert('입력하신 정보와 일치하는 신청 내역이 없습니다.');
-        document.getElementById('checkView').classList.add('hidden');
-        document.getElementById('resultView').classList.remove('hidden');
-        renderUnifiedResultUI(res, name, dob, true);
-        window.scrollTo(0, 0);
-      })
-      .withFailureHandler(err => alert('조회 중 오류가 발생했습니다: ' + err.message))
-      .checkTotalStatus(name, phone, dob, TERM);
-  }
-
-  function safeRefresh() {
-    window.top.location.href = '__WEB_APP_URL__?term=' + encodeURIComponent(TERM);
-  }
 </script>
 </body>
 </html>
