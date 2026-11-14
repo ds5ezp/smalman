@@ -263,13 +263,14 @@ function ageOf_(dob6) {
 
 // 대상별 신청 가능 나이
 function checkAge_(group, dob6) {
-  const rule = { '성인': [20, 64], '아동': [6, 13] }[group];
+  const rule = { '어르신': [60, 120], '성인': [20, 64], '아동': [6, 13] }[group];
   if (!rule) return;
   const age = ageOf_(dob6);
   if (isNaN(age) || age < rule[0] || age > rule[1]) {
     throw new Error(group === '아동'
       ? '아동 배움터는 6세~13세 아동만 신청할 수 있어요.'
-      : '성인 배움터는 20세~64세만 신청할 수 있어요.');
+      : group === '성인' ? '성인 배움터는 20세~64세만 신청할 수 있어요.'
+      : '어르신 배움터는 60세 이상만 신청할 수 있어요.');
   }
 }
 

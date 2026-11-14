@@ -159,7 +159,11 @@
 
     /* 결과 */
     .result-wrap { flex: 1; }
-    /* 핸드폰·PC: 키패드 대신 기기 키보드로 입력 */
+    /* 대상별 색: 어르신(파랑) · 성인(초록) · 아동(주황) */
+  body.grp-성인 { --blue: #02a262; --blue-dark: #027a4c; --blue-soft: #e6f7ef; }
+  body.grp-아동 { --blue: #f76808; --blue-dark: #c95300; --blue-soft: #fff1e6; }
+
+  /* 핸드폰·PC: 키패드 대신 기기 키보드로 입력 */
     .native [data-kp] { display: none !important; }
     .native .fval { display: none !important; }
     .fnative { display: none; width: 100%; border: 0; background: transparent; font: inherit; font-size: 44px; font-weight: 800; color: var(--text); outline: none; padding: 0; margin-top: 6px; letter-spacing: 1px; }
@@ -232,7 +236,7 @@
 
   <!-- 0. 처음 화면 -->
   <section class="step home" id="sHome">
-    <h1>어서 오세요</h1>
+    <h1 id="homeTitle">어서 오세요</h1>
     <p class="lead">원하시는 메뉴를 눌러 주세요</p>
     <button class="hcard primary" onclick="startApply()"><span class="ic">✍️</span><div><b>수강 신청하기</b><small>새로 신청해요</small></div></button>
     <button class="hcard" onclick="startCheck()"><span class="ic">🔍</span><div><b>내 신청 확인</b><small>신청한 내역과 결과를 봐요</small></div></button>
@@ -370,6 +374,8 @@
   let currentUserJob = null;
   let courseMode = '추첨';
   let group = '어르신';
+  // 대상별 신청 가능 나이 (서버에서도 같은 기준으로 확인)
+  const AGE_RANGE = { '어르신': [60, 120], '성인': [20, 64], '아동': [6, 13] };
   let curDay = '월';
   let stepId = 'sHome';
   let doneTimer = null;
@@ -387,6 +393,12 @@
 
   // 대상(어르신 / 성인 / 아동)에 따라 입력 안내 문구를 바꿈
   function applyGroup() {
+    // 대상마다 화면 색과 첫 문구를 다르게
+    document.body.classList.remove('grp-어르신', 'grp-성인', 'grp-아동');
+    document.body.classList.add('grp-' + group);
+    document.getElementById('homeTitle').textContent =
+      group === '아동' ? '아동 배움터에 오신 걸 환영해요' :
+      group === '성인' ? '성인 배움터에 오신 걸 환영해요' : '어르신, 어서 오세요';
     const child = group === '아동';
     document.getElementById('guardianBox').classList.toggle('hidden', !child);
     document.getElementById('nameQ').textContent = child ? '아동 성함을 적어 주세요' : '성함을 적어 주세요';
@@ -590,12 +602,12 @@
     } else if (stepId === 'sNum') {
       if (form.dob.length !== 6) return alert('생년월일 6자리를 눌러 주세요.');
       if (!/^01[016789]\d{7,8}$/.test(form.phone)) return alert('연락처를 바르게 눌러 주세요.');
-      const range = group === '아동' ? [6, 13] : group === '성인' ? [20, 64] : null;
-      if (range) {
-        const age = ageYears(form.dob);
-        if (age < range[0] || age > range[1]) {
-          return alert(group === '아동' ? '아동 배움터는 6세~13세 아동만 신청할 수 있어요.' : '성인 배움터는 20세~64세만 신청할 수 있어요.');
-        }
+      const range = AGE_RANGE[group];
+      const age = ageYears(form.dob);
+      if (age < range[0] || age > range[1]) {
+        return alert(group === '아동' ? '아동 배움터는 6세~13세 아동만 신청할 수 있어요.'
+          : group === '성인' ? '성인 배움터는 20세~64세만 신청할 수 있어요.'
+          : '어르신 배움터는 60세 이상만 신청할 수 있어요.');
       }
       checkJobWithName();
       goStep('sCourse');

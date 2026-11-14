@@ -4403,6 +4403,12 @@
     // 학기 선택: 선택한 학기의 ID를 모든 배움터 호출에 넘김 (처음에는 사용 중인 학기)
     function learnTermId() { return state.learnTerm; }
 
+    // 신청 화면 주소에 학기 ID를 붙여서 그 학기 화면이 열리게 함
+    function withTermParam(url, termId) {
+      if (!url) return '';
+      return url + (url.indexOf('?') === -1 ? '?' : '&') + 'term=' + encodeURIComponent(termId || '');
+    }
+
     function loadLearnTerms() {
       run('listLearnTerms').then(list => {
         const sel = document.getElementById('lTerm');
@@ -4442,7 +4448,7 @@
         document.getElementById('lPhase').innerHTML = '<span class="mode-pill ' + phaseClass + '">' + esc(s.schedule.phase) + '</span>';
         document.getElementById('lPeriod').textContent = s.schedule.start + ' ~ ' + s.schedule.end;
         const app = document.getElementById('learnAppLink');
-        if (s.schedule.appUrl) { app.href = s.schedule.appUrl; app.classList.remove('d-none'); }
+        if (s.schedule.appUrl) { app.href = withTermParam(s.schedule.appUrl, s.termId); app.classList.remove('d-none'); }
         document.getElementById('lActual').textContent = s.actual + '명 / ' + s.enrollment + '건';
         document.getElementById('lGender').textContent = '남 ' + s.gender['남'] + ' · 여 ' + s.gender['여'];
         document.getElementById('lNet').textContent = won(s.finance.net);
@@ -4771,7 +4777,7 @@
       document.getElementById('lsEnd').value = s.endInput;
       document.getElementById('lsResult').value = s.resultInput;
       const app = document.getElementById('learnAppLink');
-      if (s.appUrl) { app.href = s.appUrl; app.classList.remove('d-none'); }
+      if (s.appUrl) { app.href = withTermParam(s.appUrl, learnTermId()); app.classList.remove('d-none'); }
     }
 
     function saveLearnScheduleValue() {
