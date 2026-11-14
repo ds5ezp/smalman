@@ -676,6 +676,7 @@
         <li class="nav-item"><button class="nav-link" data-tab="lList">접수자 명단</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="lLottery">추첨</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="lWinners">합격자 대장</button></li>
+        <li class="nav-item"><button class="nav-link" data-tab="lTerms">학기·과목 설정</button></li>
         <li class="nav-item"><button class="nav-link" data-tab="lSettings">일정·시트</button></li>
       </ul>
 
@@ -770,6 +771,72 @@
       </section>
 
       <!-- 일정·시트 -->
+      <!-- 학기·과목·조건 설정 -->
+      <section data-panel="lTerms" class="d-none">
+        <div class="row g-3">
+          <div class="col-12 col-lg-5">
+            <div class="card p-3 mb-3">
+              <h6 class="mb-2">학기 목록</h6>
+              <div id="ltList" class="small"></div>
+            </div>
+            <div class="card p-3">
+              <h6 class="mb-3">새 학기 만들기</h6>
+              <div class="row g-2">
+                <div class="col-6"><label class="form-label small">학기ID</label><input id="ntId" class="form-control form-control-sm" placeholder="예) 2027H1"></div>
+                <div class="col-6"><label class="form-label small">학기명</label><input id="ntName" class="form-control form-control-sm" placeholder="예) 2027년 상반기 어르신 배움터"></div>
+                <div class="col-12"><label class="form-label small">접수 시작</label><input type="datetime-local" id="ntStart" class="form-control form-control-sm"></div>
+                <div class="col-12"><label class="form-label small">접수 마감</label><input type="datetime-local" id="ntEnd" class="form-control form-control-sm"></div>
+                <div class="col-12"><label class="form-label small">결과 발표</label><input type="datetime-local" id="ntResult" class="form-control form-control-sm"></div>
+              </div>
+              <button class="btn btn-primary mt-3 w-100" onclick="createLearnTermValue()">학기 만들기 (시트 자동 생성)</button>
+              <p class="small text-muted mt-2 mb-0">신청 시트와 강좌정보 시트를 새로 만들고 학기 목록에 추가합니다. 처음에는 '사용 안 함' 상태이고, 강좌를 넣은 뒤 목록에서 '사용으로 전환'을 누르면 접수 화면이 이 학기로 바뀝니다. 신청 항목과 접수 주소는 지금 사용 중인 학기에서 가져옵니다.</p>
+            </div>
+          </div>
+          <div class="col-12 col-lg-7">
+            <div class="card p-3 mb-3">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <h6 class="mb-0">과목 관리</h6>
+                <select id="ctTerm" class="form-select form-select-sm" style="max-width:260px" onchange="loadCourseAdmin()"></select>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle small mb-2">
+                  <thead><tr><th>요일</th><th>과목명</th><th>시간</th><th class="text-end">정원</th><th>수강료</th><th>강의실</th><th class="text-end">신청</th><th></th></tr></thead>
+                  <tbody id="ctRows"></tbody>
+                </table>
+              </div>
+              <div class="border rounded-3 p-2 bg-light">
+                <div class="fw-semibold small mb-2" id="ctFormTitle">과목 추가</div>
+                <div class="row g-2">
+                  <div class="col-4 col-md-2"><select id="ctDay" class="form-select form-select-sm"><option>월</option><option>화</option><option>수</option><option>목</option><option>금</option></select></div>
+                  <div class="col-8 col-md-5"><input id="ctName" class="form-control form-control-sm" placeholder="과목명"></div>
+                  <div class="col-6 col-md-3"><input id="ctStart" class="form-control form-control-sm" placeholder="시작 10:00"></div>
+                  <div class="col-6 col-md-3"><input id="ctEnd" class="form-control form-control-sm" placeholder="종료 11:30"></div>
+                  <div class="col-4 col-md-2"><input id="ctQuota" type="number" min="1" class="form-control form-control-sm" placeholder="정원"></div>
+                  <div class="col-4 col-md-3"><input id="ctFee" type="number" min="0" class="form-control form-control-sm" placeholder="수강료(원)"></div>
+                  <div class="col-4 col-md-4"><input id="ctRoom" class="form-control form-control-sm" placeholder="강의실"></div>
+                  <div class="col-12 d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" id="ctSaveBtn" onclick="saveCourseValue()">추가</button>
+                    <button class="btn btn-light btn-sm" onclick="resetCourseForm()">입력 지우기</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card p-3 mb-3">
+              <h6 class="mb-2">노인일자리 참여자 (수강 시간 겹침 제외)</h6>
+              <p class="small text-muted mb-2">한 줄에 한 명씩 <code>성명,생년월일,사업,활동시작,활동종료</code> 형식으로 붙여넣으세요. 예) <code>홍길동,500101,노인일자리A,09:00,13:00</code><br>현재 <span id="jobCount">-</span>명 등록됨. 저장하면 명단 전체가 바뀝니다.</p>
+              <textarea id="jobText" class="form-control form-control-sm" rows="5"></textarea>
+              <button class="btn btn-outline-primary btn-sm mt-2" onclick="saveJobListValue()">참여자 명단 저장</button>
+            </div>
+            <div class="card p-3">
+              <h6 class="mb-2">중복 신청 제한</h6>
+              <p class="small text-muted mb-2">함께 신청할 수 없는 강좌를 한 줄에 하나씩 쓰세요. 예) <code>컴퓨터 기초, 스마트폰 기초</code><br>저장하면 제한 목록 전체가 바뀝니다.</p>
+              <textarea id="restrictText" class="form-control form-control-sm" rows="4"></textarea>
+              <button class="btn btn-outline-primary btn-sm mt-2" onclick="saveRestrictionsValue()">제한 저장</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section data-panel="lSettings" class="d-none">
         <div class="row g-3">
           <div class="col-12 col-lg-6">
@@ -1636,6 +1703,7 @@
       lLottery: loadLotteryCourses,
       lWinners: loadWinners,
       lSettings: loadLearnSettings,
+      lTerms: loadLearnTermsTab,
       sStatus: () => { loadShuttleStatus(); loadShuttleSignageSwitch(); },
       sAdmin: reloadShuttleAdmin,
       xStaff: loadStaff,
@@ -1649,7 +1717,7 @@
       meetingNotice: loadMeetings
     };
     // 열 때마다 새로 읽는 탭
-    const ALWAYS_RELOAD = ['meetingNotice', 'status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings', 'cafeFiles'];
+    const ALWAYS_RELOAD = ['meetingNotice', 'status', 'log', 'rStatus', 'tStatus', 'lStatus', 'lTerms', 'lLottery', 'lWinners', 'sStatus', 'xStaff', 'mStaff', 'mFoundation', 'vRepair', 'eList', 'eSetup', 'hStatus', 'hSetup', 'acStatus', 'cafeSettings', 'cafeFiles'];
     const MODULE_TABS = { lobby: 'status', rooms: 'rStatus', truck: 'tStatus', learn: 'lStatus', shuttle: 'sStatus', staff: 'xStaff', meeting: 'mStaff', repair: 'vRepair', led: 'eList', hvac: 'hStatus', aircon: 'acStatus', cafe: 'cafeSettings' };
 
     function moduleOfTab(tab) {
@@ -4033,6 +4101,129 @@
         const cur = filter.value;
         filter.innerHTML = '<option value="">전체 강좌</option>' + s.courses.map(c => '<option>' + esc(c.name) + '</option>').join('');
         filter.value = cur;
+      }).catch(fail);
+    }
+
+    // ---------- 학기·과목·조건 설정 ----------
+    let ctTermId = null;
+    let ctEditRow = null;
+
+    function lv(id) { return document.getElementById(id).value.trim(); }
+
+    function loadLearnTermsTab() {
+      run('listLearnTerms').then(list => {
+        renderTermList(list);
+        const sel = document.getElementById('ctTerm');
+        sel.innerHTML = list.map(t => '<option value="' + esc(t.id) + '">' + esc(t.name) + (t.active ? ' (사용 중)' : '') + '</option>').join('');
+        if (!ctTermId || !list.some(t => t.id === ctTermId)) {
+          const active = list.find(t => t.active) || list[0];
+          ctTermId = active ? active.id : null;
+        }
+        if (ctTermId) sel.value = ctTermId;
+        if (ctTermId) loadCourseAdmin();
+      }).catch(fail);
+    }
+
+    function renderTermList(list) {
+      document.getElementById('ltList').innerHTML = list.length ? list.map(t =>
+        '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><div class="fw-semibold">' + esc(t.name) + '</div><div class="text-muted">' + esc(t.id) + '</div></div>' +
+        (t.active ? '<span class="badge text-bg-success">사용 중</span>' : '<button class="btn btn-sm btn-outline-primary" onclick="activateTermValue(\'' + esc(t.id) + '\')">사용으로 전환</button>') + '</div>'
+      ).join('') : '<span class="text-muted">학기가 없습니다.</span>';
+    }
+
+    function activateTermValue(termId) {
+      if (!confirm(termId + ' 학기를 사용 중으로 바꿀까요?\n\n접수 화면의 기본 학기와 현황 화면이 이 학기로 바뀝니다.')) return;
+      save('setLearnActiveTerm', termId).then(list => {
+        state.learnTerm = termId;
+        renderTermList(list);
+        ctTermId = termId;
+        toast('사용 학기를 바꿨습니다.');
+        loadLearnTermsTab();
+        loadLearnStatus();
+      }).catch(fail);
+    }
+
+    function createLearnTermValue() {
+      const data = { termId: lv('ntId'), name: lv('ntName'), start: lv('ntStart'), end: lv('ntEnd'), result: lv('ntResult') };
+      if (!confirm('"' + data.name + '" 학기를 만들까요?\n신청 시트와 강좌정보 시트가 새로 만들어집니다.')) return;
+      save('createLearnTerm', data).then(r => {
+        ctTermId = r.termId;
+        toast('학기를 만들었습니다. 과목을 추가한 뒤 사용으로 전환하세요.');
+        ['ntId', 'ntName', 'ntStart', 'ntEnd', 'ntResult'].forEach(id => { document.getElementById(id).value = ''; });
+        loadLearnTermsTab();
+      }).catch(fail);
+    }
+
+    function loadCourseAdmin() {
+      ctTermId = document.getElementById('ctTerm').value || ctTermId;
+      if (!ctTermId) return;
+      run('getLearnCourseList', ctTermId).then(list => {
+        state.courseAdmin = list;
+        document.getElementById('ctRows').innerHTML = list.length ? list.map(c =>
+          '<tr><td>' + esc(c.day) + '</td><td class="fw-semibold">' + esc(c.name) + '</td><td class="text-nowrap">' + esc(c.start) + '~' + esc(c.end) + '</td>' +
+          '<td class="text-end">' + c.quota + '</td><td class="text-nowrap">' + esc(Number(c.fee).toLocaleString()) + '원</td><td>' + esc(c.room) + '</td>' +
+          '<td class="text-end">' + c.count + '</td>' +
+          '<td class="text-end text-nowrap"><button class="btn btn-sm btn-light" onclick="editCourse(' + c.row + ')">수정</button> ' +
+          '<button class="btn btn-sm btn-outline-danger" onclick="removeCourse(' + c.row + ')">삭제</button></td></tr>'
+        ).join('') : '<tr><td colspan="8" class="text-center text-muted">등록된 과목이 없습니다.</td></tr>';
+      }).catch(fail);
+      run('getLearnRestrictions', ctTermId).then(text => { document.getElementById('restrictText').value = text; }).catch(fail);
+      run('getLearnJobCount', ctTermId).then(n => { document.getElementById('jobCount').textContent = n; }).catch(fail);
+    }
+
+    function editCourse(row) {
+      const c = (state.courseAdmin || []).find(x => x.row === row);
+      if (!c) return;
+      ctEditRow = row;
+      document.getElementById('ctDay').value = c.day;
+      document.getElementById('ctName').value = c.name;
+      document.getElementById('ctStart').value = c.start;
+      document.getElementById('ctEnd').value = c.end;
+      document.getElementById('ctQuota').value = c.quota;
+      document.getElementById('ctFee').value = c.fee;
+      document.getElementById('ctRoom').value = c.room;
+      document.getElementById('ctFormTitle').textContent = '과목 수정: ' + c.name;
+      document.getElementById('ctSaveBtn').textContent = '수정 저장';
+    }
+
+    function resetCourseForm() {
+      ctEditRow = null;
+      document.getElementById('ctDay').value = '월';
+      ['ctName', 'ctStart', 'ctEnd', 'ctQuota', 'ctFee', 'ctRoom'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('ctFormTitle').textContent = '과목 추가';
+      document.getElementById('ctSaveBtn').textContent = '추가';
+    }
+
+    function saveCourseValue() {
+      const c = { day: lv('ctDay'), name: lv('ctName'), start: lv('ctStart'), end: lv('ctEnd'), quota: lv('ctQuota'), fee: lv('ctFee') || '0', room: lv('ctRoom') };
+      save('saveLearnCourse', ctTermId, c, ctEditRow).then(() => {
+        toast(ctEditRow ? '과목을 수정했습니다.' : '과목을 추가했습니다.');
+        resetCourseForm();
+        loadCourseAdmin();
+      }).catch(fail);
+    }
+
+    function removeCourse(row) {
+      const c = (state.courseAdmin || []).find(x => x.row === row);
+      if (!confirm('"' + (c ? c.name : '') + '" 과목을 삭제할까요?')) return;
+      save('deleteLearnCourse', ctTermId, row).then(() => {
+        toast('과목을 삭제했습니다.');
+        loadCourseAdmin();
+      }).catch(fail);
+    }
+
+    function saveJobListValue() {
+      if (!confirm('참여자 명단을 입력한 내용으로 바꿀까요?\n기존 명단은 지워집니다.')) return;
+      save('saveLearnJobList', ctTermId, document.getElementById('jobText').value).then(n => {
+        toast(n + '명 저장했습니다.');
+        document.getElementById('jobText').value = '';
+        loadCourseAdmin();
+      }).catch(fail);
+    }
+
+    function saveRestrictionsValue() {
+      save('saveLearnRestrictions', ctTermId, document.getElementById('restrictText').value).then(n => {
+        toast('중복 신청 제한 ' + n + '그룹을 저장했습니다.');
       }).catch(fail);
     }
 

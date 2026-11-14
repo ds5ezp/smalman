@@ -90,6 +90,10 @@ const TRUCK = {
 const LEARN_REGISTRY_ID = '1_mRID4mwFypGU8pSFMZcwf35NDqjpTLuUUoe2a-mPvc';
 const LEARN_REGISTRY_TAB = '학기목록';
 const LEARN_BACKUP_SHEET = '★접수변경_백업대장';
+const LEARN_RESTRICT_TAB = '중복제한강좌';
+const LEARN_COURSE_HEADERS = ['강좌(표시)', '요일', '시작', '종료', '정원', '강의실'];
+const LEARN_JOB_HEADERS = ['연번', '성명', '생년월일', '사업', '활동시작', '활동종료'];
+const LEARN_FORM_DEFAULT_HEADERS = ['타임스탬프', '성명', '생년월일', '성별', '연락처', '수강료 면제 사유', '개인정보 동의', '월요일', '화요일', '수요일', '목요일', '금요일'];
 
 // 셔틀버스 (GitHub Pages + Firebase). 운행 현황은 승객 화면과 같은 공개 경로(publicLiveStatus)를 화면에서 바로 읽음
 const SHUTTLE = {
@@ -1113,6 +1117,7 @@ function listLearnTerms_() {
     infoId: get(r, '강좌정보시트ID'),
     respTab: get(r, '신청탭') || 'Form Responses 1',
     courseTab: get(r, '강좌탭'),
+    jobTab: get(r, '참여자탭') || '노인일자리참여자',
     active: get(r, '사용').toUpperCase() === 'Y'
   }));
 }
@@ -1569,6 +1574,267 @@ function createLearnFinalLists(termId) {
   sheet.autoResizeColumns(1, 7);
   log_('배움터 전체마감명단', t.name + ' / ' + (rows.length - 1) + '줄');
   return '★전체마감명단';
+}
+
+// ---------- 학기·과목·조건 설정 (대시보드에서 직접 관리) ----------
+
+function learnHHMM_(v) {
+  const m = String(v || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  return m ? String(parseInt(m[1], 10)).padStart(2, '0') + ':' + m[2] : '';
+}
+
+function learnCountApplicants_(t, courseName) {
+  return learnApplicants_(learnForm_(t), t).filter(a => a.courses.indexOf(courseName) !== -1).length;
+}
+
+function learnCourseSheet_(t) {
+  const sheet = learnInfo_(t).getSheetByName(t.courseTab);
+  if (!sheet) throw new Error("강좌정보 탭 '" + t.courseTab + "'을 찾을 수 없습니다.");
+  return sheet;
+}
+
+// 과목 입력값 검사 + 강좌정보 시트 한 행 모양으로 바꿈 (표시 형식: 강좌명 | 시간 | 수강료)
+function learnCourseInput_(c) {
+  const name = String(c.name || '').trim();
+  const day = String(c.day || '').trim();
+  const start = learnHHMM_(c.start), end = learnHHMM_(c.end);
+  const quota = parseInt(c.quota, 10);
+  const fee = parseInt(String(c.fee || '0').replace(/[^0-9]/g, ''), 10) || 0;
+  const room = String(c.room || '').trim();
+  if (!name) throw new Error('과목명을 입력해 주세요.');
+  if (name.indexOf('|') !== -1) throw new Error('과목명에는 | 기호를 쓸 수 없습니다.');
+  if (['월', '화', '수', '목', '금'].indexOf(day) === -1) throw new Error('요일을 선택해 주세요.');
+  if (!start || !end) throw new Error('시작·종료 시간을 HH:MM 형식으로 입력해 주세요. 예) 10:00');
+  if (start >= end) throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
+  if (!(quota > 0)) throw new Error('정원은 1명 이상이어야 합니다.');
+  const feeText = String(fee).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+  return { name: name, day: day, start: start, end: end, quota: quota, fee: fee, room: room,
+    display: name + ' | ' + start + '~' + end + ' | ' + feeText };
+}
+
+function learnCourseRowsAdmin_(t) {
+  const data = learnCourseSheet_(t).getDataRange().getDisplayValues();
+  return data.slice(1).map((r, i) => {
+    const raw = String(r[0] || '').trim();
+    const parts = raw.split('|');
+    return {
+      row: i + 2,
+      display: raw,
+      name: parts[0].trim(),
+      day: String(r[1] || '').replace('요일', '').trim(),
+      start: String(r[2] || '').trim(),
+      end: String(r[3] || '').trim(),
+      quota: parseInt(r[4], 10) || 0,
+      room: String(r[5] || '').trim(),
+      fee: parts.length > 1 ? (parseInt(parts[parts.length - 1].replace(/[^0-9]/g, ''), 10) || 0) : 0
+    };
+  }).filter(c => c.name);
+}
+
+function getLearnCourseList(termId) {
+  requireUser_();
+  const t = getLearnTerm_(termId);
+  const apps = learnApplicants_(learnForm_(t), t);
+  return learnCourseRowsAdmin_(t).map(c => {
+    c.count = apps.filter(a => a.courses.indexOf(c.name) !== -1).length;
+    return c;
+  });
+}
+
+// row 가 없으면 추가, 있으면 그 행 수정
+function saveLearnCourse(termId, c, row) {
+  requireUser_();
+  return withLock_(() => {
+    const t = getLearnTerm_(termId);
+    const v = learnCourseInput_(c);
+    const sheet = learnCourseSheet_(t);
+    const existing = learnCourseRowsAdmin_(t);
+    if (existing.some(x => x.name === v.name && x.row !== Number(row))) throw new Error('같은 이름의 강좌가 이미 있습니다.');
+    const values = [v.display, v.day + '요일', "'" + v.start, "'" + v.end, v.quota, v.room];
+    if (row) {
+      const old = existing.find(x => x.row === Number(row));
+      if (!old) throw new Error('수정할 강좌를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.');
+      if (old.name !== v.name && learnCountApplicants_(t, old.name) > 0) {
+        throw new Error('신청자가 있는 강좌는 과목명을 바꿀 수 없습니다. (신청 기록과 맞지 않게 됩니다)');
+      }
+      sheet.getRange(Number(row), 1, 1, values.length).setValues([values]);
+      log_('배움터 과목 수정', t.name + ' / ' + v.display);
+    } else {
+      sheet.appendRow(values);
+      log_('배움터 과목 추가', t.name + ' / ' + v.display);
+    }
+    return getLearnCourseList(t.id);
+  });
+}
+
+function deleteLearnCourse(termId, row) {
+  requireUser_();
+  return withLock_(() => {
+    const t = getLearnTerm_(termId);
+    const old = learnCourseRowsAdmin_(t).find(x => x.row === Number(row));
+    if (!old) throw new Error('삭제할 강좌를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.');
+    if (learnCountApplicants_(t, old.name) > 0) throw new Error('신청자가 있는 강좌는 삭제할 수 없습니다.');
+    learnCourseSheet_(t).deleteRow(old.row);
+    log_('배움터 과목 삭제', t.name + ' / ' + old.name);
+    return getLearnCourseList(t.id);
+  });
+}
+
+// 중복 신청 제한: 한 줄에 한 그룹, 강좌명은 쉼표로 구분
+function getLearnRestrictions(termId) {
+  requireUser_();
+  const sheet = learnInfo_(getLearnTerm_(termId)).getSheetByName(LEARN_RESTRICT_TAB);
+  if (!sheet) return '';
+  return sheet.getDataRange().getDisplayValues()
+    .map(r => r.filter(x => String(x).trim() !== '').map(x => String(x).trim()).join(', '))
+    .filter(line => line !== '')
+    .join('\n');
+}
+
+function saveLearnRestrictions(termId, text) {
+  requireUser_();
+  return withLock_(() => {
+    const t = getLearnTerm_(termId);
+    const groups = String(text || '').split('\n')
+      .map(line => line.split(',').map(x => x.trim()).filter(x => x !== ''))
+      .filter(g => g.length > 1);
+    const info = learnInfo_(t);
+    const sheet = info.getSheetByName(LEARN_RESTRICT_TAB) || info.insertSheet(LEARN_RESTRICT_TAB);
+    sheet.clearContents();
+    if (groups.length) {
+      const width = Math.max.apply(null, groups.map(g => g.length));
+      const rows = groups.map(g => { const r = g.slice(); while (r.length < width) r.push(''); return r; });
+      sheet.getRange(1, 1, rows.length, width).setValues(rows);
+    }
+    log_('배움터 중복 제한 저장', t.name + ' / ' + groups.length + '그룹');
+    return groups.length;
+  });
+}
+
+// 노인일자리 참여자: 한 줄에 '성명,생년월일,사업,활동시작,활동종료'
+function getLearnJobCount(termId) {
+  requireUser_();
+  const t = getLearnTerm_(termId);
+  const sheet = learnInfo_(t).getSheetByName(t.jobTab);
+  if (!sheet) return 0;
+  return Math.max(0, sheet.getLastRow() - 1);
+}
+
+function saveLearnJobList(termId, text) {
+  requireUser_();
+  return withLock_(() => {
+    const t = getLearnTerm_(termId);
+    const rows = String(text || '').split('\n').map(l => l.trim()).filter(l => l !== '').map((line, i) => {
+      const p = line.split(',').map(x => x.trim());
+      const dob = (p[1] || '').replace(/[^0-9]/g, '').slice(-6);
+      const start = learnHHMM_(p[3]), end = learnHHMM_(p[4]);
+      if (!p[0] || dob.length !== 6 || !start || !end) {
+        throw new Error('"' + line + '" 형식이 맞지 않습니다. 성명,생년월일,사업,활동시작,활동종료 (예: 홍길동,500101,노인일자리A,09:00,13:00)');
+      }
+      return [i + 1, p[0], "'" + dob, p[2] || '', "'" + start, "'" + end];
+    });
+    const info = learnInfo_(t);
+    const sheet = info.getSheetByName(t.jobTab) || info.insertSheet(t.jobTab);
+    sheet.clearContents();
+    sheet.getRange(1, 1, 1, LEARN_JOB_HEADERS.length).setValues([LEARN_JOB_HEADERS]).setFontWeight('bold');
+    if (rows.length) sheet.getRange(2, 1, rows.length, LEARN_JOB_HEADERS.length).setValues(rows);
+    log_('배움터 참여자 명단 저장', t.name + ' / ' + rows.length + '명');
+    return rows.length;
+  });
+}
+
+// 사용 중 학기 바꾸기: 선택한 학기만 Y, 나머지는 N
+function setLearnActiveTerm(termId) {
+  requireUser_();
+  return withLock_(() => {
+    const reg = SpreadsheetApp.openById(LEARN_REGISTRY_ID).getSheetByName(LEARN_REGISTRY_TAB);
+    const values = reg.getDataRange().getValues();
+    const h = values[0].map(x => String(x).trim());
+    const iId = h.indexOf('학기ID'), iUse = h.indexOf('사용');
+    if (iId === -1 || iUse === -1) throw new Error("학기목록 탭에 '학기ID' 또는 '사용' 열이 없습니다.");
+    const target = String(termId || '').trim();
+    let found = false;
+    for (let i = 1; i < values.length; i++) {
+      const id = String(values[i][iId]).trim();
+      if (!id) continue;
+      if (id === target) {
+        reg.getRange(i + 1, iUse + 1).setValue('Y');
+        found = true;
+      } else if (String(values[i][iUse]).trim().toUpperCase() === 'Y') {
+        reg.getRange(i + 1, iUse + 1).setValue('N');
+      }
+    }
+    if (!found) throw new Error('학기를 찾을 수 없습니다.');
+    log_('배움터 사용 학기 변경', target);
+    return listLearnTerms();
+  });
+}
+
+// 새 학기: 신청 시트와 강좌정보 시트를 만들고 학기목록에 추가 (양식은 지금 사용 중인 학기에서 복사)
+function createLearnTerm(data) {
+  requireUser_();
+  return withLock_(() => {
+    const termId = String(data.termId || '').trim();
+    const name = String(data.name || '').trim();
+    if (!/^[A-Za-z0-9_-]{4,20}$/.test(termId)) throw new Error('학기ID는 영문·숫자 4~20자로 입력해 주세요. 예) 2027H1');
+    if (!name) throw new Error('학기명을 입력해 주세요.');
+    const s = learnParseInput_(data.start), e = learnParseInput_(data.end), r = learnParseInput_(data.result);
+    if (!s || !e || !r) throw new Error('접수 시작, 마감, 결과 발표 일시를 모두 입력해 주세요.');
+    if (s >= e) throw new Error('마감은 접수 시작보다 늦어야 합니다.');
+    if (r < e) throw new Error('결과 발표는 마감 이후여야 합니다.');
+    if (listLearnTerms_().some(x => x.id === termId)) throw new Error('이미 있는 학기ID입니다.');
+
+    const base = getLearnTerm_();
+    const baseForm = learnForm_(base), baseInfo = learnInfo_(base);
+    const folder = DriveApp.getFileById(LEARN_REGISTRY_ID).getParents().next();
+
+    const formSs = SpreadsheetApp.create(name + ' - 신청');
+    const infoSs = SpreadsheetApp.create(name + ' - 강좌정보');
+    DriveApp.getFileById(formSs.getId()).moveTo(folder);
+    DriveApp.getFileById(infoSs.getId()).moveTo(folder);
+
+    // 신청 시트 헤더: 지금 학기와 같은 항목
+    let header = LEARN_FORM_DEFAULT_HEADERS;
+    const baseResp = baseForm.getSheetByName(base.respTab);
+    if (baseResp && baseResp.getLastColumn() > 0) {
+      header = baseResp.getRange(1, 1, 1, baseResp.getLastColumn()).getValues()[0];
+    }
+    const respSheet = formSs.getSheets()[0].setName('Form Responses 1');
+    respSheet.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold');
+    respSheet.setFrozenRows(1);
+
+    // 강좌정보 시트: 강좌, 환경설정(일정 + 신청 화면 주소), 참여자, 중복 제한
+    const courseTab = '강좌정보_' + termId;
+    const jobTab = '참여자_' + termId;
+    const courseSheet = infoSs.getSheets()[0].setName(courseTab);
+    courseSheet.getRange(1, 1, 1, LEARN_COURSE_HEADERS.length).setValues([LEARN_COURSE_HEADERS]).setFontWeight('bold');
+    courseSheet.setFrozenRows(1);
+
+    const cfg = infoSs.insertSheet('환경설정');
+    cfg.getRange(1, 1, 1, 4).setValues([['접수시작', '접수마감', '결과발표', '신청화면주소']]).setFontWeight('bold');
+    cfg.getRange(2, 1, 1, 4).setValues([[s, e, r, learnSchedule_(baseInfo).appUrl]]);
+
+    infoSs.insertSheet(jobTab).getRange(1, 1, 1, LEARN_JOB_HEADERS.length).setValues([LEARN_JOB_HEADERS]).setFontWeight('bold');
+    infoSs.insertSheet(LEARN_RESTRICT_TAB);
+
+    // 학기목록에 한 행 추가 (사용은 N: 접수 시작 전에는 기본 주소가 바뀌지 않음)
+    const reg = SpreadsheetApp.openById(LEARN_REGISTRY_ID).getSheetByName(LEARN_REGISTRY_TAB);
+    const h = reg.getRange(1, 1, 1, reg.getLastColumn()).getValues()[0].map(x => String(x).trim());
+    const row = new Array(h.length).fill('');
+    const put = (k, v) => { const i = h.indexOf(k); if (i !== -1) row[i] = v; };
+    put('학기ID', termId);
+    put('학기명', name);
+    put('신청시트ID', formSs.getId());
+    put('강좌정보시트ID', infoSs.getId());
+    put('신청탭', 'Form Responses 1');
+    put('강좌탭', courseTab);
+    put('참여자탭', jobTab);
+    put('사용', 'N');
+    reg.appendRow(row);
+
+    log_('배움터 학기 생성', termId + ' ' + name);
+    return { termId: termId, formUrl: formSs.getUrl(), infoUrl: infoSs.getUrl() };
+  });
 }
 
 // 부서: 직장 정보(조직 정보)의 부서를 먼저 쓰고, 없으면 조직 단위(OU) 마지막 이름을 씀
