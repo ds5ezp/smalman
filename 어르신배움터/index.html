@@ -293,7 +293,7 @@
     <div class="progress"><span class="on"></span><span class="on"></span><span class="on"></span><span></span></div>
     <div class="step-label">3 / 4 · 강좌 선택</div>
     <h1 class="q">들으실 강좌를 골라 주세요</h1>
-    <div class="hint">최대 5개까지 고를 수 있어요. 한 번 더 누르면 취소돼요.</div>
+    <div class="hint" id="courseHint">강좌를 골라 주세요. 한 번 더 누르면 취소돼요.</div>
     <div class="day-tabs" id="dayTabs"></div>
     <div id="courseList"></div>
   </section>
@@ -374,8 +374,9 @@
   let currentUserJob = null;
   let courseMode = '추첨';
   let group = '어르신';
-  // 대상별 신청 가능 나이 (서버에서도 같은 기준으로 확인)
-  const AGE_RANGE = { '어르신': [60, 120], '성인': [20, 64], '아동': [6, 13] };
+  // 학기 설정값 (나이 범위, 최대 과목 수) — 서버에서 받아 옴
+  let ageRange = [0, 200];
+  let maxCourses = 5;
   let curDay = '월';
   let stepId = 'sHome';
   let doneTimer = null;
@@ -602,12 +603,9 @@
     } else if (stepId === 'sNum') {
       if (form.dob.length !== 6) return alert('생년월일 6자리를 눌러 주세요.');
       if (!/^01[016789]\d{7,8}$/.test(form.phone)) return alert('연락처를 바르게 눌러 주세요.');
-      const range = AGE_RANGE[group];
       const age = ageYears(form.dob);
-      if (age < range[0] || age > range[1]) {
-        return alert(group === '아동' ? '아동 배움터는 6세~13세 아동만 신청할 수 있어요.'
-          : group === '성인' ? '성인 배움터는 20세~64세만 신청할 수 있어요.'
-          : '어르신 배움터는 60세 이상만 신청할 수 있어요.');
+      if (age < ageRange[0] || age > ageRange[1]) {
+        return alert('이 배움터는 ' + ageRange[0] + '세 이상 ' + ageRange[1] + '세 이하만 신청할 수 있어요.');
       }
       checkJobWithName();
       goStep('sCourse');
@@ -689,7 +687,7 @@
   }
 
   function updateCourseButtons() {
-    setFoot('이전', '다음 (' + selected.length + '/5)', selected.length > 0, true);
+    setFoot('이전', '다음 (' + selected.length + '/' + maxCourses + ')', selected.length > 0, true);
   }
 
   function esc(v) {
@@ -709,7 +707,7 @@
     if (selected.includes(idx)) {
       selected = selected.filter(i => i !== idx);
     } else {
-      if (selected.length >= 5) return alert('최대 5개까지 고를 수 있어요.');
+      if (selected.length >= maxCourses) return alert('최대 ' + maxCourses + '개까지 고를 수 있어요.');
 
       if (restrictions) {
         for (let group of restrictions) {
@@ -840,6 +838,9 @@
         restrictions = data.restrictions || [];
         courseMode = data.mode || '추첨';
         group = data.group || '어르신';
+        ageRange = [data.ageMin, data.ageMax];
+        maxCourses = data.maxCourses || 5;
+        document.getElementById('courseHint').textContent = '최대 ' + maxCourses + '개까지 고를 수 있어요. 한 번 더 누르면 취소돼요.';
         applyGroup();
         renderCourses();
       })

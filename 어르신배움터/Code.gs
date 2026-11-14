@@ -261,16 +261,30 @@ function ageOf_(dob6) {
   return age;
 }
 
-// 대상별 신청 가능 나이
-function checkAge_(group, dob6) {
-  const rule = { '어르신': [60, 120], '성인': [20, 64], '아동': [6, 13] }[group];
-  if (!rule) return;
+// 학기별 신청 조건: 환경설정 B8 나이 최소, B9 나이 최대, B10 최대 신청 과목 수 (비우면 대상별 기본값)
+const DEFAULT_AGE_ = { '어르신': [60, 120], '성인': [20, 64], '아동': [6, 13] };
+
+function conditionsOf_(t) {
+  const sheet = termInfo_(t).getSheetByName(CONFIG_TAB);
+  const num = a1 => {
+    if (!sheet) return NaN;
+    const v = String(sheet.getRange(a1).getDisplayValue() || '').trim();
+    return v === '' ? NaN : Number(v);
+  };
+  const def = DEFAULT_AGE_[t.group] || DEFAULT_AGE_['어르신'];
+  let min = num('B8'), max = num('B9');
+  if (isNaN(min)) min = def[0];
+  if (isNaN(max)) max = def[1];
+  let maxCourses = num('B10');
+  if (isNaN(maxCourses) || maxCourses < 1) maxCourses = 5;
+  return { ageMin: min, ageMax: max, maxCourses: maxCourses };
+}
+
+// 나이 확인 (생년월일 6자리 기준)
+function checkAge_(cond, dob6) {
   const age = ageOf_(dob6);
-  if (isNaN(age) || age < rule[0] || age > rule[1]) {
-    throw new Error(group === '아동'
-      ? '아동 배움터는 6세~13세 아동만 신청할 수 있어요.'
-      : group === '성인' ? '성인 배움터는 20세~64세만 신청할 수 있어요.'
-      : '어르신 배움터는 60세 이상만 신청할 수 있어요.');
+  if (isNaN(age) || age < cond.ageMin || age > cond.ageMax) {
+    throw new Error('이 배움터는 ' + cond.ageMin + '세 이상 ' + cond.ageMax + '세 이하만 신청할 수 있어요.');
   }
 }
 
@@ -422,10 +436,12 @@ function submitForm(f) {
     if (dob.length !== 6) throw new Error('생년월일 6자리를 입력해 주세요.');
     if (!PHONE_RE.test(phone)) throw new Error('연락처는 010-0000-0000 형식으로 입력해 주세요.');
     if (t.group === '아동' && !guardian) throw new Error('보호자 성함을 입력해 주세요.');
-    checkAge_(t.group, dob);
+    const cond = conditionsOf_(t);
+    checkAge_(cond, dob);
 
     const selected = Array.isArray(f.selectedCourses) ? f.selectedCourses : [];
     if (selected.length === 0) throw new Error('과목을 선택해 주세요.');
+    if (selected.length > cond.maxCourses) throw new Error('한 번에 최대 ' + cond.maxCourses + '개까지 신청할 수 있어요.');
 
     const byDisplay = {};
     readCourses_(t).forEach(c => { byDisplay[c.display] = c; });
@@ -445,6 +461,10 @@ function submitForm(f) {
     const dup = selected.map(d => byDisplay[d].name).filter(n => already[n]);
     if (dup.length) {
       throw new Error('이미 신청한 강좌입니다: ' + dup.join(', ') + '\n다른 강좌는 추가로 신청할 수 있어요.');
+    }
+    const total = Object.keys(already).length + selected.length;
+    if (total > cond.maxCourses) {
+      throw new Error('신청할 수 있는 최대 과목 수는 ' + cond.maxCourses + '개예요. (지금 ' + Object.keys(already).length + '개 신청 중)');
     }
 
     const nRow = new Array(hdrs.length).fill('');
@@ -611,7 +631,9 @@ function getInitialData(termId) {
     });
   }
 
-  return { courses: cs, jobTimes: jobTimes, restrictions: restrictions, mode: modeOf_(t), group: t.group };
+  const cond = conditionsOf_(t);
+  return { courses: cs, jobTimes: jobTimes, restrictions: restrictions, mode: modeOf_(t), group: t.group,
+    ageMin: cond.ageMin, ageMax: cond.ageMax, maxCourses: cond.maxCourses };
 }
 
 // ==========================================
