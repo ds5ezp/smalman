@@ -3311,3 +3311,426 @@ function deleteMeetingNotice(row, raw) {
     return getMeetingNotices();
   });
 }
+
+// =====================================================================
+// 만족도 조사: 터치 사이니지 스티커 설문 (그렇다 / 아니다 칸에 스티커를 끌어다 붙임)
+// 조사 화면은 별도 프로젝트 '만족도 조사 화면'(저장소 만족도조사-화면 폴더)이 '웹 앱 주소?s=키' 로 보여 줌.
+// 여기서는 조사를 만들고 문구를 고치고, 결과를 보고 리셋합니다. 두 프로젝트가 같은 시트를 씀.
+// =====================================================================
+
+const SURVEY = {
+  FILE_NAME: '만족도 조사 (업무포털)',
+  LIST_TAB: '조사',
+  LIST_HEADERS: ['키', '이름', '템플릿', '상태', '설정', '회차', '만든사람', '만든일시', '수정일시'],
+  RESPONSE_TAB: '응답',
+  RESPONSE_HEADERS: ['키', '회차', '칸', '스티커', 'x', 'y', '회전', '시각', '응답ID'],
+  TEMPLATES: ['festival', 'thanks', 'custom'],
+  STATUS: ['진행', '종료'],
+  // 직접 꾸미기: 저장해 둔 디자인(내 템플릿)과 올린 그림
+  DESIGN_TAB: '내 템플릿',
+  DESIGN_HEADERS: ['이름', '디자인', '만든사람', '만든일시'],
+  FOLDER_NAME: '만족도 조사 그림',
+  BUILTIN_STICKERS: ['heart', 'pinkheart', 'star', 'smile', 'flower', 'thumb', 'clover', 'blueheart', 'snowflake', 'maple', 'sun', 'gift', 'balloon'],
+  MAX_IMAGE_BYTES: 3 * 1024 * 1024
+};
+
+// 파일 ID는 스크립트 속성(SURVEY_SHEET_ID)에 저장. 없거나 열 수 없으면 새로 만듦
+function surveySpreadsheet_() {
+  const props = PropertiesService.getScriptProperties();
+  let ss = null;
+  const id = props.getProperty('SURVEY_SHEET_ID');
+  if (id) {
+    try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; }
+  }
+  if (!ss) {
+    ss = SpreadsheetApp.create(SURVEY.FILE_NAME);
+    ss.getSheets()[0].setName(SURVEY.LIST_TAB);
+    props.setProperty('SURVEY_SHEET_ID', ss.getId());
+  }
+  return ss;
+}
+
+function surveyTab_(name, headers) {
+  const ss = surveySpreadsheet_();
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function surveyListSheet_() {
+  return surveyTab_(SURVEY.LIST_TAB, SURVEY.LIST_HEADERS);
+}
+
+function surveyResponseSheet_() {
+  return surveyTab_(SURVEY.RESPONSE_TAB, SURVEY.RESPONSE_HEADERS);
+}
+
+function surveyTime_(value) {
+  if (value instanceof Date) return fmt_(value, 'yyyy-MM-dd HH:mm');
+  return String(value || '').trim();
+}
+
+// 조사 목록 (삭제한 조사는 빼고)
+function surveys_() {
+  return surveyListSheet_().getDataRange().getValues().slice(1).map((v, i) => {
+    let config = {};
+    try { config = JSON.parse(String(v[4] || '{}')); } catch (e) { config = {}; }
+    return {
+      row: i + 2,
+      key: String(v[0] || '').trim(),
+      name: String(v[1] || ''),
+      template: String(v[2] || 'festival'),
+      status: String(v[3] || '진행').trim(),
+      config: config,
+      round: Number(v[5]) || 1,
+      author: String(v[6] || ''),
+      createdAt: surveyTime_(v[7]),
+      updatedAt: surveyTime_(v[8])
+    };
+  }).filter(s => s.key && s.status !== '삭제' && s.status !== '미리보기');
+}
+
+function findSurveyRow_(key) {
+  const s = surveys_().find(x => x.key === String(key || ''));
+  if (!s) throw new Error('조사를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.');
+  return s;
+}
+
+// 응답 행 전체 [{ row, key, round, zone, type, time }]
+function surveyResponses_() {
+  const sheet = surveyResponseSheet_();
+  if (sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, SURVEY.RESPONSE_HEADERS.length).getValues().map((v, i) => ({
+    row: i + 2,
+    key: String(v[0] || '').trim(),
+    round: Number(v[1]) || 1,
+    zone: String(v[2] || ''),
+    type: String(v[3] || ''),
+    time: v[7] instanceof Date ? fmt_(v[7], 'yyyy-MM-dd HH:mm:ss') : String(v[7] || '')
+  }));
+}
+
+function surveyDisplayUrl_() {
+  return PropertiesService.getScriptProperties().getProperty('SURVEY_DISPLAY_URL') || '';
+}
+
+function surveyLink_(key, preview) {
+  const base = surveyDisplayUrl_();
+  if (!base) return '';
+  return base + (base.indexOf('?') === -1 ? '?' : '&') + 's=' + encodeURIComponent(key) + (preview ? '&preview=1' : '');
+}
+
+// 관리 화면 전체 자료: 조사 목록 + 현재 회차 결과 수
+function getSurveyData() {
+  requireUser_();
+  const ss = surveySpreadsheet_();
+  surveyResponseSheet_();
+  const counts = {};
+  const list = surveys_();
+  const roundOf = {};
+  list.forEach(s => { roundOf[s.key] = s.round; counts[s.key] = { yes: 0, no: 0 }; });
+  surveyResponses_().forEach(r => {
+    if (counts[r.key] && r.round === roundOf[r.key] && (r.zone === 'yes' || r.zone === 'no')) counts[r.key][r.zone]++;
+  });
+  return {
+    surveys: list.map(s => ({
+      key: s.key, name: s.name, template: s.template, status: s.status, config: s.config, round: s.round,
+      author: s.author, createdAt: s.createdAt, updatedAt: s.updatedAt,
+      yes: counts[s.key].yes, no: counts[s.key].no,
+      url: surveyLink_(s.key, false), previewUrl: surveyLink_(s.key, true)
+    })).reverse(),
+    designs: surveyDesigns_().map(t => ({ name: t.name, design: t.design, author: t.author, createdAt: t.createdAt })),
+    displayUrl: surveyDisplayUrl_(),
+    sheetId: ss.getId(),
+    sheetUrl: ss.getUrl()
+  };
+}
+
+// 화면 설정 값 정리 (글자 수 제한, 숫자 범위)
+function cleanSurveyConfig_(c) {
+  c = c || {};
+  const str = (v, max) => String(v == null ? '' : v).replace(/\r/g, '').slice(0, max);
+  const lines = (v) => String(v == null ? '' : v).replace(/\r/g, '').split('\n')
+    .map(x => x.trim()).filter(Boolean).slice(0, 12).map(x => x.slice(0, 80));
+  const num = (v, lo, hi, def) => { const n = Number(v); return isNaN(n) ? def : Math.min(hi, Math.max(lo, n)); };
+  const musicUrl = str(c.musicUrl, 500).trim();
+  return {
+    subTitle: str(c.subTitle, 80),
+    titleLead: str(c.titleLead, 20),
+    titleMain: str(c.titleMain, 30),
+    titleTail: str(c.titleTail, 40),
+    question: str(c.question, 200),
+    yesLabel: str(c.yesLabel, 12) || '그렇다',
+    noLabel: str(c.noLabel, 12) || '아니다',
+    orgName: str(c.orgName, 40),
+    thanksYes: lines(c.thanksYes),
+    thanksNo: lines(c.thanksNo),
+    idleSec: Math.round(num(c.idleSec, 0, 600, 15)),
+    sound: !!c.sound,
+    voice: !!c.voice,
+    voiceGender: c.voiceGender === 'male' ? 'male' : 'female',
+    music: !!c.music,
+    musicUrl: /^https:\/\//.test(musicUrl) ? musicUrl : '',
+    showCount: !!c.showCount,
+    soundVolume: num(c.soundVolume, 0, 1, 0.6),
+    musicVolume: num(c.musicVolume, 0, 1, 0.25),
+    design: cleanSurveyDesign_(c.design)
+  };
+}
+
+// 직접 꾸미기 설정 정리. 그림은 '만족도 조사 그림' 폴더에 올린 파일만 허용
+// (조사 화면은 로그인 없이 열리므로, 다른 드라이브 파일이 들어가지 않게)
+function cleanSurveyDesign_(d) {
+  d = d || {};
+  const hex = v => /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? String(v).toLowerCase() : '';
+  const folderId = surveyFolder_().getId();
+  const okIds = {};
+  const img = v => {
+    v = String(v || '');
+    if (!/^[\w-]{10,80}$/.test(v)) return '';
+    if (!(v in okIds)) {
+      try {
+        const parents = DriveApp.getFileById(v).getParents();
+        okIds[v] = false;
+        while (parents.hasNext()) if (parents.next().getId() === folderId) okIds[v] = true;
+      } catch (e) { okIds[v] = false; }
+    }
+    return okIds[v] ? v : '';
+  };
+  const pal = d.palette || {}, deco = d.deco || {}, st = d.stickers || {}, bg = d.background || {}, hd = d.header || {};
+  const headerImage = img(hd.imageId);
+  return {
+    header: { mode: hd.mode === 'image' && headerImage ? 'image' : 'text', imageId: headerImage },
+    palette: { main: hex(pal.main), yes: hex(pal.yes), no: hex(pal.no), ink: hex(pal.ink), bg: hex(pal.bg) },
+    background: { pattern: ['plain', 'dots', 'grid', 'stripes', 'image'].indexOf(bg.pattern) !== -1 ? bg.pattern : 'dots', imageId: img(bg.imageId) },
+    deco: {
+      bunting: !!deco.bunting, burst: !!deco.burst, confetti: !!deco.confetti, chars: !!deco.chars,
+      snow: !!deco.snow, petals: !!deco.petals, hearts: !!deco.hearts
+    },
+    stickers: {
+      builtin: (Array.isArray(st.builtin) ? st.builtin : []).filter(x => SURVEY.BUILTIN_STICKERS.indexOf(x) !== -1),
+      custom: (Array.isArray(st.custom) ? st.custom : []).map(img).filter(Boolean).slice(0, 8)
+    },
+    ratio: ['1:1', '3:2', '2:1'].indexOf(d.ratio) !== -1 ? d.ratio : '3:2'
+  };
+}
+
+// 그림을 올리는 드라이브 폴더 (ID는 스크립트 속성 SURVEY_FOLDER_ID)
+function surveyFolder_() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('SURVEY_FOLDER_ID');
+  if (id) {
+    try { return DriveApp.getFolderById(id); } catch (e) { /* 없으면 새로 만듦 */ }
+  }
+  const folder = DriveApp.createFolder(SURVEY.FOLDER_NAME);
+  props.setProperty('SURVEY_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+// 꾸미기 창에서 고른 그림 저장 (화면에서 미리 크기를 줄여 보냄). 파일 ID를 돌려줌
+function uploadSurveyImage(name, mime, data) {
+  requireUser_();
+  mime = String(mime || '');
+  if (!/^image\/(png|jpeg|gif|webp)$/.test(mime)) throw new Error('그림 파일(PNG, JPG)만 올릴 수 있습니다.');
+  const bytes = Utilities.base64Decode(String(data || ''));
+  if (bytes.length > SURVEY.MAX_IMAGE_BYTES) throw new Error('그림이 너무 큽니다. 3MB 이하로 올려 주세요.');
+  const file = surveyFolder_().createFile(Utilities.newBlob(bytes, mime, String(name || '그림').slice(0, 80)));
+  return file.getId();
+}
+
+// 꾸미기 창의 작은 그림 보기용
+function getSurveyImage(fileId) {
+  requireUser_();
+  if (!cleanSurveyDesign_({ stickers: { custom: [fileId] } }).stickers.custom.length) throw new Error('그림을 찾을 수 없습니다.');
+  const blob = DriveApp.getFileById(fileId).getBlob();
+  return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
+// ---------- 내 템플릿 (저장해 둔 디자인) ----------
+function surveyDesignSheet_() {
+  return surveyTab_(SURVEY.DESIGN_TAB, SURVEY.DESIGN_HEADERS);
+}
+
+function surveyDesigns_() {
+  return surveyDesignSheet_().getDataRange().getValues().slice(1).map((v, i) => {
+    let design = {};
+    try { design = JSON.parse(String(v[1] || '{}')); } catch (e) { design = {}; }
+    return { row: i + 2, name: String(v[0] || '').trim(), design: design, author: String(v[2] || ''), createdAt: surveyTime_(v[3]) };
+  }).filter(t => t.name);
+}
+
+// 같은 이름이 있으면 덮어씀
+function saveSurveyDesign(name, design) {
+  const email = requireUser_();
+  name = String(name || '').trim().slice(0, 30);
+  if (!name) throw new Error('템플릿 이름을 입력해 주세요.');
+  const json = JSON.stringify(cleanSurveyDesign_(design));
+  return withLock_(() => {
+    const sheet = surveyDesignSheet_();
+    const old = surveyDesigns_().find(t => t.name === name);
+    if (old) sheet.getRange(old.row, 2, 1, 3).setValues([[json, email, new Date()]]);
+    else sheet.appendRow([name, json, email, new Date()]);
+    log_('만족도 조사 템플릿 저장', name);
+    return name;
+  });
+}
+
+function deleteSurveyDesign(name) {
+  requireUser_();
+  return withLock_(() => {
+    const t = surveyDesigns_().find(x => x.name === String(name || ''));
+    if (!t) throw new Error('템플릿을 찾을 수 없습니다.');
+    surveyDesignSheet_().deleteRow(t.row);
+    log_('만족도 조사 템플릿 삭제', t.name);
+    return true;
+  });
+}
+
+// ---------- 꾸미기 창 미리보기 ----------
+// 저장하기 전 내용을 사람마다 하나씩 있는 '미리보기' 줄에 넣고, 그 줄을 조사 화면 주소(&preview=1)로 보여 줌
+function saveSurveyPreview(input) {
+  const email = requireUser_();
+  if (!surveyDisplayUrl_()) throw new Error('처음 설정 탭에서 조사 화면 주소를 먼저 저장해 주세요.');
+  input = input || {};
+  const template = SURVEY.TEMPLATES.indexOf(input.template) !== -1 ? input.template : 'festival';
+  const config = JSON.stringify(cleanSurveyConfig_(input.config));
+  const propKey = 'SURVEY_PREVIEW_' + email;
+  const props = PropertiesService.getScriptProperties();
+  return withLock_(() => {
+    const sheet = surveyListSheet_();
+    let key = props.getProperty(propKey);
+    const rows = sheet.getDataRange().getValues();
+    let row = 0;
+    if (key) rows.forEach((v, i) => { if (i && String(v[0]).trim() === key && String(v[3]).trim() === '미리보기') row = i + 1; });
+    if (!row) {
+      key = 'p' + Utilities.getUuid().replace(/-/g, '').slice(0, 11);
+      props.setProperty(propKey, key);
+      sheet.appendRow([key, '(미리보기) ' + email, template, '미리보기', config, 1, email, new Date(), new Date()]);
+    } else {
+      sheet.getRange(row, 2, 1, 4).setValues([['(미리보기) ' + email, template, '미리보기', config]]);
+      sheet.getRange(row, 9).setValue(new Date());
+    }
+    return surveyLink_(key, true);
+  });
+}
+
+// 새 조사 만들기 / 고치기. input = { key(고칠 때), name, template, config }
+function saveSurvey(input) {
+  const email = requireUser_();
+  input = input || {};
+  const name = String(input.name || '').trim().slice(0, 60);
+  if (!name) throw new Error('조사 이름을 입력해 주세요.');
+  const template = SURVEY.TEMPLATES.indexOf(input.template) !== -1 ? input.template : 'festival';
+  const config = JSON.stringify(cleanSurveyConfig_(input.config));
+  return withLock_(() => {
+    const sheet = surveyListSheet_();
+    const now = new Date();
+    if (input.key) {
+      const s = findSurveyRow_(input.key);
+      sheet.getRange(s.row, 2, 1, 4).setValues([[name, template, s.status, config]]);
+      sheet.getRange(s.row, 9).setValue(now);
+      log_('만족도 조사 수정', name);
+      return s.key;
+    }
+    // 글자로 시작해야 시트가 숫자(예: 12e45)로 바꾸지 않음
+    const key = 'q' + Utilities.getUuid().replace(/-/g, '').slice(0, 11);
+    sheet.appendRow([key, name, template, '진행', config, 1, email, now, now]);
+    log_('만족도 조사 추가', name);
+    return key;
+  });
+}
+
+// 진행 / 종료 (종료하면 조사 화면에 '끝났습니다' 가 나오고 스티커를 붙일 수 없음)
+function setSurveyStatus(key, open) {
+  requireUser_();
+  return withLock_(() => {
+    const s = findSurveyRow_(key);
+    const status = open ? '진행' : '종료';
+    surveyListSheet_().getRange(s.row, 4).setValue(status);
+    log_('만족도 조사 ' + status, s.name);
+    return status;
+  });
+}
+
+// 리셋: 회차를 올려 화면의 스티커를 모두 비움 (이전 응답은 시트에 회차별로 남음)
+function resetSurvey(key) {
+  requireUser_();
+  return withLock_(() => {
+    const s = findSurveyRow_(key);
+    surveyListSheet_().getRange(s.row, 6).setValue(s.round + 1);
+    log_('만족도 조사 리셋', s.name + ' (' + s.round + '회차 → ' + (s.round + 1) + '회차)');
+    return s.round + 1;
+  });
+}
+
+// 마지막에 붙은 스티커 1개 지우기 (현재 회차)
+function undoSurveyResponse(key) {
+  requireUser_();
+  return withLock_(() => {
+    const s = findSurveyRow_(key);
+    const mine = surveyResponses_().filter(r => r.key === s.key && r.round === s.round);
+    if (!mine.length) throw new Error('지울 스티커가 없습니다.');
+    const last = mine[mine.length - 1];
+    surveyResponseSheet_().deleteRow(last.row);
+    log_('만족도 조사 스티커 1개 취소', s.name);
+    return true;
+  });
+}
+
+// 같은 내용으로 새 조사 만들기 (해마다 비슷한 행사에 다시 쓸 때)
+function copySurvey(key) {
+  requireUser_();
+  const s = findSurveyRow_(key);
+  return saveSurvey({ name: s.name + ' (복사)', template: s.template, config: Object.assign({}, s.config, {
+    thanksYes: (s.config.thanksYes || []).join('\n'),
+    thanksNo: (s.config.thanksNo || []).join('\n')
+  }) });
+}
+
+// 삭제: 목록에서 숨기고 주소를 막음 (응답 기록은 시트에 남음)
+function deleteSurvey(key) {
+  requireUser_();
+  return withLock_(() => {
+    const s = findSurveyRow_(key);
+    surveyListSheet_().getRange(s.row, 4).setValue('삭제');
+    log_('만족도 조사 삭제', s.name);
+    return true;
+  });
+}
+
+// 결과: 현재 회차 응답 목록과 회차별 합계 (엑셀 파일은 화면에서 만듦)
+function getSurveyResults(key) {
+  requireUser_();
+  const s = findSurveyRow_(key);
+  const all = surveyResponses_().filter(r => r.key === s.key);
+  const rounds = {};
+  all.forEach(r => {
+    rounds[r.round] = rounds[r.round] || { round: r.round, yes: 0, no: 0 };
+    if (r.zone === 'yes' || r.zone === 'no') rounds[r.round][r.zone]++;
+  });
+  return {
+    name: s.name,
+    question: String(s.config.question || ''),
+    yesLabel: s.config.yesLabel || '그렇다',
+    noLabel: s.config.noLabel || '아니다',
+    round: s.round,
+    responses: all.filter(r => r.round === s.round).map(r => ({ zone: r.zone, type: r.type, time: r.time })),
+    rounds: Object.keys(rounds).map(k => rounds[k]).sort((a, b) => a.round - b.round)
+  };
+}
+
+// '만족도 조사 화면' 프로젝트의 웹 앱 주소 저장 (처음 설정 탭)
+function saveSurveyDisplayUrl(url) {
+  requireUser_();
+  url = String(url || '').trim();
+  if (url && !/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) {
+    throw new Error('웹 앱 주소는 https://script.google.com/ 으로 시작하고 /exec 로 끝나야 합니다.');
+  }
+  PropertiesService.getScriptProperties().setProperty('SURVEY_DISPLAY_URL', url);
+  log_('만족도 조사 화면 주소', url || '(비움)');
+  return url;
+}
