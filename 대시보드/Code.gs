@@ -1326,7 +1326,7 @@ function getLearnStatus(termId) {
       infoUrl: 'https://docs.google.com/spreadsheets/d/' + t.infoId + '/edit'
     },
     schedule: learnSchedule_(info),
-    actual: apps.length,
+    actual: new Set(apps.map(a => learnNormName_(a.name) + '_' + learnNormDob_(a.dob) + '_' + String(a.phone).replace(/[^0-9]/g, ''))).size,
     enrollment: enrollment,
     gender: gender,
     ages: ages,
@@ -1354,7 +1354,7 @@ function learnBackupRow_(sheet, row, type) {
     backup = ss.insertSheet(LEARN_BACKUP_SHEET);
     backup.appendRow(['백업일시', '변경구분'].concat(sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0]));
   }
-  backup.appendRow([fmt_(new Date(), 'yyyy-MM-dd HH:mm:ss'), type].concat(sheet.getRange(row, 1, 1, lastCol).getDisplayValues()[0]));
+  backup.appendRow([fmt_(new Date(), 'yyyy-MM-dd HH:mm:ss'), type].concat(sheet.getRange(row, 1, 1, lastCol).getValues()[0]));
 }
 
 function cancelLearnApplicant(row, name, dob, termId) {
@@ -1383,6 +1383,7 @@ function learnCourseApplicants_(form, course, t) {
 function getLotteryCourses(termId) {
   requireUser_();
   const t = getLearnTerm_(termId);
+  if (learnModeOf_(t) === '선착순') return [];
   const form = learnForm_(t);
   const apps = learnApplicants_(form, t);
   const sheetNames = form.getSheets().map(s => s.getName());
@@ -1837,6 +1838,13 @@ function createLearnTerm(data) {
   });
 }
 
+// 접수 방식: 환경설정 B7 이 '선착순'이면 선착순, 그 밖은 추첨
+function learnModeOf_(t) {
+  const sheet = learnInfo_(t).getSheetByName('환경설정');
+  const v = sheet ? String(sheet.getRange('B7').getDisplayValue() || '').trim() : '';
+  return v === '선착순' ? '선착순' : '추첨';
+}
+
 // ---------- 접수 결과 화면 안내 문구 (신청자가 조회할 때 보이는 수납기간·문의·추가 안내) ----------
 // 환경설정 탭 A4:A6 항목명, B4:B6 내용 (접수 웹앱 noticeOf_ 가 같은 칸을 읽음)
 function getLearnNotice(termId) {
@@ -1844,7 +1852,7 @@ function getLearnNotice(termId) {
   const t = getLearnTerm_(termId);
   const sheet = learnInfo_(t).getSheetByName('환경설정');
   const get = a1 => sheet ? String(sheet.getRange(a1).getDisplayValue() || '') : '';
-  return { period: get('B4'), contact: get('B5'), extra: get('B6') };
+  return { period: get('B4'), contact: get('B5'), extra: get('B6'), mode: get('B7') === '선착순' ? '선착순' : '추첨' };
 }
 
 function saveLearnNotice(termId, data) {
@@ -1854,8 +1862,8 @@ function saveLearnNotice(termId, data) {
     const sheet = learnInfo_(t).getSheetByName('환경설정');
     if (!sheet) throw new Error("강좌정보 시트에 '환경설정' 탭이 없습니다.");
     const clean = v => String(v == null ? '' : v).replace(/\r/g, '').trim().slice(0, 500);
-    sheet.getRange('A4:A6').setValues([['수납기간'], ['문의'], ['추가 안내']]);
-    sheet.getRange('B4:B6').setNumberFormat('@').setValues([[clean(data.period)], [clean(data.contact)], [clean(data.extra)]]);
+    sheet.getRange('A4:A7').setValues([['수납기간'], ['문의'], ['추가 안내'], ['접수 방식']]);
+    sheet.getRange('B4:B7').setNumberFormat('@').setValues([[clean(data.period)], [clean(data.contact)], [clean(data.extra)], [data.mode === '선착순' ? '선착순' : '추첨']]);
     SpreadsheetApp.flush();
     log_('배움터 결과 안내 문구', t.name);
     return getLearnNotice(t.id);

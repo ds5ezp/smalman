@@ -193,6 +193,17 @@ function doGet(e) {
     return showMessage('접수 정보를 찾을 수 없습니다', err.message);
   }
 
+  // 강좌별 접수 현황 (누구나 볼 수 있음, 이름·연락처는 가려서 보여 줌)
+  if (e.parameter.page === 'status') {
+    const tpl = HtmlService.createTemplateFromFile('status');
+    tpl.termId = t.id;
+    tpl.termName = t.name;
+    const url = scheduleOf_(t).appUrl || ScriptApp.getService().getUrl();
+    return HtmlService.createHtmlOutput(tpl.evaluate().getContent().replace(/__WEB_APP_URL__/g, url))
+      .setTitle(t.name + ' 접수 현황')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+
   const s = scheduleOf_(t);
   const now = new Date();
   let fileName, pageTitle;
@@ -218,7 +229,156 @@ function doGet(e) {
 }
 
 // ==========================================
-// 4. 수강신청 제출
+// 접수 방식 · 공통 도우미
+// 방식: 환경설정 B7 = '선착순' 이면 선착순, 그 밖(비움 포함)은 추첨
+// 신청은 제출할 때마다 새 행으로 쌓고, 취소도 백업 탭에 남겨 접수 순번이 바뀌지 않게 함
+// ==========================================
+function modeOf_(t) {
+  const sheet = termInfo_(t).getSheetByName(CONFIG_TAB);
+  const v = sheet ? String(sheet.getRange('B7').getDisplayValue() || '').trim() : '';
+  return v === '선착순' ? '선착순' : '추첨';
+}
+
+function headerIdx_(hdrs, key) {
+  return hdrs.findIndex(h => h.indexOf(key) !== -1);
+}
+
+function toTs_(v) {
+  if (v instanceof Date) return v.getTime();
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+// 한 행의 강좌 칸에 적힌 항목 원문 ("[월] 강좌 | 시간 | 수강료")
+function rowCellItems_(row, hdrs) {
+  const items = [];
+  hdrs.forEach((h, idx) => {
+    if (h.indexOf('요일') !== -1 && h.indexOf('면제') === -1 && row[idx]) {
+      String(row[idx]).split(', ').forEach(c => { if (c.trim()) items.push(c.trim()); });
+    }
+  });
+  return items;
+}
+
+function rowCourses_(row, hdrs) {
+  const out = [];
+  rowCellItems_(row, hdrs).forEach(c => {
+    const n = courseNameOf_(c);
+    if (n && out.indexOf(n) === -1) out.push(n);
+  });
+  return out;
+}
+
+// 같은 사람(이름+생년월일+연락처)의 활성 신청 행 번호들 (1부터)
+function personRows_(data, hdrs, name, dob, phone) {
+  const nIdx = headerIdx_(hdrs, '성명'), dIdx = headerIdx_(hdrs, '생년월일'), pIdx = headerIdx_(hdrs, '연락처');
+  if (nIdx === -1 || dIdx === -1 || pIdx === -1) throw new Error('신청 시트에 성명·생년월일·연락처 열이 없습니다.');
+  const sName = normalizeName(name), sDob = normalizeDOBString(dob), sPhone = digitsOf_(phone);
+  const out = [];
+  for (let i = 1; i < data.length; i++) {
+    if (normalizeName(data[i][nIdx]) !== sName) continue;
+    if (normalizeDOBString(data[i][dIdx]) !== sDob) continue;
+    if (digitsOf_(data[i][pIdx]) !== sPhone) continue;
+    out.push(i + 1);
+  }
+  return out;
+}
+
+function backupSheet_(t) {
+  return termForm_(t).getSheetByName(BACKUP_TAB);
+}
+
+function queueItem_(row, hdrs, cancelled) {
+  const nIdx = headerIdx_(hdrs, '성명'), dIdx = headerIdx_(hdrs, '생년월일'), pIdx = headerIdx_(hdrs, '연락처');
+  const ts = toTs_(row[0]);
+  return {
+    ts: ts,
+    time: ts ? Utilities.formatDate(new Date(ts), 'GMT+9', 'MM-dd HH:mm') : '',
+    name: String(row[nIdx] || '').trim(),
+    dob: String(row[dIdx] || '').trim(),
+    phone: String(row[pIdx] || '').trim(),
+    cancelled: cancelled
+  };
+}
+
+// 강좌 한 과목의 접수 순번 목록 (활성 신청 + 취소 기록을 함께 보고 순번을 매김)
+// 순번은 신청 시각 순으로 한 번 정해지면 취소해도 바뀌지 않음. 상태는 취소를 뺀 순서로 계산 (앞 사람이 취소하면 대기자가 올라감)
+function courseQueue_(t, courseName) {
+  const data = respSheet_(t).getDataRange().getValues();
+  const hdrs = data[0].map(h => String(h).trim());
+  const items = [];
+  for (let i = 1; i < data.length; i++) {
+    if (rowCourses_(data[i], hdrs).indexOf(courseName) === -1) continue;
+    items.push(queueItem_(data[i], hdrs, false));
+  }
+  const bk = backupSheet_(t);
+  if (bk && bk.getLastRow() > 1) {
+    const bdata = bk.getDataRange().getValues();
+    const bh = bdata[0].slice(2).map(h => String(h).trim());
+    for (let i = 1; i < bdata.length; i++) {
+      if (String(bdata[i][1]).indexOf('취소') === -1) continue;
+      const orig = bdata[i].slice(2);
+      if (rowCourses_(orig, bh).indexOf(courseName) === -1) continue;
+      items.push(queueItem_(orig, bh, true));
+    }
+  }
+  items.sort((a, b) => a.ts - b.ts);
+  items.forEach((it, i) => { it.seq = i + 1; });
+  const course = readCourses_(t).find(c => c.name === courseName);
+  const quota = course ? course.quota : 0;
+  let pos = 0;
+  items.forEach(it => {
+    if (it.cancelled) { it.status = '취소'; return; }
+    pos++;
+    if (pos <= quota) it.status = '접수완료';
+    else { it.status = '대기'; it.waitNo = pos - quota; }
+  });
+  return items;
+}
+
+// 공개 화면용 가리기: 김원민 → 김*민, 010-3333-4444 → 010-3333-****
+function maskName_(name) {
+  const n = String(name || '').replace(/\s/g, '');
+  if (n.length <= 1) return n;
+  if (n.length === 2) return n.charAt(0) + '*';
+  return n.charAt(0) + '*'.repeat(n.length - 2) + n.charAt(n.length - 1);
+}
+
+function maskPhone_(phone) {
+  const d = digitsOf_(phone);
+  if (d.length >= 11) return d.slice(0, 3) + '-' + d.slice(3, 7) + '-****';
+  if (d.length === 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-****';
+  return '';
+}
+
+// 공개 접수 현황 (이름 가리기, 연락처 가리기, 신청일시·순번·상태)
+function getPublicStatus(termId, courseName) {
+  const t = getTerm_(termId);
+  const course = readCourses_(t).find(c => c.name === String(courseName || ''));
+  if (!course) throw new Error('강좌를 찾을 수 없습니다.');
+  const mode = modeOf_(t);
+  const list = courseQueue_(t, course.name);
+  return {
+    course: course.name,
+    quota: course.quota,
+    mode: mode,
+    active: list.filter(x => !x.cancelled && x.status === '접수완료').length,
+    waiting: list.filter(x => x.status === '대기').length,
+    cancelled: list.filter(x => x.cancelled).length,
+    rows: list.map(x => ({
+      seq: x.seq,
+      time: x.time,
+      name: maskName_(x.name),
+      phone: maskPhone_(x.phone),
+      status: x.status === '대기' ? '대기 ' + x.waitNo + '번' : x.status,
+      cancelled: !!x.cancelled
+    })),
+    checkedAt: Utilities.formatDate(new Date(), 'GMT+9', 'MM-dd HH:mm')
+  };
+}
+
+// ==========================================
+// 4. 수강신청 제출 (같은 강좌 중복 차단, 다른 강좌는 추가 신청)
 // ==========================================
 function submitForm(f) {
   return withLock_(() => {
@@ -233,7 +393,6 @@ function submitForm(f) {
     const selected = Array.isArray(f.selectedCourses) ? f.selectedCourses : [];
     if (selected.length === 0) throw new Error('과목을 선택해 주세요.');
 
-    // 선택한 강좌가 현재 강좌 정보에 모두 있는지 정확히 대조 (부분 문자열 검색 안 함)
     const byDisplay = {};
     readCourses_(t).forEach(c => { byDisplay[c.display] = c; });
     selected.forEach(d => {
@@ -243,7 +402,16 @@ function submitForm(f) {
     const sheet = respSheet_(t);
     const data = sheet.getDataRange().getValues();
     const hdrs = data[0].map(h => String(h).trim());
-    const rIdx = findRow_(data, hdrs, name, dob);
+
+    // 같은 사람이 이미 신청한 강좌는 막음 (다른 강좌는 추가 신청 가능)
+    const already = {};
+    personRows_(data, hdrs, name, dob, phone).forEach(r => {
+      rowCourses_(data[r - 1], hdrs).forEach(c => { already[c] = true; });
+    });
+    const dup = selected.map(d => byDisplay[d].name).filter(n => already[n]);
+    if (dup.length) {
+      throw new Error('이미 신청한 강좌입니다: ' + dup.join(', ') + '\n다른 강좌는 추가로 신청할 수 있어요.');
+    }
 
     const nRow = new Array(hdrs.length).fill('');
     hdrs.forEach((h, i) => {
@@ -251,99 +419,100 @@ function submitForm(f) {
       if (h.indexOf('성명') !== -1) { nRow[i] = name; return; }
       if (h.indexOf('생년월일') !== -1) { nRow[i] = dob; return; }
       if (h.indexOf('성별') !== -1) { nRow[i] = String(f.gender || ''); return; }
-      if (h.indexOf('연락처') !== -1) { nRow[i] = "'" + phone; return; } // 앞의 ' 는 문자열로 저장하라는 표시
+      if (h.indexOf('연락처') !== -1) { nRow[i] = "'" + phone; return; }
       if (h.indexOf('면제') !== -1) { nRow[i] = String(f.benefit || ''); return; }
       if (h.indexOf('동의') !== -1) { nRow[i] = '동의'; return; }
       if (h.indexOf('수강료') !== -1) return;
-
       const day = dayOfHeader_(h);
-      if (day) {
-        nRow[i] = selected.filter(d => byDisplay[d].day === day).join(', ');
-      }
+      if (day) nRow[i] = selected.filter(d => byDisplay[d].day === day).join(', ');
     });
-
-    if (rIdx !== -1) {
-      moveOldDataToBackup(sheet, rIdx, '수정(덮어쓰기)');
-      sheet.getRange(rIdx, 1, 1, nRow.length).setValues([nRow]);
-    } else {
-      sheet.appendRow(nRow);
-    }
+    sheet.appendRow(nRow);
     return '접수가 완료되었습니다.';
   });
 }
 
 // ==========================================
-// 5. 신청 내역 및 결과 조회 (이름 + 생년월일 + 연락처 일치)
+// 5. 신청 내역 및 결과 조회 (이름 + 생년월일 + 연락처)
 // ==========================================
 function checkTotalStatus(name, phone, dob, termId) {
   const t = getTerm_(termId);
   const s = scheduleOf_(t);
-  const isResultOpen = !!s.result && new Date() >= s.result;
-  const sName = normalizeName(name), sDob = normalizeDOBString(dob);
-
-  const respData = respSheet_(t).getDataRange().getValues();
-  const hdrs = respData[0].map(h => String(h).trim());
-  const rowNum = findRow_(respData, hdrs, name, dob, String(phone || ''));
+  const mode = modeOf_(t);
+  const data = respSheet_(t).getDataRange().getValues();
+  const hdrs = data[0].map(h => String(h).trim());
+  const rows = personRows_(data, hdrs, name, dob, String(phone || ''));
 
   const feeByName = {};
   readCourses_(t).forEach(c => { feeByName[c.name] = c.feeText; });
 
-  let appInfo = null;
+  if (!rows.length) {
+    return { applied: null, results: [], isResultOpen: false, openTimeText: '', mode: mode, notice: noticeOf_(t) };
+  }
+
+  // 여러 번 나눠 신청했어도 한 사람의 신청으로 합쳐서 보여 줌
+  const items = [];
+  let earliest = 0;
+  rows.forEach(r => {
+    const row = data[r - 1];
+    rowCellItems_(row, hdrs).forEach(raw => { if (items.indexOf(raw) === -1) items.push(raw); });
+    const ts = toTs_(row[0]);
+    if (!earliest || (ts && ts < earliest)) earliest = ts;
+  });
+  const nIdx = headerIdx_(hdrs, '성명');
+  const courses = [];
+  items.forEach(raw => { const n = courseNameOf_(raw); if (courses.indexOf(n) === -1) courses.push(n); });
+
+  const isOpen = mode === '선착순' ? true : (!!s.result && new Date() >= s.result);
+  const sName = normalizeName(name), sDob = normalizeDOBString(dob), sPhone = digitsOf_(phone);
   const results = [];
-  const appliedNames = [];
-  if (rowNum !== -1) {
-    const row = respData[rowNum - 1];
-    const cs = [];
-    hdrs.forEach((h, idx) => {
-      if (h.indexOf('요일') !== -1 && h.indexOf('면제') === -1 && row[idx]) {
-        String(row[idx]).split(', ').forEach(c => {
-          cs.push(c);
-          appliedNames.push(courseNameOf_(c));
-        });
-      }
-    });
-    const ts = new Date(row[0]);
-    const nameCol = hdrs.findIndex(h => h.indexOf('성명') !== -1);
-    appInfo = {
-      name: nameCol === -1 ? name : String(row[nameCol] || '').trim(),
-      date: isNaN(ts.getTime()) ? '' : Utilities.formatDate(ts, 'GMT+9', 'yyyy-MM-dd HH:mm'),
-      appliedCourses: cs.join(', ')
-    };
+  if (isOpen) {
+    if (mode === '선착순') {
+      courses.forEach(course => {
+        const me = courseQueue_(t, course).find(x => !x.cancelled &&
+          normalizeName(x.name) === sName && normalizeDOBString(x.dob) === sDob && digitsOf_(x.phone) === sPhone);
+        const status = !me ? '확인 중' : (me.status === '대기' ? '대기 ' + me.waitNo + '번' : me.status);
+        results.push({ course: course, status: status, fee: feeByName[course] || '수강료 정보 없음' });
+      });
+    } else {
+      const ss = termForm_(t);
+      const sheetNames = ss.getSheets().map(x => x.getName());
+      courses.forEach(course => {
+        const targetSName = '결과_' + course.substring(0, 15);
+        const feeText = feeByName[course] || '수강료 정보 없음';
+        if (sheetNames.indexOf(targetSName) !== -1) {
+          const resData = ss.getSheetByName(targetSName).getDataRange().getValues();
+          let matched = false;
+          resData.slice(1).forEach(r => {
+            if (normalizeName(r[1]) === sName && normalizeDOBString(r[2]) === sDob) {
+              results.push({ course: course, status: r[4], fee: feeText });
+              matched = true;
+            }
+          });
+          if (!matched) results.push({ course: course, status: '대기/명단확인', fee: feeText });
+        } else {
+          results.push({ course: course, status: '합격자', fee: feeText });
+        }
+      });
+    }
   }
 
-  if (isResultOpen && appInfo) {
-    const ss = termForm_(t);
-    const sheetNames = ss.getSheets().map(x => x.getName());
-    appliedNames.forEach(course => {
-      const targetSName = '결과_' + course.substring(0, 15);
-      const feeText = feeByName[course] || '수강료 정보 없음';
-      if (sheetNames.indexOf(targetSName) !== -1) {
-        const resData = ss.getSheetByName(targetSName).getDataRange().getValues();
-        let matched = false;
-        resData.slice(1).forEach(r => {
-          if (normalizeName(r[1]) === sName && normalizeDOBString(r[2]) === sDob) {
-            results.push({ course: course, status: r[4], fee: feeText });
-            matched = true;
-          }
-        });
-        if (!matched) results.push({ course: course, status: '대기/명단확인', fee: feeText });
-      } else {
-        results.push({ course: course, status: '합격자', fee: feeText });
-      }
-    });
-  }
-
+  const first = data[rows[0] - 1];
   return {
-    applied: appInfo,
+    applied: {
+      name: nIdx === -1 ? name : String(first[nIdx] || '').trim(),
+      date: earliest ? Utilities.formatDate(new Date(earliest), 'GMT+9', 'yyyy-MM-dd HH:mm') : '',
+      appliedCourses: items.join(', ')
+    },
     results: results,
-    isResultOpen: isResultOpen,
+    isResultOpen: isOpen,
     openTimeText: s.result ? Utilities.formatDate(s.result, 'GMT+9', 'MM월 dd일 HH시') : '',
+    mode: mode,
     notice: noticeOf_(t)
   };
 }
 
 // ==========================================
-// 6. 접수 화면 초기 데이터 (정원/잔여, 노인일자리 시간, 중복제한)
+// 6. 접수 화면 초기 데이터 (정원/잔여, 노인일자리 시간, 중복제한, 접수 방식)
 // ==========================================
 function getInitialData(termId) {
   const t = getTerm_(termId);
@@ -407,11 +576,11 @@ function getInitialData(termId) {
     });
   }
 
-  return { courses: cs, jobTimes: jobTimes, restrictions: restrictions };
+  return { courses: cs, jobTimes: jobTimes, restrictions: restrictions, mode: modeOf_(t) };
 }
 
 // ==========================================
-// 7. 신청 취소 (이름 + 생년월일 + 연락처 일치, 접수 마감 전만)
+// 7. 신청 취소 (같은 사람의 모든 신청을 취소 기록으로 남기고 뺌, 접수 마감 전만)
 // ==========================================
 function deleteApplicantByVerification(name, dob, phone, termId) {
   try {
@@ -428,14 +597,15 @@ function deleteApplicantByVerification(name, dob, phone, termId) {
       const sheet = respSheet_(t);
       const data = sheet.getDataRange().getValues();
       const hdrs = data[0].map(h => String(h).trim());
-      const rowNum = findRow_(data, hdrs, name, dob, String(phone).trim());
-      if (rowNum === -1) {
+      const rows = personRows_(data, hdrs, name, dob, String(phone).trim());
+      if (!rows.length) {
         return { success: false, msg: '❌ 신청 내역을 찾을 수 없습니다. 입력 정보를 다시 확인해 주세요.' };
       }
 
-      moveOldDataToBackup(sheet, rowNum, '본인직접취소');
-      sheet.deleteRow(rowNum);
-      return { success: true, msg: '✅ 어르신배움터 접수 내역이 정상적으로 취소(삭제)되었습니다.' };
+      // 취소 기록을 먼저 남기고, 아래 행부터 지움 (행 번호가 밀리지 않게)
+      rows.forEach(r => moveOldDataToBackup(sheet, r, '본인직접취소'));
+      rows.slice().reverse().forEach(r => sheet.deleteRow(r));
+      return { success: true, msg: '✅ 접수가 취소되었습니다. 접수 순번은 취소 기록으로 남아요.' };
     });
   } catch (e) {
     return { success: false, msg: '❌ 서버 삭제 오류 발생: ' + e.message };
@@ -502,7 +672,7 @@ function moveOldDataToBackup(sourceSheet, rowNum, type) {
         .setHorizontalAlignment('center');
     }
 
-    const rowData = sourceSheet.getRange(rowNum, 1, 1, sourceSheet.getLastColumn()).getDisplayValues()[0];
+    const rowData = sourceSheet.getRange(rowNum, 1, 1, sourceSheet.getLastColumn()).getValues()[0];
     const nowStr = Utilities.formatDate(new Date(), 'GMT+9', 'yyyy-MM-dd HH:mm:ss');
     backupSheet.appendRow([nowStr, type].concat(rowData));
     backupSheet.autoResizeColumns(1, backupSheet.getLastColumn());

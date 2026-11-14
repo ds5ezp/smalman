@@ -236,6 +236,7 @@
     <p class="lead">원하시는 메뉴를 눌러 주세요</p>
     <button class="hcard primary" onclick="startApply()"><span class="ic">✍️</span><div><b>수강 신청하기</b><small>새로 신청해요</small></div></button>
     <button class="hcard" onclick="startCheck()"><span class="ic">🔍</span><div><b>내 신청 확인</b><small>신청한 내역과 결과를 봐요</small></div></button>
+    <button class="hcard" onclick="openStatus()"><span class="ic">📋</span><div><b>강좌별 접수 현황</b><small>순번과 접수 상태를 봐요</small></div></button>
   </section>
 
   <!-- 1. 이름 · 성별 · 면제 -->
@@ -363,6 +364,7 @@
   let restrictions = [];
   let selected = [];
   let currentUserJob = null;
+  let courseMode = '추첨';
   let curDay = '월';
   let stepId = 'sHome';
   let doneTimer = null;
@@ -518,6 +520,11 @@
     goStep('sInfo');
   }
 
+  // 강좌별 접수 현황 화면 (이름·연락처는 가려서 보여 줌)
+  function openStatus() {
+    window.top.location.href = '__WEB_APP_URL__?page=status&term=' + encodeURIComponent(TERM);
+  }
+
   function startCheck() {
     resetAll(false);
     pickField('cdob');
@@ -618,8 +625,13 @@
       const name = parts[0];
       const fee = parts.length > 1 ? parts[parts.length - 1] : '';
       let cls = 'ok', text = '여유 ' + c.remaining + '석';
-      if (c.current >= c.quota) { cls = 'bad'; text = '추첨 예정 (정원 초과 ' + (c.current - c.quota) + '명)'; }
-      else if (c.remaining <= 3) { cls = 'warn'; text = '마감 임박 · ' + c.remaining + '석 남음'; }
+      if (courseMode === '선착순') {
+        if (c.current >= c.quota) { cls = 'warn'; text = '정원 마감 · 대기 접수'; }
+        else if (c.remaining <= 3) { cls = 'warn'; text = '마감 임박 · ' + c.remaining + '석 남음'; }
+      } else {
+        if (c.current >= c.quota) { cls = 'bad'; text = '추첨 예정 (정원 초과 ' + (c.current - c.quota) + '명)'; }
+        else if (c.remaining <= 3) { cls = 'warn'; text = '마감 임박 · ' + c.remaining + '석 남음'; }
+      }
       return '<div class="course' + (on ? ' on' : '') + '" onclick="toggleCourse(' + idx + ')">' +
         '<div class="mark">✓</div>' +
         '<div class="body"><div class="cname">' + esc(name) + '</div>' +
@@ -779,6 +791,7 @@
         courses = data.courses || [];
         jobTimes = data.jobTimes || {};
         restrictions = data.restrictions || [];
+        courseMode = data.mode || '추첨';
         renderCourses();
       })
       .withFailureHandler(err => alert('강좌 정보를 불러오지 못했어요: ' + err.message))

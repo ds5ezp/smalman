@@ -101,6 +101,9 @@
     if (!open) return { cls: 'before', text: '결과 발표 전' };
     if (!r) return { cls: 'pass', text: '합격' };
     const s = String(r.status || '');
+    if (s.indexOf('접수완료') !== -1) return { cls: 'pass', text: '접수 완료' };
+    if (s.indexOf('취소') !== -1) return { cls: 'out', text: '취소' };
+    if (s.indexOf('확인 중') !== -1) return { cls: 'check', text: '확인 중' };
     if (s.indexOf('합격') !== -1) return { cls: 'pass', text: '합격' };
     if (s.indexOf('대기') !== -1 && s.indexOf('확인') === -1) return { cls: 'wait', text: s.replace('대기자', '대기') };
     if (s.indexOf('탈락') !== -1) return { cls: 'out', text: '미선정' };
@@ -132,7 +135,11 @@
 
     // 결과 상태
     const statusBox = document.getElementById('rvStatus');
-    if (open) {
+    if (open && res.mode === '선착순') {
+      statusBox.className = 'rv-card rv-status open';
+      statusBox.innerHTML = '<div class="ic">✅</div><div><div class="t1">접수 현황이에요</div>' +
+        '<div class="t2">정원 안이면 접수 완료, 넘치면 대기 순번이 보여요. 접수 순번은 바뀌지 않아요.</div></div>';
+    } else if (open) {
       statusBox.className = 'rv-card rv-status open';
       statusBox.innerHTML = '<div class="ic">📢</div><div><div class="t1">결과가 발표되었어요</div>' +
         '<div class="t2">위 강좌 옆의 표시를 확인해 주세요.</div></div>';

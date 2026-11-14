@@ -827,6 +827,9 @@
               <h6 class="mb-2">접수 결과 화면 안내</h6>
               <p class="small text-muted mb-2">신청자가 '내 신청 확인'에서 결과를 볼 때 아래에 나오는 내용이에요. 바꾸면 바로 반영돼요.</p>
               <div class="row g-2">
+                <div class="col-12"><label class="form-label small">접수 방식</label>
+                  <select id="ntcMode" class="form-select form-select-sm"><option value="추첨">추첨 (정원 초과 시 추첨, 어르신 배움터)</option><option value="선착순">선착순 (먼저 신청한 순서, 성인·아동 배움터)</option></select>
+                </div>
                 <div class="col-12 col-md-6"><label class="form-label small">수납기간</label><input id="ntcPeriod" class="form-control form-control-sm" placeholder="예) 2027.3.10(화) ~ 3.12(목) 09:30 ~ 16:30"></div>
                 <div class="col-12 col-md-6"><label class="form-label small">문의</label><input id="ntcContact" class="form-control form-control-sm" placeholder="예) 배움터 담당자 055-636-0303"></div>
                 <div class="col-12"><label class="form-label small">추가 안내 (줄바꿈 가능)</label><textarea id="ntcExtra" class="form-control form-control-sm" rows="3"></textarea></div>
@@ -4538,6 +4541,7 @@
         document.getElementById('ntcPeriod').value = n.period || '';
         document.getElementById('ntcContact').value = n.contact || '';
         document.getElementById('ntcExtra').value = n.extra || '';
+        document.getElementById('ntcMode').value = n.mode || '추첨';
       }).catch(fail);
     }
 
@@ -4592,7 +4596,7 @@
     }
 
     function saveNoticeValue() {
-      const data = { period: lv('ntcPeriod'), contact: lv('ntcContact'), extra: document.getElementById('ntcExtra').value.trim() };
+      const data = { mode: lv('ntcMode'), period: lv('ntcPeriod'), contact: lv('ntcContact'), extra: document.getElementById('ntcExtra').value.trim() };
       save('saveLearnNotice', ctTermId, data).then(() => toast('접수 결과 안내 문구를 저장했습니다.')).catch(fail);
     }
 
