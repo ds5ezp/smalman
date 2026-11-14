@@ -183,7 +183,7 @@
     <div class="progress"><span class="on"></span><span></span><span></span><span></span></div>
     <div class="step-label">1 / 4 · 기본 정보</div>
     <h1 class="q">성함을 적어 주세요</h1>
-    <input type="text" id="name" class="text-input" placeholder="실명을 입력해 주세요" autocomplete="off" oninput="form.name=this.value.trim()">
+    <input type="text" id="name" class="text-input" placeholder="실명을 입력해 주세요" autocomplete="off" oninput="syncNames()">
 
     <div class="field-label">성별을 골라 주세요</div>
     <div class="choice-grid" id="genderGrid">
@@ -254,7 +254,7 @@
     <div class="progress"><span class="on"></span><span></span></div>
     <div class="step-label">내 신청 확인</div>
     <h1 class="q">신청할 때 적은 정보를<br>적어 주세요</h1>
-    <input type="text" id="cname" class="text-input" placeholder="실명을 입력해 주세요" autocomplete="off" oninput="form.cname=this.value.trim()">
+    <input type="text" id="cname" class="text-input" placeholder="실명을 입력해 주세요" autocomplete="off" oninput="syncNames()">
     <button class="fbox active" data-f="cdob" onclick="pickField('cdob')">
       <span class="flabel">생년월일 (6자리)</span>
       <span class="fval ph" id="v-cdob" data-ph="예) 500101"></span>
@@ -319,6 +319,12 @@
     if (d.length < 8) return d.slice(0, 3) + '-' + d.slice(3);
     if (d.length < 11) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
     return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+  }
+
+  // 이름 입력칸은 화면의 값을 직접 읽어 씀 (키보드·한글 입력 중에도 이벤트 누락 없이)
+  function syncNames() {
+    form.name = document.getElementById('name').value.trim();
+    form.cname = document.getElementById('cname').value.trim();
   }
 
   // ---------- 화면 전환 ----------
@@ -453,6 +459,7 @@
   }
 
   function goNext() {
+    syncNames();
     if (stepId === 'sInfo') {
       if (!form.name) return alert('성함을 적어 주세요.');
       if (!form.gender) return alert('성별을 골라 주세요.');
@@ -638,7 +645,8 @@
   }
 
   function checkApp() {
-    const name = form.cname.trim();
+    syncNames();
+    const name = form.cname;
     const dob = form.cdob;
     const phone = fmtPhone(form.cphone);
     if (!name) return alert('성함을 적어 주세요.');
