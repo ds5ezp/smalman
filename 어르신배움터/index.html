@@ -159,6 +159,8 @@
 
     /* 결과 */
     .result-wrap { flex: 1; }
+    .course.closed { opacity: .5; }
+
     /* 대상별 색: 어르신(파랑) · 성인(초록) · 아동(주황) */
   body.grp-성인 { --blue: #02a262; --blue-dark: #027a4c; --blue-soft: #e6f7ef; }
   body.grp-아동 { --blue: #f76808; --blue-dark: #c95300; --blue-soft: #fff1e6; }
@@ -261,13 +263,7 @@
     </div>
 
     <div class="field-label">수강료 면제 해당 여부</div>
-    <div class="choice-grid benefit" id="benefitGrid">
-      <button class="choice on" data-b="해당없음" onclick="pickBenefit('해당없음')">해당 없음</button>
-      <button class="choice" data-b="기초생활수급자" onclick="pickBenefit('기초생활수급자')">기초생활수급자</button>
-      <button class="choice" data-b="차상위계층" onclick="pickBenefit('차상위계층')">차상위계층</button>
-      <button class="choice" data-b="국가유공자" onclick="pickBenefit('국가유공자')">국가유공자</button>
-      <button class="choice wide" data-b="중증장애인" onclick="pickBenefit('중증장애인')">중증장애인</button>
-    </div>
+    <div class="choice-grid benefit" id="benefitGrid"></div>
   </section>
 
   <!-- 2. 생년월일 · 연락처 (키패드) -->
@@ -377,6 +373,8 @@
   // 학기 설정값 (나이 범위, 최대 과목 수) — 서버에서 받아 옴
   let ageRange = [0, 200];
   let maxCourses = 5;
+  let benefits = ['해당없음'];
+  let waitAllowed = true;
   let curDay = '월';
   let stepId = 'sHome';
   let doneTimer = null;
@@ -525,6 +523,20 @@
     document.querySelectorAll('#genderGrid .choice').forEach(b => b.classList.toggle('on', b.dataset.g === g));
   }
 
+  // 수강료 면제 항목 버튼 (학기 설정값)
+  function renderBenefits() {
+    const grid = document.getElementById('benefitGrid');
+    grid.innerHTML = benefits.map((b, i) => {
+      const wide = benefits.length % 2 === 1 && i === benefits.length - 1 ? ' wide' : '';
+      return '<button class="choice' + wide + '" data-b="' + esc(b) + '">' + esc(b === '해당없음' ? '해당 없음' : b) + '</button>';
+    }).join('');
+    grid.onclick = e => {
+      const btn = e.target.closest('.choice');
+      if (btn) pickBenefit(btn.dataset.b);
+    };
+    pickBenefit(benefits.indexOf(form.benefit) !== -1 ? form.benefit : benefits[0]);
+  }
+
   function pickBenefit(b) {
     form.benefit = b;
     document.querySelectorAll('#benefitGrid .choice').forEach(x => x.classList.toggle('on', x.dataset.b === b));
@@ -547,7 +559,7 @@
     document.getElementById('name').value = '';
     document.getElementById('cname').value = '';
     pickGender('');
-    pickBenefit('해당없음');
+    pickBenefit(benefits[0]);
     document.getElementById('consentBox').classList.remove('on');
     document.getElementById('consentMark').textContent = '';
     paintFields();
@@ -678,7 +690,9 @@
         if (c.current >= c.quota) { cls = 'bad'; text = '추첨 예정 (정원 초과 ' + (c.current - c.quota) + '명)'; }
         else if (c.remaining <= 3) { cls = 'warn'; text = '마감 임박 · ' + c.remaining + '석 남음'; }
       }
-      return '<div class="course' + (on ? ' on' : '') + '" onclick="toggleCourse(' + idx + ')">' +
+      const closed = !waitAllowed && c.current >= c.quota && !on;
+      if (closed) { cls = 'bad'; text = '정원 마감 (신청 불가)'; }
+      return '<div class="course' + (on ? ' on' : '') + (closed ? ' closed' : '') + '" onclick="toggleCourse(' + idx + ')">' +
         '<div class="mark">✓</div>' +
         '<div class="body"><div class="cname">' + esc(name) + '</div>' +
         '<div class="cmeta">' + esc(c.start || '미지정') + ' ~ ' + esc(c.end || '미지정') + (fee ? ' · ' + esc(fee) : '') + '</div>' +
@@ -697,6 +711,9 @@
   function toggleCourse(idx) {
     const target = courses[idx];
     const targetName = target.display;
+    if (!waitAllowed && !selected.includes(idx) && target.current >= target.quota) {
+      return alert('정원이 마감된 강좌예요. 다른 강좌를 골라 주세요.');
+    }
 
     if (currentUserJob && currentUserJob.start && currentUserJob.end && target.start && target.end) {
       if (target.start < currentUserJob.end && target.end > currentUserJob.start) {
@@ -839,6 +856,9 @@
         courseMode = data.mode || '추첨';
         group = data.group || '어르신';
         ageRange = [data.ageMin, data.ageMax];
+        benefits = (data.benefits && data.benefits.length) ? data.benefits : ['해당없음'];
+        waitAllowed = data.waitAllowed !== false;
+        renderBenefits();
         maxCourses = data.maxCourses || 5;
         document.getElementById('courseHint').textContent = '최대 ' + maxCourses + '개까지 고를 수 있어요. 한 번 더 누르면 취소돼요.';
         applyGroup();

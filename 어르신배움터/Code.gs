@@ -264,8 +264,12 @@ function ageOf_(dob6) {
 // 학기별 신청 조건: 환경설정 B8 나이 최소, B9 나이 최대, B10 최대 신청 과목 수 (비우면 대상별 기본값)
 const DEFAULT_AGE_ = { '어르신': [60, 120], '성인': [20, 64], '아동': [6, 13] };
 
+const DEFAULT_BENEFITS_ = ['해당없음', '기초생활수급자', '차상위계층', '국가유공자', '중증장애인'];
+
+// 학기별 신청 조건 전부 (B8 나이 최소, B9 나이 최대, B10 최대 과목 수, B11 면제 항목, B12 대기 허용)
 function conditionsOf_(t) {
   const sheet = termInfo_(t).getSheetByName(CONFIG_TAB);
+  const txt = a1 => sheet ? String(sheet.getRange(a1).getDisplayValue() || '').trim() : '';
   const num = a1 => {
     if (!sheet) return NaN;
     const v = String(sheet.getRange(a1).getDisplayValue() || '').trim();
@@ -277,7 +281,19 @@ function conditionsOf_(t) {
   if (isNaN(max)) max = def[1];
   let maxCourses = num('B10');
   if (isNaN(maxCourses) || maxCourses < 1) maxCourses = 5;
-  return { ageMin: min, ageMax: max, maxCourses: maxCourses };
+  let benefits = txt('B11').split(/[,\n]/).map(x => x.trim()).filter(Boolean);
+  if (!benefits.length) benefits = DEFAULT_BENEFITS_.slice();
+  const waitAllowed = txt('B12') !== 'N';
+  return { ageMin: min, ageMax: max, maxCourses: maxCourses, benefits: benefits, waitAllowed: waitAllowed };
+}
+
+// 한 강좌에 지금 신청되어 있는 인원 (행 기준)
+function countCourse_(data, hdrs, courseName) {
+  let n = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (rowCourses_(data[i], hdrs).indexOf(courseName) !== -1) n++;
+  }
+  return n;
 }
 
 // 나이 확인 (생년월일 6자리 기준)
@@ -442,6 +458,7 @@ function submitForm(f) {
     const selected = Array.isArray(f.selectedCourses) ? f.selectedCourses : [];
     if (selected.length === 0) throw new Error('과목을 선택해 주세요.');
     if (selected.length > cond.maxCourses) throw new Error('한 번에 최대 ' + cond.maxCourses + '개까지 신청할 수 있어요.');
+    if (cond.benefits.indexOf(String(f.benefit || '')) === -1) throw new Error('수강료 면제 항목을 다시 선택해 주세요.');
 
     const byDisplay = {};
     readCourses_(t).forEach(c => { byDisplay[c.display] = c; });
@@ -461,6 +478,10 @@ function submitForm(f) {
     const dup = selected.map(d => byDisplay[d].name).filter(n => already[n]);
     if (dup.length) {
       throw new Error('이미 신청한 강좌입니다: ' + dup.join(', ') + '\n다른 강좌는 추가로 신청할 수 있어요.');
+    }
+    if (!cond.waitAllowed) {
+      const full = selected.map(d => byDisplay[d]).filter(c => countCourse_(data, hdrs, c.name) >= c.quota).map(c => c.name);
+      if (full.length) throw new Error('정원이 마감된 강좌예요: ' + full.join(', '));
     }
     const total = Object.keys(already).length + selected.length;
     if (total > cond.maxCourses) {
@@ -633,7 +654,8 @@ function getInitialData(termId) {
 
   const cond = conditionsOf_(t);
   return { courses: cs, jobTimes: jobTimes, restrictions: restrictions, mode: modeOf_(t), group: t.group,
-    ageMin: cond.ageMin, ageMax: cond.ageMax, maxCourses: cond.maxCourses };
+    ageMin: cond.ageMin, ageMax: cond.ageMax, maxCourses: cond.maxCourses,
+    benefits: cond.benefits, waitAllowed: cond.waitAllowed };
 }
 
 // ==========================================

@@ -1863,7 +1863,9 @@ function getLearnNotice(termId) {
   const sheet = learnInfo_(t).getSheetByName('환경설정');
   const get = a1 => sheet ? String(sheet.getRange(a1).getDisplayValue() || '') : '';
   return { period: get('B4'), contact: get('B5'), extra: get('B6'), mode: get('B7') === '선착순' ? '선착순' : '추첨',
-    ageMin: get('B8'), ageMax: get('B9'), maxCourses: get('B10') };
+    ageMin: get('B8'), ageMax: get('B9'), maxCourses: get('B10'),
+    benefits: get('B11') || '해당없음\n기초생활수급자\n차상위계층\n국가유공자\n중증장애인',
+    waitAllowed: get('B12') !== 'N' };
 }
 
 function saveLearnNotice(termId, data) {
@@ -1873,11 +1875,13 @@ function saveLearnNotice(termId, data) {
     const sheet = learnInfo_(t).getSheetByName('환경설정');
     if (!sheet) throw new Error("강좌정보 시트에 '환경설정' 탭이 없습니다.");
     const clean = v => String(v == null ? '' : v).replace(/\r/g, '').trim().slice(0, 500);
-    sheet.getRange('A4:A10').setValues([['수납기간'], ['문의'], ['추가 안내'], ['접수 방식'], ['나이 최소'], ['나이 최대'], ['최대 신청 과목 수']]);
+    sheet.getRange('A4:A12').setValues([['수납기간'], ['문의'], ['추가 안내'], ['접수 방식'], ['나이 최소'], ['나이 최대'], ['최대 신청 과목 수'], ['수강료 면제 항목'], ['정원 초과 시 대기 허용']]);
     const num = v => { const n = parseInt(v, 10); return isNaN(n) || n < 0 ? '' : String(n); };
-    sheet.getRange('B4:B10').setNumberFormat('@').setValues([
+    const benefits = clean(data.benefits).split(/[,\n]/).map(x => x.trim()).filter(Boolean).join('\n');
+    sheet.getRange('B4:B12').setNumberFormat('@').setValues([
       [clean(data.period)], [clean(data.contact)], [clean(data.extra)], [data.mode === '선착순' ? '선착순' : '추첨'],
-      [num(data.ageMin)], [num(data.ageMax)], [num(data.maxCourses)]
+      [num(data.ageMin)], [num(data.ageMax)], [num(data.maxCourses)],
+      [benefits], [data.waitAllowed === false ? 'N' : 'Y']
     ]);
     SpreadsheetApp.flush();
     log_('배움터 결과 안내 문구', t.name);

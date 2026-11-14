@@ -834,6 +834,12 @@
                 <div class="col-4"><label class="form-label small">나이 최대 (세)</label><input id="ntcAgeMax" type="number" min="0" class="form-control form-control-sm" placeholder="예) 120"></div>
                 <div class="col-4"><label class="form-label small">최대 과목 수</label><input id="ntcMaxCourses" type="number" min="1" class="form-control form-control-sm" placeholder="예) 5"></div>
               </div>
+              <div class="row g-2 mb-2">
+                <div class="col-12 col-md-7"><label class="form-label small">수강료 면제 항목 (한 줄에 하나, 첫 줄이 기본 선택)</label><textarea id="ntcBenefits" class="form-control form-control-sm" rows="4" placeholder="해당없음&#10;기초생활수급자&#10;차상위계층"></textarea></div>
+                <div class="col-12 col-md-5"><label class="form-label small">정원 초과 시</label>
+                  <select id="ntcWait" class="form-select form-select-sm"><option value="Y">대기 허용 (정원 초과 신청 받음)</option><option value="N">대기 불허 (정원 마감 후 신청 막음)</option></select>
+                </div>
+              </div>
               <p class="small text-muted mb-2">신청자가 '내 신청 확인'에서 결과를 볼 때 아래에 나오는 내용이에요. 바꾸면 바로 반영돼요.</p>
               <div class="row g-2">
                 <div class="col-12"><label class="form-label small">접수 방식</label>
@@ -4560,6 +4566,8 @@
         document.getElementById('ntcAgeMin').value = n.ageMin || '';
         document.getElementById('ntcAgeMax').value = n.ageMax || '';
         document.getElementById('ntcMaxCourses').value = n.maxCourses || '';
+        document.getElementById('ntcBenefits').value = n.benefits || '';
+        document.getElementById('ntcWait').value = n.waitAllowed === false ? 'N' : 'Y';
       }).catch(fail);
     }
 
@@ -4615,7 +4623,8 @@
 
     function saveNoticeValue() {
       const data = { mode: lv('ntcMode'), period: lv('ntcPeriod'), contact: lv('ntcContact'), extra: document.getElementById('ntcExtra').value.trim(),
-        ageMin: lv('ntcAgeMin'), ageMax: lv('ntcAgeMax'), maxCourses: lv('ntcMaxCourses') };
+        ageMin: lv('ntcAgeMin'), ageMax: lv('ntcAgeMax'), maxCourses: lv('ntcMaxCourses'),
+        benefits: document.getElementById('ntcBenefits').value, waitAllowed: lv('ntcWait') !== 'N' };
       save('saveLearnNotice', ctTermId, data).then(() => toast('접수 결과 안내 문구를 저장했습니다.')).catch(fail);
     }
 
