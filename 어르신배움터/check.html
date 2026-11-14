@@ -107,6 +107,7 @@
         btn.disabled = false;
         if (!data.applied) return alert('입력하신 정보와 일치하는 신청 내역이 없습니다.');
         document.getElementById('displayArea').classList.remove('hidden');
+        window.rvCtx = { phone: phone };
         renderUnifiedResultUI(data, name, dob, false);
       })
       .withFailureHandler(err => {

@@ -1837,6 +1837,31 @@ function createLearnTerm(data) {
   });
 }
 
+// ---------- 접수 결과 화면 안내 문구 (신청자가 조회할 때 보이는 수납기간·문의·추가 안내) ----------
+// 환경설정 탭 A4:A6 항목명, B4:B6 내용 (접수 웹앱 noticeOf_ 가 같은 칸을 읽음)
+function getLearnNotice(termId) {
+  requireUser_();
+  const t = getLearnTerm_(termId);
+  const sheet = learnInfo_(t).getSheetByName('환경설정');
+  const get = a1 => sheet ? String(sheet.getRange(a1).getDisplayValue() || '') : '';
+  return { period: get('B4'), contact: get('B5'), extra: get('B6') };
+}
+
+function saveLearnNotice(termId, data) {
+  requireUser_();
+  return withLock_(() => {
+    const t = getLearnTerm_(termId);
+    const sheet = learnInfo_(t).getSheetByName('환경설정');
+    if (!sheet) throw new Error("강좌정보 시트에 '환경설정' 탭이 없습니다.");
+    const clean = v => String(v == null ? '' : v).replace(/\r/g, '').trim().slice(0, 500);
+    sheet.getRange('A4:A6').setValues([['수납기간'], ['문의'], ['추가 안내']]);
+    sheet.getRange('B4:B6').setNumberFormat('@').setValues([[clean(data.period)], [clean(data.contact)], [clean(data.extra)]]);
+    SpreadsheetApp.flush();
+    log_('배움터 결과 안내 문구', t.name);
+    return getLearnNotice(t.id);
+  });
+}
+
 // 부서: 직장 정보(조직 정보)의 부서를 먼저 쓰고, 없으면 조직 단위(OU) 마지막 이름을 씀
 // 예) 조직 단위 '/거제시종합사회복지관/5.사례관리팀' → '5.사례관리팀'
 function deptOf_(user, org) {

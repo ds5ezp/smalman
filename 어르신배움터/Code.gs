@@ -63,6 +63,13 @@ function courseSheet_(t) {
   return s;
 }
 
+// 결과 화면 안내 문구: 환경설정 B4 수납기간, B5 문의, B6 추가 안내 (대시보드에서 입력)
+function noticeOf_(t) {
+  const sheet = termInfo_(t).getSheetByName(CONFIG_TAB);
+  const get = a1 => sheet ? String(sheet.getRange(a1).getDisplayValue() || '').trim() : '';
+  return { period: get('B4'), contact: get('B5'), extra: get('B6') };
+}
+
 // 일정: 환경설정 A2 접수 시작, B2 마감, C2 결과 발표, D2 신청 화면 주소
 function scheduleOf_(t) {
   const config = termInfo_(t).getSheetByName(CONFIG_TAB);
@@ -296,7 +303,9 @@ function checkTotalStatus(name, phone, dob, termId) {
       }
     });
     const ts = new Date(row[0]);
+    const nameCol = hdrs.findIndex(h => h.indexOf('성명') !== -1);
     appInfo = {
+      name: nameCol === -1 ? name : String(row[nameCol] || '').trim(),
       date: isNaN(ts.getTime()) ? '' : Utilities.formatDate(ts, 'GMT+9', 'yyyy-MM-dd HH:mm'),
       appliedCourses: cs.join(', ')
     };
@@ -328,7 +337,8 @@ function checkTotalStatus(name, phone, dob, termId) {
     applied: appInfo,
     results: results,
     isResultOpen: isResultOpen,
-    openTimeText: s.result ? Utilities.formatDate(s.result, 'GMT+9', 'MM월 dd일 HH시') : ''
+    openTimeText: s.result ? Utilities.formatDate(s.result, 'GMT+9', 'MM월 dd일 HH시') : '',
+    notice: noticeOf_(t)
   };
 }
 

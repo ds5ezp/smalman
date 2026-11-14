@@ -1,0 +1,177 @@
+<style>
+  .rv { font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; color: #191f28; letter-spacing: -0.3px; }
+  .rv * { box-sizing: border-box; }
+  .rv-card { background: #fff; border-radius: 28px; padding: 28px 30px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  .rv-h { font-size: 26px; font-weight: 800; margin: 0 0 16px; letter-spacing: -0.5px; }
+
+  .rv-profile { display: flex; align-items: center; gap: 22px; }
+  .rv-avatar { flex: 0 0 auto; width: 96px; height: 96px; border-radius: 50%; background: #e8f3ff; color: #1b64da; font-size: 42px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .rv-label { font-size: 22px; color: #6b7684; font-weight: 600; }
+  .rv-name { font-size: 40px; font-weight: 800; line-height: 1.25; margin-top: 4px; }
+  .rv-sub { font-size: 22px; color: #8b95a1; margin-top: 6px; }
+
+  .rv-course { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #f7f8fa; border-radius: 20px; padding: 20px 22px; margin-bottom: 12px; }
+  .rv-course:last-child { margin-bottom: 0; }
+  .rv-cname { font-size: 28px; font-weight: 800; line-height: 1.35; word-break: keep-all; }
+  .rv-cmeta { font-size: 21px; color: #6b7684; margin-top: 6px; line-height: 1.4; }
+  .rv-pill { flex: 0 0 auto; font-size: 21px; font-weight: 800; padding: 10px 16px; border-radius: 14px; white-space: nowrap; }
+  .rv-pill.pass { background: #e6f7ef; color: #02a262; }
+  .rv-pill.wait { background: #fff1e6; color: #f76808; }
+  .rv-pill.check { background: #eef1f4; color: #4e5968; }
+  .rv-pill.before { background: #e8f3ff; color: #1b64da; }
+  .rv-pill.out { background: #feeceb; color: #f04452; }
+  .rv-empty { font-size: 24px; color: #8b95a1; padding: 12px 0; }
+
+  .rv-status { display: flex; align-items: center; gap: 22px; }
+  .rv-status .ic { flex: 0 0 auto; width: 76px; height: 76px; border-radius: 24px; font-size: 40px; display: flex; align-items: center; justify-content: center; background: #e8f3ff; }
+  .rv-status .t1 { font-size: 30px; font-weight: 800; line-height: 1.35; }
+  .rv-status .t2 { font-size: 23px; color: #6b7684; margin-top: 6px; line-height: 1.5; }
+  .rv-status.open .ic { background: #e6f7ef; }
+
+  .rv-notice dl { margin: 0; }
+  .rv-notice .row { display: flex; gap: 18px; padding: 16px 0; border-bottom: 2px solid #f2f4f6; }
+  .rv-notice .row:last-child { border-bottom: 0; padding-bottom: 0; }
+  .rv-notice dt { flex: 0 0 120px; font-size: 22px; font-weight: 700; color: #6b7684; }
+  .rv-notice dd { margin: 0; font-size: 24px; font-weight: 600; line-height: 1.6; word-break: keep-all; }
+  .rv-notice a { color: #1b64da; text-decoration: none; font-weight: 800; }
+  .rv-notice .none { font-size: 24px; color: #8b95a1; }
+
+  .rv-actions { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 8px; }
+  .rv-btn { border: 0; border-radius: 26px; font-size: 32px; font-weight: 800; height: 104px; cursor: pointer; letter-spacing: -0.6px; }
+  .rv-btn.primary { background: #3182f6; color: #fff; box-shadow: 0 6px 16px rgba(49,130,246,.3); }
+  .rv-btn.danger { background: #fff; color: #f04452; box-shadow: 0 2px 8px rgba(0,0,0,.06); font-size: 26px; height: 84px; }
+  .rv-btn:active { transform: scale(.985); }
+
+  /* 핸드폰·좁은 화면 */
+  @media (max-width: 640px) {
+    .rv-card { padding: 22px 20px; border-radius: 22px; }
+    .rv-h { font-size: 22px; }
+    .rv-avatar { width: 72px; height: 72px; font-size: 32px; }
+    .rv-name { font-size: 30px; }
+    .rv-cname { font-size: 22px; }
+    .rv-cmeta, .rv-sub { font-size: 18px; }
+    .rv-pill { font-size: 17px; padding: 8px 12px; }
+    .rv-status .t1 { font-size: 23px; }
+    .rv-status .t2 { font-size: 18px; }
+    .rv-status .ic { width: 56px; height: 56px; font-size: 30px; border-radius: 18px; }
+    .rv-notice dt { flex-basis: 84px; font-size: 18px; }
+    .rv-notice dd { font-size: 18px; }
+    .rv-btn { font-size: 24px; height: 76px; border-radius: 20px; }
+    .rv-btn.danger { font-size: 20px; height: 64px; }
+  }
+</style>
+
+<div class="rv">
+  <section class="rv-card rv-profile">
+    <div class="rv-avatar" id="rvAvatar">?</div>
+    <div>
+      <div class="rv-label">접수자</div>
+      <div class="rv-name" id="rvName"></div>
+      <div class="rv-sub" id="rvDate"></div>
+    </div>
+  </section>
+
+  <section class="rv-card">
+    <h2 class="rv-h">신청한 강좌</h2>
+    <div id="rvCourses"></div>
+  </section>
+
+  <section class="rv-card rv-status" id="rvStatus"></section>
+
+  <section class="rv-card rv-notice">
+    <h2 class="rv-h">안내사항</h2>
+    <dl id="rvNotice"></dl>
+  </section>
+
+  <div class="rv-actions">
+    <button type="button" class="rv-btn primary" onclick="rvGoHome()">확인 완료 · 처음 화면으로</button>
+    <button type="button" class="rv-btn danger" onclick="rvCancel()">신청 취소하기</button>
+  </div>
+</div>
+
+<script>
+  // 조회에 쓴 정보 (취소할 때 필요). 조회 화면에서 채워 줌
+  window.rvCtx = window.rvCtx || {};
+
+  function rvEsc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+  }
+
+  function rvStatusOf(open, r) {
+    if (!open) return { cls: 'before', text: '결과 발표 전' };
+    if (!r) return { cls: 'pass', text: '합격' };
+    const s = String(r.status || '');
+    if (s.indexOf('합격') !== -1) return { cls: 'pass', text: '합격' };
+    if (s.indexOf('대기') !== -1 && s.indexOf('확인') === -1) return { cls: 'wait', text: s.replace('대기자', '대기') };
+    if (s.indexOf('탈락') !== -1) return { cls: 'out', text: '미선정' };
+    return { cls: 'check', text: '명단 확인 중' };
+  }
+
+  function renderUnifiedResultUI(res, name, dob, isCheck) {
+    const app = res.applied || {};
+    const who = app.name || name || '';
+    const open = !!res.isResultOpen;
+    const results = res.results || [];
+
+    document.getElementById('rvName').textContent = who + ' 님';
+    document.getElementById('rvAvatar').textContent = who ? who.charAt(0) : '?';
+    document.getElementById('rvDate').textContent = app.date ? '접수일시 ' + app.date : '';
+
+    // 신청 강좌 목록: "[월] 강좌명 | 시간 | 수강료" 형식
+    const names = String(app.appliedCourses || '').split(', ').filter(Boolean);
+    document.getElementById('rvCourses').innerHTML = names.length ? names.map(raw => {
+      const parts = raw.replace(/^\[(월|화|수|목|금)\]\s*/, '').split('|').map(x => x.trim());
+      const courseName = parts[0];
+      const meta = parts.slice(1).filter(Boolean).join(' · ');
+      const r = results.find(x => x.course === courseName);
+      const st = rvStatusOf(open, r);
+      return '<div class="rv-course"><div><div class="rv-cname">' + rvEsc(courseName) + '</div>' +
+        (meta ? '<div class="rv-cmeta">' + rvEsc(meta) + '</div>' : '') + '</div>' +
+        '<span class="rv-pill ' + st.cls + '">' + rvEsc(st.text) + '</span></div>';
+    }).join('') : '<div class="rv-empty">신청한 강좌가 없어요</div>';
+
+    // 결과 상태
+    const statusBox = document.getElementById('rvStatus');
+    if (open) {
+      statusBox.className = 'rv-card rv-status open';
+      statusBox.innerHTML = '<div class="ic">📢</div><div><div class="t1">결과가 발표되었어요</div>' +
+        '<div class="t2">위 강좌 옆의 표시를 확인해 주세요.</div></div>';
+    } else {
+      statusBox.className = 'rv-card rv-status';
+      statusBox.innerHTML = '<div class="ic">⏳</div><div><div class="t1">결과는 ' + rvEsc(res.openTimeText || '정해진 날') + ' 공개돼요</div>' +
+        '<div class="t2">그 전에는 결과가 보이지 않아요.</div></div>';
+    }
+
+    // 안내사항 (대시보드에서 입력한 내용)
+    const n = res.notice || {};
+    const rows = [];
+    if (n.period) rows.push(['수납기간', rvEsc(n.period)]);
+    if (n.contact) rows.push(['문의', rvEsc(n.contact).replace(/(\d{2,3}-\d{3,4}-\d{4}|\d{3,4}-\d{4})/g, '<a href="tel:$1">$1</a>')]);
+    if (n.extra) rows.push(['추가 안내', rvEsc(n.extra).replace(/\n/g, '<br>')]);
+    document.getElementById('rvNotice').innerHTML = rows.length
+      ? rows.map(r => '<div class="row"><dt>' + r[0] + '</dt><dd>' + r[1] + '</dd></div>').join('')
+      : '<div class="none">안내 문구가 아직 없어요.</div>';
+
+    window.rvCtx = { name: who || name, dob: dob, phone: (window.rvCtx && window.rvCtx.phone) || '' };
+  }
+
+  // 처음 화면으로 (키오스크는 상태 초기화, 일반 화면은 신청 화면 주소로 이동)
+  function rvGoHome() {
+    if (typeof resetAll === 'function') return resetAll(true);
+    window.top.location.href = '__WEB_APP_URL__?term=' + encodeURIComponent(TERM);
+  }
+
+  // 신청 취소 (접수 마감 전에만 서버에서 허용)
+  function rvCancel() {
+    const c = window.rvCtx || {};
+    if (!c.name) return alert('조회 정보가 없어요. 다시 조회해 주세요.');
+    if (!confirm('신청을 취소할까요?\n취소하면 되돌릴 수 없어요.')) return;
+    google.script.run
+      .withSuccessHandler(r => {
+        alert(r.msg);
+        if (r.success) rvGoHome();
+      })
+      .withFailureHandler(err => alert('취소 중 오류가 생겼어요: ' + err.message))
+      .deleteApplicantByVerification(c.name, c.dob, c.phone, TERM);
+  }
+</script>

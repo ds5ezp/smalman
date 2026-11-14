@@ -159,6 +159,66 @@
 
     /* 결과 */
     .result-wrap { flex: 1; }
+    /* 핸드폰·PC: 키패드 대신 기기 키보드로 입력 */
+    .native [data-kp] { display: none !important; }
+    .native .fval { display: none !important; }
+    .fnative { display: none; width: 100%; border: 0; background: transparent; font: inherit; font-size: 44px; font-weight: 800; color: var(--text); outline: none; padding: 0; margin-top: 6px; letter-spacing: 1px; }
+    .native .fnative { display: block; }
+    .native .fbox.active .fnative { color: var(--text); }
+    .native .fnative::placeholder { color: #aab2bd; font-weight: 600; font-size: 26px; letter-spacing: 0; }
+    .native .fbox { cursor: text; }
+    .native .kiosk { padding: 0 16px; }
+    .native .foot { padding: 12px 16px 18px; }
+    .native .btn { height: 72px; font-size: 26px; }
+    .native .btn.ghost { flex-basis: 120px; }
+    @media (max-width: 640px) {
+      body { font-size: 19px; }
+      .top img { max-height: 40px; }
+      .term { font-size: 17px; }
+      .step-label { font-size: 18px; }
+      h1.q { font-size: 32px; margin: 6px 2px 18px; }
+      .hint { font-size: 17px; }
+      .home h1 { font-size: 40px; }
+      .home .lead { font-size: 20px; }
+      .hcard { padding: 24px 22px; min-height: 120px; border-radius: 24px; }
+      .hcard .ic { font-size: 44px; }
+      .hcard b { font-size: 24px; }
+      .hcard small { font-size: 16px; }
+      .text-input { height: 64px; font-size: 22px; border-radius: 16px; padding: 0 18px; margin-bottom: 20px; }
+      .field-label { font-size: 18px; }
+      .choice-grid { gap: 10px; margin-bottom: 20px; }
+      .choice { min-height: 64px; font-size: 22px; border-radius: 18px; }
+      .choice-grid.benefit .choice { min-height: 60px; font-size: 19px; }
+      .fbox { padding: 14px 18px; border-radius: 18px; margin-bottom: 12px; }
+      .fbox .flabel { font-size: 17px; }
+      .fbox .fval { font-size: 30px; min-height: 40px; }
+      .fval.ph { font-size: 22px; }
+      .fnative { font-size: 28px; }
+      .kp { height: 64px; font-size: 28px; border-radius: 16px; }
+      .kp.sub { font-size: 20px; }
+      .keypad { gap: 8px; }
+      .day-tab { height: 58px; font-size: 20px; border-radius: 16px; }
+      .day-tab .cnt { font-size: 14px; min-width: 24px; height: 24px; line-height: 24px; top: 6px; right: 8px; }
+      .course { padding: 16px 16px; min-height: auto; border-radius: 20px; gap: 14px; margin-bottom: 12px; }
+      .course .mark { width: 36px; height: 36px; font-size: 22px; flex-basis: 36px; }
+      .course .cname { font-size: 22px; }
+      .course .cmeta { font-size: 16px; }
+      .course .badge { font-size: 15px; padding: 5px 10px; }
+      .sum-card { padding: 18px 16px; border-radius: 20px; }
+      .sum-row { font-size: 18px; }
+      .sum-course { font-size: 18px; }
+      .sum-course small { font-size: 15px; }
+      .consent-box { font-size: 18px; padding: 18px; border-radius: 20px; }
+      .consent-box .mark { width: 36px; height: 36px; font-size: 22px; }
+      .consent-box small { font-size: 14px; }
+      .btn { height: 60px; font-size: 20px; border-radius: 18px; }
+      .btn.ghost { flex-basis: 96px; }
+      .foot { padding: 10px 12px 14px; }
+      .foot-inner { gap: 10px; }
+      .done .big-check { width: 120px; height: 120px; font-size: 64px; }
+      .done h1 { font-size: 32px; }
+      .done p { font-size: 18px; }
+    }
   </style>
 </head>
 <body>
@@ -206,14 +266,16 @@
     <div class="progress"><span class="on"></span><span class="on"></span><span></span><span></span></div>
     <div class="step-label">2 / 4 · 연락처</div>
     <h1 class="q">생년월일과 연락처를<br>눌러서 적어 주세요</h1>
-    <button class="fbox active" data-f="dob" onclick="pickField('dob')">
+    <div class="fbox active" data-f="dob" onclick="pickField('dob')">
       <span class="flabel">생년월일 (6자리)</span>
       <span class="fval ph" id="v-dob" data-ph="예) 500101"></span>
-    </button>
-    <button class="fbox" data-f="phone" onclick="pickField('phone')">
+      <input class="fnative" id="n-dob" type="text" inputmode="numeric" maxlength="6" placeholder="예) 500101" autocomplete="off">
+    </div>
+    <div class="fbox" data-f="phone" onclick="pickField('phone')">
       <span class="flabel">연락처</span>
       <span class="fval ph" id="v-phone" data-ph="010-0000-0000"></span>
-    </button>
+      <input class="fnative" id="n-phone" type="tel" inputmode="numeric" maxlength="13" placeholder="010-0000-0000" autocomplete="off">
+    </div>
     <div class="keypad" data-kp></div>
   </section>
 
@@ -255,14 +317,16 @@
     <div class="step-label">내 신청 확인</div>
     <h1 class="q">신청할 때 적은 정보를<br>적어 주세요</h1>
     <input type="text" id="cname" class="text-input" placeholder="실명을 입력해 주세요" autocomplete="off" oninput="syncNames()">
-    <button class="fbox active" data-f="cdob" onclick="pickField('cdob')">
+    <div class="fbox active" data-f="cdob" onclick="pickField('cdob')">
       <span class="flabel">생년월일 (6자리)</span>
       <span class="fval ph" id="v-cdob" data-ph="예) 500101"></span>
-    </button>
-    <button class="fbox" data-f="cphone" onclick="pickField('cphone')">
+      <input class="fnative" id="n-cdob" type="text" inputmode="numeric" maxlength="6" placeholder="예) 500101" autocomplete="off">
+    </div>
+    <div class="fbox" data-f="cphone" onclick="pickField('cphone')">
       <span class="flabel">연락처</span>
       <span class="fval ph" id="v-cphone" data-ph="010-0000-0000"></span>
-    </button>
+      <input class="fnative" id="n-cphone" type="tel" inputmode="numeric" maxlength="13" placeholder="010-0000-0000" autocomplete="off">
+    </div>
     <div class="keypad" data-kp></div>
   </section>
 
@@ -313,6 +377,27 @@
     cphone: { max: 11, fmt: fmtPhone }
   };
   let kpTarget = 'dob';
+
+  // 큰 터치 모니터(세로 사이니지)만 키패드 사용, 핸드폰·PC는 기기 키보드 사용
+  const KIOSK = window.matchMedia('(pointer: coarse)').matches && window.innerWidth >= 700;
+  if (!KIOSK) document.body.classList.add('native');
+
+  // 기기 키보드 입력칸 → form 값 (숫자만, 연락처는 하이픈 자동)
+  function bindNative() {
+    ['dob', 'phone', 'cdob', 'cphone'].forEach(key => {
+      const el = document.getElementById('n-' + key);
+      if (!el) return;
+      el.addEventListener('input', () => {
+        const max = FIELDS[key].max;
+        const digits = el.value.replace(/\D/g, '').slice(0, max);
+        form[key] = digits;
+        el.value = FIELDS[key].fmt(digits);
+        paintFields();
+      });
+      el.addEventListener('focus', () => { pickField(key); el.value = form[key] ? FIELDS[key].fmt(form[key]) : ''; });
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); goNext(); } });
+    });
+  }
 
   function fmtPhone(d) {
     if (d.length < 4) return d;
@@ -387,6 +472,8 @@
       const v = form[key];
       el.textContent = v ? FIELDS[key].fmt(v) : el.dataset.ph;
       el.classList.toggle('ph', !v);
+      const n = document.getElementById('n-' + key);
+      if (n && document.activeElement !== n) n.value = v ? FIELDS[key].fmt(v) : '';
     });
   }
 
@@ -656,6 +743,7 @@
     google.script.run
       .withSuccessHandler(res => {
         if (!res.applied) return alert('입력하신 정보와 맞는 신청 내역이 없어요.');
+        window.rvCtx = { phone: phone };
         goStep('sResult');
         renderUnifiedResultUI(res, name, dob, true);
       })
@@ -675,6 +763,7 @@
   // ---------- 시작 ----------
   window.addEventListener('DOMContentLoaded', () => {
     buildKeypads();
+    bindNative();
     paintFields();
     google.script.run
       .withSuccessHandler(base64Data => {
