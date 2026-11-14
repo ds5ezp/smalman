@@ -784,6 +784,9 @@
             <div class="card p-3">
               <h6 class="mb-3">새 학기 만들기</h6>
               <div class="row g-2">
+                <div class="col-12"><label class="form-label small">대상</label>
+                  <select id="ntGroup" class="form-select form-select-sm"><option value="어르신">어르신 배움터 (추첨)</option><option value="성인">성인 배움터 (선착순, 20~64세)</option><option value="아동">아동 배움터 (선착순, 6~13세, 보호자 입력)</option></select>
+                </div>
                 <div class="col-6"><label class="form-label small">학기ID</label><input id="ntId" class="form-control form-control-sm" placeholder="예) 2027H1"></div>
                 <div class="col-6"><label class="form-label small">학기명</label><input id="ntName" class="form-control form-control-sm" placeholder="예) 2027년 상반기 어르신 배움터"></div>
                 <div class="col-12"><label class="form-label small">접수 시작</label><input type="datetime-local" id="ntStart" class="form-control form-control-sm"></div>
@@ -4494,7 +4497,7 @@
 
     function renderTermList(list) {
       document.getElementById('ltList').innerHTML = list.length ? list.map(t =>
-        '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><div class="fw-semibold">' + esc(t.name) + '</div><div class="text-muted">' + esc(t.id) + '</div></div>' +
+        '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><div class="fw-semibold">' + esc(t.name) + '</div><div class="text-muted">' + esc(t.id) + ' · ' + esc(t.group || '어르신') + '</div></div>' +
         (t.active ? '<span class="badge text-bg-success">사용 중</span>' : '<button class="btn btn-sm btn-outline-primary" onclick="activateTermValue(\'' + esc(t.id) + '\')">사용으로 전환</button>') + '</div>'
       ).join('') : '<span class="text-muted">학기가 없습니다.</span>';
     }
@@ -4512,7 +4515,7 @@
     }
 
     function createLearnTermValue() {
-      const data = { termId: lv('ntId'), name: lv('ntName'), start: lv('ntStart'), end: lv('ntEnd'), result: lv('ntResult') };
+      const data = { group: lv('ntGroup'), termId: lv('ntId'), name: lv('ntName'), start: lv('ntStart'), end: lv('ntEnd'), result: lv('ntResult') };
       if (!confirm('"' + data.name + '" 학기를 만들까요?\n신청 시트와 강좌정보 시트가 새로 만들어집니다.')) return;
       save('createLearnTerm', data).then(r => {
         ctTermId = r.termId;

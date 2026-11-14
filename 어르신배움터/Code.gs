@@ -36,6 +36,7 @@ function listTerms_() {
     respTab: get(r, '신청탭') || 'Form Responses 1',
     courseTab: get(r, '강좌탭'),
     jobTab: get(r, '참여자탭') || '노인일자리참여자',
+    group: ['성인', '아동'].indexOf(get(r, '대상')) !== -1 ? get(r, '대상') : '어르신',
     active: get(r, '사용').toUpperCase() === 'Y'
   }));
 }
@@ -239,8 +240,37 @@ function modeOf_(t) {
   return v === '선착순' ? '선착순' : '추첨';
 }
 
+// 머리글: 정확히 같은 이름을 먼저 찾고, 없으면 포함된 이름을 찾음
 function headerIdx_(hdrs, key) {
+  const exact = hdrs.indexOf(key);
+  if (exact !== -1) return exact;
   return hdrs.findIndex(h => h.indexOf(key) !== -1);
+}
+
+// 생년월일 6자리(yymmdd)로 만 나이 계산 (한국 시간 기준)
+function ageOf_(dob6) {
+  const yy = parseInt(dob6.slice(0, 2), 10), mm = parseInt(dob6.slice(2, 4), 10), dd = parseInt(dob6.slice(4, 6), 10);
+  if (isNaN(yy) || isNaN(mm) || isNaN(dd)) return NaN;
+  const now = new Date();
+  const cy = Number(Utilities.formatDate(now, 'GMT+9', 'yyyy'));
+  const cm = Number(Utilities.formatDate(now, 'GMT+9', 'M'));
+  const cd = Number(Utilities.formatDate(now, 'GMT+9', 'd'));
+  const by = (yy > cy % 100 ? 1900 : 2000) + yy;
+  let age = cy - by;
+  if (cm < mm || (cm === mm && cd < dd)) age--;
+  return age;
+}
+
+// 대상별 신청 가능 나이
+function checkAge_(group, dob6) {
+  const rule = { '성인': [20, 64], '아동': [6, 13] }[group];
+  if (!rule) return;
+  const age = ageOf_(dob6);
+  if (isNaN(age) || age < rule[0] || age > rule[1]) {
+    throw new Error(group === '아동'
+      ? '아동 배움터는 6세~13세 아동만 신청할 수 있어요.'
+      : '성인 배움터는 20세~64세만 신청할 수 있어요.');
+  }
 }
 
 function toTs_(v) {
@@ -386,9 +416,12 @@ function submitForm(f) {
     const name = String(f.name || '').trim();
     const dob = normalizeDOBString(f.dob);
     const phone = String(f.phone || '').trim();
+    const guardian = String(f.guardian || '').trim();
     if (!name) throw new Error('성명을 입력해 주세요.');
     if (dob.length !== 6) throw new Error('생년월일 6자리를 입력해 주세요.');
     if (!PHONE_RE.test(phone)) throw new Error('연락처는 010-0000-0000 형식으로 입력해 주세요.');
+    if (t.group === '아동' && !guardian) throw new Error('보호자 성함을 입력해 주세요.');
+    checkAge_(t.group, dob);
 
     const selected = Array.isArray(f.selectedCourses) ? f.selectedCourses : [];
     if (selected.length === 0) throw new Error('과목을 선택해 주세요.');
@@ -416,6 +449,7 @@ function submitForm(f) {
     const nRow = new Array(hdrs.length).fill('');
     hdrs.forEach((h, i) => {
       if (h === '타임스탬프') { nRow[i] = new Date(); return; }
+      if (h.indexOf('보호자') !== -1) { nRow[i] = guardian; return; }
       if (h.indexOf('성명') !== -1) { nRow[i] = name; return; }
       if (h.indexOf('생년월일') !== -1) { nRow[i] = dob; return; }
       if (h.indexOf('성별') !== -1) { nRow[i] = String(f.gender || ''); return; }
@@ -576,7 +610,7 @@ function getInitialData(termId) {
     });
   }
 
-  return { courses: cs, jobTimes: jobTimes, restrictions: restrictions, mode: modeOf_(t) };
+  return { courses: cs, jobTimes: jobTimes, restrictions: restrictions, mode: modeOf_(t), group: t.group };
 }
 
 // ==========================================

@@ -243,8 +243,12 @@
   <section class="step hidden" id="sInfo">
     <div class="progress"><span class="on"></span><span></span><span></span><span></span></div>
     <div class="step-label">1 / 4 · 기본 정보</div>
-    <h1 class="q">성함을 적어 주세요</h1>
+    <h1 class="q" id="nameQ">성함을 적어 주세요</h1>
     <input type="text" id="name" class="text-input" placeholder="실명을 입력해 주세요" autocomplete="off" oninput="syncNames()">
+    <div id="guardianBox" class="hidden">
+      <div class="field-label">보호자 성함을 적어 주세요</div>
+      <input type="text" id="guardian" class="text-input" placeholder="보호자 실명" autocomplete="off" oninput="syncNames()">
+    </div>
 
     <div class="field-label">성별을 골라 주세요</div>
     <div class="choice-grid" id="genderGrid">
@@ -268,12 +272,12 @@
     <div class="step-label">2 / 4 · 연락처</div>
     <h1 class="q">생년월일과 연락처를<br>눌러서 적어 주세요</h1>
     <div class="fbox active" data-f="dob" onclick="pickField('dob')">
-      <span class="flabel">생년월일 (6자리)</span>
+      <span class="flabel" id="lab-dob">생년월일 (6자리)</span>
       <span class="fval ph" id="v-dob" data-ph="예) 500101"></span>
       <input class="fnative" id="n-dob" type="text" inputmode="numeric" maxlength="6" placeholder="예) 500101" autocomplete="off">
     </div>
     <div class="fbox" data-f="phone" onclick="pickField('phone')">
-      <span class="flabel">연락처</span>
+      <span class="flabel" id="lab-phone">연락처</span>
       <span class="fval ph" id="v-phone" data-ph="010-0000-0000"></span>
       <input class="fnative" id="n-phone" type="tel" inputmode="numeric" maxlength="13" placeholder="010-0000-0000" autocomplete="off">
     </div>
@@ -365,13 +369,14 @@
   let selected = [];
   let currentUserJob = null;
   let courseMode = '추첨';
+  let group = '어르신';
   let curDay = '월';
   let stepId = 'sHome';
   let doneTimer = null;
   let idleTimer = null;
 
   // 입력값 (숫자는 하이픈 없이 숫자만 저장)
-  const form = { name: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' };
+  const form = { name: '', guardian: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' };
   const FIELDS = {
     dob:    { max: 6,  fmt: d => d },
     phone:  { max: 11, fmt: fmtPhone },
@@ -379,6 +384,27 @@
     cphone: { max: 11, fmt: fmtPhone }
   };
   let kpTarget = 'dob';
+
+  // 대상(어르신 / 성인 / 아동)에 따라 입력 안내 문구를 바꿈
+  function applyGroup() {
+    const child = group === '아동';
+    document.getElementById('guardianBox').classList.toggle('hidden', !child);
+    document.getElementById('nameQ').textContent = child ? '아동 성함을 적어 주세요' : '성함을 적어 주세요';
+    document.getElementById('lab-dob').textContent = child ? '아동 생년월일 (6자리)' : '생년월일 (6자리)';
+    document.getElementById('lab-phone').textContent = child ? '보호자 연락처' : '연락처';
+  }
+
+  // 만 나이 (화면에서 바로 확인용, 서버에서도 한 번 더 확인)
+  function ageYears(dob6) {
+    const yy = +dob6.slice(0, 2), mm = +dob6.slice(2, 4), dd = +dob6.slice(4, 6);
+    const now = new Date();
+    const cy = now.getFullYear();
+    const by = (yy > cy % 100 ? 1900 : 2000) + yy;
+    let age = cy - by;
+    const cm = now.getMonth() + 1;
+    if (cm < mm || (cm === mm && now.getDate() < dd)) age--;
+    return age;
+  }
 
   // 큰 터치 모니터(세로 사이니지)만 키패드 사용, 핸드폰·PC는 기기 키보드 사용
   const KIOSK = window.matchMedia('(pointer: coarse)').matches && window.innerWidth >= 700;
@@ -411,6 +437,7 @@
   // 이름 입력칸은 화면의 값을 직접 읽어 씀 (키보드·한글 입력 중에도 이벤트 누락 없이)
   function syncNames() {
     form.name = document.getElementById('name').value.trim();
+    form.guardian = document.getElementById('guardian').value.trim();
     form.cname = document.getElementById('cname').value.trim();
   }
 
@@ -500,7 +527,8 @@
   // ---------- 처음 · 신청 흐름 ----------
   function resetAll(toHome) {
     clearTimeout(doneTimer);
-    Object.assign(form, { name: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' });
+    Object.assign(form, { name: '', guardian: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' });
+    document.getElementById('guardian').value = '';
     selected = [];
     currentUserJob = null;
     document.getElementById('name').value = '';
@@ -555,12 +583,20 @@
   function goNext() {
     syncNames();
     if (stepId === 'sInfo') {
-      if (!form.name) return alert('성함을 적어 주세요.');
+      if (!form.name) return alert(group === '아동' ? '아동 성함을 적어 주세요.' : '성함을 적어 주세요.');
+      if (group === '아동' && !form.guardian) return alert('보호자 성함을 적어 주세요.');
       if (!form.gender) return alert('성별을 골라 주세요.');
       goStep('sNum');
     } else if (stepId === 'sNum') {
       if (form.dob.length !== 6) return alert('생년월일 6자리를 눌러 주세요.');
       if (!/^01[016789]\d{7,8}$/.test(form.phone)) return alert('연락처를 바르게 눌러 주세요.');
+      const range = group === '아동' ? [6, 13] : group === '성인' ? [20, 64] : null;
+      if (range) {
+        const age = ageYears(form.dob);
+        if (age < range[0] || age > range[1]) {
+          return alert(group === '아동' ? '아동 배움터는 6세~13세 아동만 신청할 수 있어요.' : '성인 배움터는 20세~64세만 신청할 수 있어요.');
+        }
+      }
       checkJobWithName();
       goStep('sCourse');
     } else if (stepId === 'sCourse') {
@@ -695,13 +731,12 @@
 
   // ---------- 확인 ----------
   function renderConfirm() {
+    const child = group === '아동';
     const info = [
-      ['성함', form.name],
-      ['성별', form.gender],
-      ['생년월일', form.dob],
-      ['연락처', fmtPhone(form.phone)],
-      ['면제 해당', form.benefit]
+      [child ? '아동 성함' : '성함', form.name]
     ];
+    if (child) info.push(['보호자 성함', form.guardian]);
+    info.push(['성별', form.gender], ['생년월일', form.dob], [child ? '보호자 연락처' : '연락처', fmtPhone(form.phone)], ['면제 해당', form.benefit]);
     document.getElementById('sumInfo').innerHTML = info.map(r =>
       '<div class="sum-row"><span class="k">' + r[0] + '</span><span class="v">' + esc(r[1]) + '</span></div>').join('');
     document.getElementById('sumCourses').innerHTML = '<div class="sum-row" style="border:0;padding-bottom:6px"><span class="k">선택한 강좌 ' + selected.length + '개</span></div>' +
@@ -738,7 +773,7 @@
         alert(err.message);
       })
       .submitForm({
-        name: form.name, dob: form.dob, phone: phone, gender: form.gender, benefit: form.benefit,
+        name: form.name, guardian: form.guardian, dob: form.dob, phone: phone, gender: form.gender, benefit: form.benefit,
         term: TERM, selectedCourses: selected.map(i => courses[i].display)
       });
   }
@@ -792,6 +827,8 @@
         jobTimes = data.jobTimes || {};
         restrictions = data.restrictions || [];
         courseMode = data.mode || '추첨';
+        group = data.group || '어르신';
+        applyGroup();
         renderCourses();
       })
       .withFailureHandler(err => alert('강좌 정보를 불러오지 못했어요: ' + err.message))

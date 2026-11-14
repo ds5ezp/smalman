@@ -1117,7 +1117,7 @@ function listLearnTerms_() {
     infoId: get(r, '강좌정보시트ID'),
     respTab: get(r, '신청탭') || 'Form Responses 1',
     courseTab: get(r, '강좌탭'),
-    jobTab: get(r, '참여자탭') || '노인일자리참여자',
+    group: ['성인', '아동'].indexOf(get(r, '대상')) !== -1 ? get(r, '대상') : '어르신',
     active: get(r, '사용').toUpperCase() === 'Y'
   }));
 }
@@ -1133,7 +1133,7 @@ function getLearnTerm_(termId) {
 
 function listLearnTerms() {
   requireUser_();
-  return listLearnTerms_().map(t => ({ id: t.id, name: t.name, active: t.active }));
+  return listLearnTerms_().map(t => ({ id: t.id, name: t.name, group: t.group, active: t.active }));
 }
 
 function learnForm_(t) {
@@ -1777,6 +1777,7 @@ function createLearnTerm(data) {
   return withLock_(() => {
     const termId = String(data.termId || '').trim();
     const name = String(data.name || '').trim();
+    const group = ['성인', '아동'].indexOf(data.group) !== -1 ? data.group : '어르신';
     if (!/^[A-Za-z0-9_-]{4,20}$/.test(termId)) throw new Error('학기ID는 영문·숫자 4~20자로 입력해 주세요. 예) 2027H1');
     if (!name) throw new Error('학기명을 입력해 주세요.');
     const s = learnParseInput_(data.start), e = learnParseInput_(data.end), r = learnParseInput_(data.result);
@@ -1800,6 +1801,10 @@ function createLearnTerm(data) {
     if (baseResp && baseResp.getLastColumn() > 0) {
       header = baseResp.getRange(1, 1, 1, baseResp.getLastColumn()).getValues()[0];
     }
+    // 아동 학기는 보호자 항목을 추가
+    if (group === '아동' && !header.some(x => String(x).indexOf('보호자') !== -1)) {
+      header = header.concat(['보호자 성함']);
+    }
     const respSheet = formSs.getSheets()[0].setName('Form Responses 1');
     respSheet.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold');
     respSheet.setFrozenRows(1);
@@ -1821,6 +1826,10 @@ function createLearnTerm(data) {
     // 학기목록에 한 행 추가 (사용은 N: 접수 시작 전에는 기본 주소가 바뀌지 않음)
     const reg = SpreadsheetApp.openById(LEARN_REGISTRY_ID).getSheetByName(LEARN_REGISTRY_TAB);
     const h = reg.getRange(1, 1, 1, reg.getLastColumn()).getValues()[0].map(x => String(x).trim());
+    if (h.indexOf('대상') === -1) {
+      reg.getRange(1, h.length + 1).setValue('대상').setFontWeight('bold');
+      h.push('대상');
+    }
     const row = new Array(h.length).fill('');
     const put = (k, v) => { const i = h.indexOf(k); if (i !== -1) row[i] = v; };
     put('학기ID', termId);
@@ -1830,6 +1839,7 @@ function createLearnTerm(data) {
     put('신청탭', 'Form Responses 1');
     put('강좌탭', courseTab);
     put('참여자탭', jobTab);
+    put('대상', group);
     put('사용', 'N');
     reg.appendRow(row);
 
