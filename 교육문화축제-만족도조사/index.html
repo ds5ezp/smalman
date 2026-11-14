@@ -1,0 +1,1238 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>교육문화축제 만족도 조사</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --u: min(1vh, 1vw);
+    --peach: #fdd5c0;
+    --peach-deep: #f9bfa3;
+    --cream: #fffaf3;
+    --ink: #4a3b33;
+    --green: #7cb342;
+    --green-dark: #5a8f2a;
+    --green-soft: #f2f8ea;
+    --orange: #ffb14a;
+    --orange-dark: #f08c00;
+    --orange-line: #ffe7a6;
+    --orange-soft: #fff9e8;
+    --gold: #f6c544;
+    --gold-deep: #e9a92a;
+    --yes: var(--green);
+    --yes-text: var(--green-dark);
+    --no: var(--orange);
+    --no-text: var(--orange-dark);
+    --title-font: 'Black Han Sans', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    --body-font: 'Jua', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
+  body {
+    background: var(--cream);
+    background-image: radial-gradient(#f3e6d6 calc(.25 * var(--u)), transparent calc(.3 * var(--u)));
+    background-size: calc(3.2 * var(--u)) calc(3.2 * var(--u));
+    font-family: var(--body-font);
+    color: var(--ink);
+  }
+
+  /* ---------- 전체 배치 ---------- */
+  .stage {
+    position: relative; height: 100vh; width: 100vw;
+    display: grid; grid-template-rows: auto 1fr calc(6 * var(--u)); grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* ---------- 머리 (복숭아색 띠) ---------- */
+  header {
+    position: relative; overflow: hidden; text-align: center;
+    background: linear-gradient(180deg, #fde0cf 0%, var(--peach) 100%);
+    border-bottom: calc(1.4 * var(--u)) solid #dcdcdc;
+    padding: calc(10.5 * var(--u)) 4vw calc(3.4 * var(--u));
+  }
+  /* 색종이 조각 */
+  header::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; opacity: .75;
+    background-image:
+      radial-gradient(circle, #fff 0 calc(.5 * var(--u)), transparent calc(.55 * var(--u))),
+      radial-gradient(circle, #ffd76a 0 calc(.45 * var(--u)), transparent calc(.5 * var(--u))),
+      radial-gradient(circle, #a5d36f 0 calc(.4 * var(--u)), transparent calc(.45 * var(--u)));
+    background-size: calc(13 * var(--u)) calc(11 * var(--u)), calc(17 * var(--u)) calc(14 * var(--u)), calc(21 * var(--u)) calc(16 * var(--u));
+    background-position: calc(3 * var(--u)) calc(14 * var(--u)), calc(9 * var(--u)) calc(20 * var(--u)), calc(15 * var(--u)) calc(17 * var(--u));
+  }
+  .burst { position: absolute; width: calc(36 * var(--u)); height: calc(36 * var(--u)); pointer-events: none; }
+  .burst svg { width: 100%; height: 100%; display: block; animation: spin 60s linear infinite; }
+  .burst.l { left: calc(-15 * var(--u)); top: calc(-15 * var(--u)); }
+  .burst.r { right: calc(-15 * var(--u)); top: calc(-15 * var(--u)); }
+  .burst.r svg { animation-direction: reverse; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .bunting { position: absolute; left: 0; right: 0; top: 0; height: calc(10 * var(--u)); pointer-events: none; }
+  .bunting svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .bunting .flag { transform-box: fill-box; transform-origin: top center; animation: sway 3.4s ease-in-out infinite; }
+  @keyframes sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+
+  .sub {
+    position: relative; display: inline-block; font-size: calc(2.9 * var(--u)); color: var(--ink);
+    background: rgba(255,255,255,.7); border-radius: 999px; padding: calc(.5 * var(--u)) calc(2.6 * var(--u));
+  }
+  header h1 { position: relative; margin: calc(1.6 * var(--u)) 0 0; font-weight: 400; line-height: 1.02; }
+  header h1 span { display: inline-block; }
+  .t-no, .t-main {
+    font-family: var(--title-font); color: var(--green);
+    text-shadow:
+      calc(.5 * var(--u)) 0 0 #fff, calc(-.5 * var(--u)) 0 0 #fff, 0 calc(.5 * var(--u)) 0 #fff, 0 calc(-.5 * var(--u)) 0 #fff,
+      calc(.36 * var(--u)) calc(.36 * var(--u)) 0 #fff, calc(-.36 * var(--u)) calc(-.36 * var(--u)) 0 #fff,
+      calc(.36 * var(--u)) calc(-.36 * var(--u)) 0 #fff, calc(-.36 * var(--u)) calc(.36 * var(--u)) 0 #fff,
+      calc(.7 * var(--u)) calc(.9 * var(--u)) 0 rgba(90,60,40,.25);
+  }
+  .t-no { font-size: calc(7.4 * var(--u)); margin-right: calc(1.2 * var(--u)); vertical-align: calc(.6 * var(--u)); }
+  .t-main { font-size: calc(11.5 * var(--u)); letter-spacing: -.01em; }
+  .t-tail {
+    display: block !important; margin-top: calc(1 * var(--u));
+    font-family: var(--title-font); font-size: calc(7.6 * var(--u)); color: var(--ink);
+    text-shadow: calc(.4 * var(--u)) calc(.4 * var(--u)) 0 #fff;
+  }
+  .t-tail::before, .t-tail::after { content: '✦'; color: var(--gold-deep); font-size: .5em; vertical-align: .45em; margin: 0 calc(1.6 * var(--u)); }
+
+  /* ---------- 본문 ---------- */
+  .panel {
+    position: relative; z-index: 1; min-height: 0;
+    display: grid; grid-template-rows: auto 1fr auto; gap: calc(2.4 * var(--u));
+    padding: calc(2.6 * var(--u)) 3.4vw calc(1.6 * var(--u));
+  }
+  .question {
+    background: #ededed; border-radius: 999px; text-align: center; color: var(--ink);
+    padding: calc(1.8 * var(--u)) 4vw; font-size: calc(4.2 * var(--u)); line-height: 1.32; word-break: keep-all;
+    box-shadow: inset 0 calc(-.5 * var(--u)) 0 rgba(0,0,0,.05);
+  }
+  .question b { color: var(--green-dark); font-weight: 400; }
+  .zones { display: grid; grid-template-columns: 3fr 2fr; gap: 3vw; min-height: 0; padding-top: calc(2.6 * var(--u)); }
+  .zone {
+    position: relative; border: calc(.7 * var(--u)) solid; border-radius: calc(2.6 * var(--u)); min-height: 0;
+    transition: background .15s, transform .15s, box-shadow .15s;
+  }
+  .zone.yes { border-color: var(--green); background: #fff; }
+  .zone.no { border-color: var(--orange-line); background: #fff; }
+  .zone.hover { transform: scale(1.015); }
+  .zone.yes.hover { background: var(--green-soft); box-shadow: 0 0 0 calc(1 * var(--u)) rgba(124,179,66,.25); }
+  .zone.no.hover { background: var(--orange-soft); box-shadow: 0 0 0 calc(1 * var(--u)) rgba(255,177,74,.3); }
+  /* 테두리 위에 걸친 이름표 */
+  .zone .label {
+    position: absolute; left: 50%; top: 0; transform: translate(-50%, -58%); z-index: 3; pointer-events: none;
+    font-family: var(--body-font); font-size: calc(4.6 * var(--u)); color: #fff; white-space: nowrap;
+    padding: calc(.6 * var(--u)) calc(4.4 * var(--u)) calc(.8 * var(--u)); border-radius: 999px;
+    border: calc(.6 * var(--u)) solid #fff; font-style: italic; letter-spacing: .04em;
+    box-shadow: 0 calc(.6 * var(--u)) calc(1 * var(--u)) rgba(0,0,0,.12);
+  }
+  .zone .count { opacity: .92; box-shadow: 0 0 0 calc(.5 * var(--u)) #fff; }
+  .zone.yes .label { background: var(--green); }
+  .zone.no .label { background: var(--orange); }
+  /* 비어 있을 때 보이는 안내 */
+  .zone .ghost {
+    position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; pointer-events: none;
+    font-size: calc(3.4 * var(--u)); line-height: 1.5; opacity: .32; transition: opacity .4s;
+  }
+  .zone .ghost i { display: block; font-style: normal; font-size: calc(10 * var(--u)); line-height: 1.1; }
+  .zone.yes .ghost { color: var(--green-dark); }
+  .zone.no .ghost { color: var(--orange-dark); }
+  .zone.filled .ghost { opacity: 0; }
+  .zone .count {
+    position: absolute; right: calc(1.4 * var(--u)); bottom: calc(1.4 * var(--u)); z-index: 2; pointer-events: none;
+    min-width: calc(6 * var(--u)); text-align: center; font-size: calc(3 * var(--u)); line-height: 1;
+    padding: calc(1 * var(--u)) calc(1.4 * var(--u)); border-radius: 999px; color: #fff;
+  }
+  .zone.yes .count { background: var(--green); }
+  .zone.no .count { background: var(--orange); }
+  body.hide-count .zone .count { display: none; }
+  .zone .layer { position: absolute; left: 2%; right: 2%; top: calc(5 * var(--u)); bottom: 2%; z-index: 1; }
+
+  /* 스티커 받침 */
+  .tray {
+    display: grid; grid-template-columns: repeat(4, auto); justify-content: space-evenly; align-items: center; min-width: 0;
+    row-gap: calc(1.2 * var(--u));
+    background: #fff4ec; border: calc(.45 * var(--u)) dashed var(--peach-deep); border-radius: calc(3 * var(--u)); padding: calc(1.6 * var(--u)) 2vw;
+  }
+  .tray .hint { grid-column: 1 / -1; text-align: center; font-size: calc(3.4 * var(--u)); line-height: 1.3; color: var(--ink); word-break: keep-all; }
+  .tray .hint em { font-style: normal; color: var(--yes-text); display: inline-block; animation: nudge 2.4s ease-in-out infinite; }
+  @keyframes nudge { 0%, 70%, 100% { transform: scale(1); } 80% { transform: scale(1.12); } 90% { transform: scale(1); } }
+  .tray .hint .arrow::after { content: '👉'; }
+  @media (orientation: portrait) { .tray .hint .arrow::after { content: '👇'; } }
+  .src { width: calc(12 * var(--u)); height: calc(12 * var(--u)); aspect-ratio: 1; cursor: grab; transition: transform .12s; }
+  .src:active { transform: scale(0.92); }
+  .src svg, .sticker svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+  .src svg { filter: drop-shadow(0 calc(.4 * var(--u)) calc(.3 * var(--u)) rgba(0,0,0,.18)); animation: bobwiggle 4s ease-in-out infinite; }
+  .src:nth-child(2) svg { animation-delay: -.5s; } .src:nth-child(3) svg { animation-delay: -1s; }
+  .src:nth-child(4) svg { animation-delay: -1.5s; } .src:nth-child(5) svg { animation-delay: -2s; }
+  .src:nth-child(6) svg { animation-delay: -2.5s; } .src:nth-child(7) svg { animation-delay: -3s; }
+  .src:nth-child(8) svg { animation-delay: -3.5s; } .src:nth-child(9) svg { animation-delay: -1.2s; }
+  /* 둥실둥실 떠 있다가 가끔 흔들흔들 */
+  @keyframes bobwiggle {
+    0%, 100% { transform: translateY(0) rotate(0); } 25% { transform: translateY(calc(-1 * var(--u))) rotate(0); }
+    50% { transform: translateY(0) rotate(0); } 80% { transform: translateY(calc(-.6 * var(--u))) rotate(0); }
+    86% { transform: translateY(calc(-.6 * var(--u))) rotate(-10deg); } 92% { transform: translateY(calc(-.6 * var(--u))) rotate(10deg); }
+  }
+  .src.demo-press svg { animation: none; transform: scale(.88); transition: transform .2s; }
+
+  /* 끌고 있는 스티커 / 붙은 스티커 */
+  .sticker { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 50; will-change: transform; }
+  .sticker.dragging svg { filter: drop-shadow(0 calc(1.4 * var(--u)) calc(1 * var(--u)) rgba(0,0,0,.28)); }
+  .sticker.vanish { transition: opacity .3s, transform .3s; opacity: 0; }
+  .placed {
+    position: absolute; width: var(--ps, calc(8 * var(--u))); height: var(--ps, calc(8 * var(--u))); margin: calc(var(--ps, calc(8 * var(--u))) / -2) 0 0 calc(var(--ps, calc(8 * var(--u))) / -2);
+    pointer-events: none; transform: rotate(var(--r, 0deg));
+  }
+  .placed svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 calc(.3 * var(--u)) calc(.2 * var(--u)) rgba(0,0,0,.15)); }
+  .placed.pop { animation: pop .35s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes pop { from { transform: rotate(var(--r, 0deg)) scale(1.45); } to { transform: rotate(var(--r, 0deg)) scale(1); } }
+
+  .toast {
+    position: fixed; z-index: 60; pointer-events: none; transform: translate(-50%, -100%);
+    background: #fff; border: calc(.4 * var(--u)) solid currentColor; border-radius: calc(3.4 * var(--u));
+    box-shadow: 0 calc(.8 * var(--u)) calc(2 * var(--u)) rgba(0,0,0,.12);
+    padding: calc(1 * var(--u)) calc(2.6 * var(--u)); font-size: calc(3.2 * var(--u)); line-height: 1.3;
+    width: max-content; max-width: min(82vw, calc(60 * var(--u))); text-align: center; word-break: keep-all; white-space: pre-line;
+    animation: floatup 1.6s ease-out forwards;
+  }
+  @keyframes floatup {
+    0% { opacity: 0; margin-top: 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; margin-top: calc(-8 * var(--u)); }
+  }
+
+  footer { display: flex; align-items: center; justify-content: center; gap: .8vw; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: calc(2.6 * var(--u)); color: var(--ink); background: linear-gradient(transparent, #fdeee4); }
+  footer img { height: calc(4.6 * var(--u)); }
+
+  /* ---------- 관리자 메뉴 ---------- */
+  .admin-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.45); z-index: 100; display: none; align-items: center; justify-content: center; }
+  .admin-bg.open { display: flex; }
+  .admin {
+    background: #fff; border-radius: calc(2.4 * var(--u)); padding: calc(3 * var(--u)) 2.6vw; width: min(92vw, calc(90 * var(--u)));
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; box-shadow: 0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(0,0,0,.3);
+  }
+  .admin h2 { margin: 0 0 calc(2 * var(--u)); font-size: calc(3.4 * var(--u)); }
+  .admin .result { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4vw; margin-bottom: calc(2.4 * var(--u)); }
+  .admin .result div { border-radius: calc(1.6 * var(--u)); padding: calc(2 * var(--u)); text-align: center; font-size: calc(2.6 * var(--u)); }
+  .admin .result .y { background: var(--green-soft); color: var(--green-dark); }
+  .admin .result .n { background: var(--orange-soft); color: var(--orange-dark); }
+  .admin .result strong { display: block; font-size: calc(6 * var(--u)); }
+  .admin .bar { height: calc(2.4 * var(--u)); border-radius: 999px; background: var(--no); overflow: hidden; margin-bottom: calc(3 * var(--u)); }
+  .admin .bar i { display: block; height: 100%; background: var(--yes); width: 50%; transition: width .3s; }
+  .admin .btns { display: grid; grid-template-columns: 1fr 1fr; gap: calc(1.2 * var(--u)) 1.2vw; }
+  .admin button {
+    font: inherit; font-size: calc(2.5 * var(--u)); padding: calc(2 * var(--u)) 1vw; border-radius: calc(1.4 * var(--u)); border: 0;
+    background: #f1f1f1; color: #222; cursor: pointer;
+  }
+  .admin button:active { background: #e0e0e0; }
+  .admin button.danger { background: #ffe5e5; color: #c62828; }
+  .admin button.danger.armed { background: #c62828; color: #fff; }
+  .admin button.close { grid-column: 1 / -1; background: #222; color: #fff; }
+  /* 터치 위치 확인 화면 */
+  .tcheck { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 200; background: rgba(20,20,30,.92); color: #fff; display: none; font-family: 'Malgun Gothic', sans-serif; }
+  .tcheck.open { display: block; }
+  .tcheck .msg { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); text-align: center; font-size: calc(3 * var(--u)); line-height: 1.6; width: 80%; pointer-events: none; }
+  .tcheck .msg small { display: block; font-size: calc(2.2 * var(--u)); color: #bbb; margin-top: calc(1 * var(--u)); }
+  .tcheck .exit { position: absolute; left: 50%; top: 52%; transform: translateX(-50%); font: inherit; font-size: calc(3 * var(--u)); padding: calc(2 * var(--u)) calc(5 * var(--u)); border: 0; border-radius: 999px; background: #fff; color: #222; }
+  .tcheck .target { position: absolute; width: calc(10 * var(--u)); height: calc(10 * var(--u)); margin: calc(-5 * var(--u)) 0 0 calc(-5 * var(--u)); border: .4vh dashed #ffd54a; border-radius: 50%; pointer-events: none; }
+  .tcheck .target::before, .tcheck .target::after { content: ''; position: absolute; background: #ffd54a; left: 50%; top: 50%; }
+  .tcheck .target::before { width: 2px; height: 60%; transform: translate(-50%, -50%); }
+  .tcheck .target::after { width: 60%; height: 2px; transform: translate(-50%, -50%); }
+  .tcheck .dot { position: absolute; width: calc(4 * var(--u)); height: calc(4 * var(--u)); margin: calc(-2 * var(--u)) 0 0 calc(-2 * var(--u)); border-radius: 50%; pointer-events: none; }
+  .tcheck .dot span { position: absolute; left: 110%; top: 0; white-space: nowrap; font-size: calc(1.8 * var(--u)); }
+  .tcheck .dot.left span { left: auto; right: 110%; }
+  .tcheck .dot.touch { background: #4cd964; } .tcheck .dot.touch span { color: #4cd964; }
+  .tcheck .dot.pointer { background: #5ac8fa; } .tcheck .dot.pointer span { color: #5ac8fa; }
+  .tcheck .dot.mouse { background: #ff6b6b; } .tcheck .dot.mouse span { color: #ff6b6b; }
+  .admin p.tip { margin: calc(2 * var(--u)) 0 0; font-size: calc(1.9 * var(--u)); color: #777; line-height: 1.5; }
+
+  /* ---------- 움직임 ---------- */
+  /* 제목 글자가 하나씩 통통 */
+  .t-main .ch { display: inline-block; animation: hop 5s ease-in-out infinite; }
+  @keyframes hop { 0%, 18%, 100% { transform: translateY(0); } 7% { transform: translateY(calc(-1.6 * var(--u))) rotate(-3deg); } 12% { transform: translateY(0); } 15% { transform: translateY(calc(-.4 * var(--u))); } }
+  .t-no { display: inline-block; animation: tilt 5s ease-in-out infinite; }
+  @keyframes tilt { 0%, 80%, 100% { transform: rotate(0); } 86% { transform: rotate(-6deg); } 93% { transform: rotate(5deg); } }
+  .t-tail::before, .t-tail::after { display: inline-block; animation: twinkle 1.8s ease-in-out infinite; }
+  .t-tail::after { animation-delay: .9s; }
+  @keyframes twinkle { 0%, 100% { transform: scale(1) rotate(0); opacity: 1; } 50% { transform: scale(1.5) rotate(45deg); opacity: .6; } }
+  /* 머리에 떨어지는 색종이 */
+  .confetti { position: absolute; top: calc(-3 * var(--u)); width: calc(1.3 * var(--u)); height: calc(2 * var(--u)); border-radius: 2px; pointer-events: none; animation: fall linear infinite; }
+  @keyframes fall { from { transform: translateY(0) rotate(0); } to { transform: translateY(calc(50 * var(--u))) rotate(720deg); } }
+  /* 반짝이 */
+  .spark { position: absolute; pointer-events: none; color: #fff; font-size: calc(2.6 * var(--u)); animation: twinkle 2.2s ease-in-out infinite; }
+  /* 이름표 살랑 */
+  .zone .label { animation: breathe 3s ease-in-out infinite; }
+  .zone.no .label { animation-delay: -1.5s; }
+  @keyframes breathe { 0%, 100% { transform: translate(-50%, -58%) scale(1); } 50% { transform: translate(-50%, -62%) scale(1.06); } }
+  /* 빈 칸 안내 콩콩 */
+  .zone .ghost i { animation: bounce 2s ease-in-out infinite; }
+  .zone.no .ghost i { animation-delay: -1s; }
+  .zone .ghost i svg { width: calc(12 * var(--u)); height: calc(12 * var(--u)); }
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(calc(-1.6 * var(--u))); } }
+  /* 붙일 때 축하 조각 */
+  .pop-bit { position: fixed; left: 0; top: 0; z-index: 55; pointer-events: none; width: calc(1.6 * var(--u)); height: calc(1.6 * var(--u)); border-radius: 50%; }
+  .pop-bit.star { border-radius: 0; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); width: calc(2.6 * var(--u)); height: calc(2.6 * var(--u)); }
+
+  /* ---------- 사용법 자동 안내 (아무도 안 만질 때) ---------- */
+  .demo-hand, .demo-sticker { position: fixed; left: 0; top: 0; pointer-events: none; opacity: 0; will-change: transform, opacity; }
+  .demo-hand { z-index: 58; width: calc(15 * var(--u)); filter: drop-shadow(0 calc(.8 * var(--u)) calc(1 * var(--u)) rgba(0,0,0,.25)); }
+  .demo-hand svg { width: 100%; height: auto; display: block; }
+  .demo-sticker { z-index: 57; }
+  .demo-sticker svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 calc(1.2 * var(--u)) calc(1 * var(--u)) rgba(0,0,0,.25)); }
+  .demo-ring { position: fixed; left: 0; top: 0; z-index: 56; pointer-events: none; border-radius: 50%; border: calc(.6 * var(--u)) solid var(--green); opacity: 0; }
+  .demo-caption {
+    position: fixed; left: 50%; z-index: 59; pointer-events: none; opacity: 0;
+    transform: translate(-50%, 0); transition: opacity .35s, transform .35s;
+    background: #fff; color: var(--ink); border: calc(.6 * var(--u)) solid var(--green); border-radius: calc(3 * var(--u));
+    padding: calc(1.6 * var(--u)) calc(3.4 * var(--u)); font-size: calc(4.2 * var(--u)); line-height: 1.35; text-align: center;
+    width: max-content; max-width: 90vw; word-break: keep-all; box-shadow: 0 calc(1.2 * var(--u)) calc(3 * var(--u)) rgba(0,0,0,.18);
+  }
+  .demo-caption.show { opacity: 1; }
+  .demo-caption .step {
+    display: inline-block; min-width: calc(5.6 * var(--u)); margin-right: calc(1.2 * var(--u)); border-radius: 999px;
+    background: var(--green); color: #fff; font-size: .9em; padding: 0 calc(1 * var(--u));
+  }
+  .demo-caption small { display: block; font-size: .62em; color: #8a7b70; margin-top: calc(.6 * var(--u)); }
+
+  /* ---------- 가로형 화면 (세로형 기준으로 디자인, 가로로 띄우면 조금 줄임) ---------- */
+  @media (orientation: landscape) {
+    header { padding: calc(8.5 * var(--u)) 4vw calc(1.6 * var(--u)); }
+    .burst { width: calc(30 * var(--u)); height: calc(30 * var(--u)); }
+    .sub { font-size: calc(2.4 * var(--u)); }
+    header h1 { margin-top: calc(.6 * var(--u)); }
+    .t-no { font-size: calc(6 * var(--u)); }
+    .t-main { font-size: calc(8 * var(--u)); }
+    .t-tail { display: inline-block !important; font-size: calc(6 * var(--u)); margin: 0 0 0 calc(1 * var(--u)); }
+    .t-tail::before, .t-tail::after { display: none; }
+    .panel { gap: calc(1.4 * var(--u)); padding-top: calc(1.6 * var(--u)); }
+    .question { font-size: calc(3.6 * var(--u)); padding: calc(1 * var(--u)) 4vw; }
+    .zones { padding-top: calc(2.2 * var(--u)); }
+    .tray { grid-template-columns: auto repeat(8, auto); padding: calc(.8 * var(--u)) 2vw; }
+    .tray .hint { grid-column: auto; max-width: 9em; font-size: calc(2.8 * var(--u)); }
+    .src { width: calc(9.5 * var(--u)); height: calc(9.5 * var(--u)); }
+  }
+</style>
+</head>
+<body>
+
+<!-- 스티커 모양 (한 번 정의하고 여러 번 재사용) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="s-heart" viewBox="0 0 100 100">
+      <path d="M50 90 C22 70 4 52 4 31 A23 23 0 0 1 50 19 A23 23 0 0 1 96 31 C96 52 78 70 50 90Z" fill="#ff4d6d" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <ellipse cx="29" cy="32" rx="8" ry="5" fill="#fff" opacity=".55" transform="rotate(-35 29 32)"/>
+    </symbol>
+    <symbol id="s-pinkheart" viewBox="0 0 100 100">
+      <path d="M50 90 C22 70 4 52 4 31 A23 23 0 0 1 50 19 A23 23 0 0 1 96 31 C96 52 78 70 50 90Z" fill="#ff8fb7" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <ellipse cx="29" cy="32" rx="8" ry="5" fill="#fff" opacity=".6" transform="rotate(-35 29 32)"/>
+    </symbol>
+    <symbol id="s-star" viewBox="0 0 100 100">
+      <path d="M50 5 L62 36 L95 37 L69 58 L78 91 L50 72 L22 91 L31 58 L5 37 L38 36Z" fill="#ffc928" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <circle cx="41" cy="52" r="4" fill="#5a3b00"/><circle cx="59" cy="52" r="4" fill="#5a3b00"/>
+      <path d="M43 62 Q50 68 57 62" stroke="#5a3b00" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="s-smile" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="44" fill="#ffb12b" stroke="#fff" stroke-width="6"/>
+      <circle cx="35" cy="42" r="6" fill="#3b2500"/><circle cx="65" cy="42" r="6" fill="#3b2500"/>
+      <path d="M30 58 Q50 80 70 58" stroke="#3b2500" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <circle cx="25" cy="60" r="6" fill="#ff7a6b" opacity=".6"/><circle cx="75" cy="60" r="6" fill="#ff7a6b" opacity=".6"/>
+    </symbol>
+    <symbol id="s-flower" viewBox="0 0 100 100">
+      <g stroke="#fff" stroke-width="5" fill="#ff86c2">
+        <circle cx="50" cy="24" r="19"/><circle cx="75" cy="42" r="19"/><circle cx="65" cy="72" r="19"/>
+        <circle cx="35" cy="72" r="19"/><circle cx="25" cy="42" r="19"/>
+      </g>
+      <g fill="#ff86c2"><circle cx="50" cy="24" r="16"/><circle cx="75" cy="42" r="16"/><circle cx="65" cy="72" r="16"/><circle cx="35" cy="72" r="16"/><circle cx="25" cy="42" r="16"/></g>
+      <circle cx="50" cy="51" r="15" fill="#ffd93b" stroke="#fff" stroke-width="4"/>
+    </symbol>
+    <symbol id="s-blueheart" viewBox="0 0 100 100">
+      <path d="M50 90 C22 70 4 52 4 31 A23 23 0 0 1 50 19 A23 23 0 0 1 96 31 C96 52 78 70 50 90Z" fill="#4c8cf0" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <ellipse cx="29" cy="32" rx="8" ry="5" fill="#fff" opacity=".55" transform="rotate(-35 29 32)"/>
+    </symbol>
+    <symbol id="s-clover" viewBox="0 0 100 100">
+      <g fill="#42b96a" stroke="#fff" stroke-width="5">
+        <path d="M50 50 C30 50 18 40 22 26 C26 14 42 14 50 28 C58 14 74 14 78 26 C82 40 70 50 50 50Z"/>
+        <path d="M50 50 C30 50 18 60 22 74 C26 86 42 86 50 72 C58 86 74 86 78 74 C82 60 70 50 50 50Z"/>
+      </g>
+      <circle cx="50" cy="50" r="7" fill="#2e9a52"/>
+    </symbol>
+    <symbol id="s-thumb" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="44" fill="#ff7a59" stroke="#fff" stroke-width="6"/>
+      <path d="M30 48 h10 v26 h-10z M44 74 V48 L55 26 C60 24 64 28 62 34 L58 44 H72 C77 44 80 49 78 54 L72 70 C71 73 68 74 66 74Z" fill="#fff"/>
+    </symbol>
+    <symbol id="s-soso" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="44" fill="#ffc94a" stroke="#fff" stroke-width="6"/>
+      <circle cx="35" cy="44" r="6" fill="#3b2500"/><circle cx="65" cy="44" r="6" fill="#3b2500"/>
+      <path d="M34 66 Q50 60 66 66" stroke="#3b2500" stroke-width="6" fill="none" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="stage">
+  <header>
+    <div class="burst l"><svg viewBox="-100 -100 200 200" id="burstL"></svg></div>
+    <div class="burst r"><svg viewBox="-100 -100 200 200" id="burstR"></svg></div>
+    <div class="bunting"><svg id="bunting" preserveAspectRatio="none"></svg></div>
+    <div class="sub" id="subTitle"></div>
+    <h1><span class="t-no" id="titleNo"></span><span class="t-main" id="titleMain"></span><span class="t-tail" id="titleTail"></span></h1>
+  </header>
+
+  <main class="panel">
+    <div class="question" id="question"></div>
+    <div class="zones">
+      <section class="zone yes" data-zone="yes">
+        <div class="label" id="yesLabel"></div>
+        <div class="count" id="yesCount">0</div>
+        <div class="ghost"><i><svg viewBox="0 0 100 100"><use href="#s-smile"/></svg></i>여기에 쏙!</div>
+        <div class="layer"></div>
+      </section>
+      <section class="zone no" data-zone="no">
+        <div class="label" id="noLabel"></div>
+        <div class="count" id="noCount">0</div>
+        <div class="ghost"><i><svg viewBox="0 0 100 100"><use href="#s-soso"/></svg></i>여기에 쏙!</div>
+        <div class="layer"></div>
+      </section>
+    </div>
+    <div class="tray" id="tray">
+      <div class="hint">마음에 드는 스티커를 <em>꾹 눌러 끌어다</em> 붙여주세요 <span class="arrow"></span></div>
+    </div>
+  </main>
+
+  <footer id="footer">
+    <img src="logo.png" alt="" onerror="this.remove()">
+    <span id="orgName"></span>
+  </footer>
+</div>
+
+<!-- 사용법 자동 안내 -->
+<div class="demo-ring" id="demoRing"></div>
+<div class="demo-sticker" id="demoSticker"></div>
+<div class="demo-hand" id="demoHand">
+  <svg viewBox="0 0 100 120">
+    <path d="M40 72 V16 a8 8 0 0 1 16 0 V54 a7 7 0 0 1 14 0 v4 a7 7 0 0 1 14 0 v22 c0 22 -14 34 -34 34 h-4 c-14 0 -22 -8 -28 -18 l-12 -22 a7 7 0 0 1 12 -8 l12 14 Z"
+      fill="#ffe2c8" stroke="#8a5a3c" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M56 56 v12 M70 60 v10" stroke="#8a5a3c" stroke-width="3" stroke-linecap="round"/>
+    <path d="M43 14 a5 5 0 0 1 10 0 v6 h-10z" fill="#fff" opacity=".7"/>
+  </svg>
+</div>
+<div class="demo-caption" id="demoCaption"></div>
+
+<!-- 관리자 메뉴: 하단 기관명을 3초 동안 길게 누르면 열림 -->
+<div class="admin-bg" id="adminBg">
+  <div class="admin">
+    <h2>관리자 메뉴 · 현재 결과</h2>
+    <div class="result">
+      <div class="y"><span id="aYesLabel"></span><strong id="aYes">0</strong><span id="aYesPct">0%</span></div>
+      <div class="n"><span id="aNoLabel"></span><strong id="aNo">0</strong><span id="aNoPct">0%</span></div>
+    </div>
+    <div class="bar"><i id="aBar"></i></div>
+    <div class="btns">
+      <button id="btnCsv">결과 파일 저장 (엑셀용 CSV)</button>
+      <button id="btnUndo">마지막 스티커 1개 취소</button>
+      <button id="btnCount">화면 숫자 표시: 켜짐</button>
+      <button id="btnFull">전체 화면</button>
+      <button id="btnReset" class="danger">전체 초기화</button>
+      <button id="btnReload">화면 새로 고침</button>
+      <button id="btnTouch">터치 위치 확인</button>
+      <button id="btnSound">효과음: 켜짐</button>
+      <button id="btnVoice">음성 안내: 켜짐</button>
+      <button id="btnMusic">배경 음악: 켜짐</button>
+      <button id="btnTest">소리 시험</button>
+      <button id="btnClose" class="close">닫기</button>
+    </div>
+    <p class="tip">결과는 이 기기의 브라우저에 자동 저장되어 전원이 꺼지거나 새로 고침해도 유지됩니다.<br>행사가 끝나면 ‘결과 파일 저장’으로 기록을 받아 두세요.</p>
+    <p class="tip" id="voiceInfo"></p>
+    <p class="tip" id="diag"></p>
+  </div>
+</div>
+
+<!-- 터치 위치 확인: 손가락으로 누른 곳에 점이 찍히는지 확인 (화면 회전 시 터치가 어긋나는 문제 진단용) -->
+<div class="tcheck" id="tcheck">
+  <div class="msg">노란 십자 표시를 손가락으로 눌러 보세요.<br>누른 곳에 <b style="color:#4cd964">초록 점</b>이 찍히면 정상입니다.
+    <small>점이 엉뚱한 곳에 찍히면 → 화면 회전과 터치 방향이 맞지 않음 (설명서의 ‘터치 방향 맞추기’)<br>
+    아무 점도 안 찍히면 → 브라우저가 터치를 못 받음 (설명서의 ‘실행 파일’ 사용)<br>
+    빨간 점(마우스)만 찍히면 → 터치가 마우스로 들어오는 상태 (한 손가락만 동작)</small></div>
+  <button class="exit" id="tcheckExit">확인 끝내기</button>
+</div>
+<script>
+// ===================== 설정 (행사마다 여기만 고치면 됩니다) =====================
+const CONFIG = {
+  subTitle: '거제시종합사회복지관 어르신·성인·아동 교육문화사업',
+  titleNo: '제14회',
+  titleMain: '교육문화축제',
+  titleTail: '만족도 조사',
+  question: '이번 <b>교육문화 축제</b>가 즐겁고<br>활기찬 생활을 보내는데 도움이 되었나요?',
+  yesLabel: '그렇다',
+  noLabel: '아니다',
+  orgName: '거제시종합사회복지관',
+  stickers: ['heart', 'pinkheart', 'star', 'smile', 'flower', 'thumb', 'clover', 'blueheart'],
+  // 스티커를 붙이면 잠깐 뜨는 문구 (칸마다 따로, 이 중 하나가 무작위로 나옴. 줄을 추가·삭제해도 됩니다)
+  // 문구 안에 \n 을 넣으면 그 자리에서 줄이 바뀝니다
+  thanksYes: [
+    '참여해 주셔서 감사합니다! 💛',
+    '즐거우셨다니 기뻐요! 😊',
+    '함께해 주셔서 고맙습니다! 🌼',
+    '내년에도 꼭 만나요! 🎉'
+  ],
+  thanksNo: [
+    '소중한 의견 감사합니다.\n다음엔 더 좋게 준비할게요! 🌱',
+    '아쉬운 마음 잘 새겨들을게요.\n고맙습니다! 🙏',
+    '더 즐거운 축제로 보답하겠습니다! 💪',
+    '솔직한 의견이 큰 힘이 돼요.\n감사합니다! 🍀'
+  ],
+  showCount: true,       // 화면에 참여 숫자 표시 여부 (관리자 메뉴에서도 변경 가능)
+  maxSimultaneous: 10,   // 동시에 끌 수 있는 손가락 수
+  adminHoldMs: 3000,     // 관리자 메뉴 열기: 기관명 길게 누르는 시간
+  idleSec: 15,           // 이 시간(초) 동안 아무도 안 만지면 손가락 그림이 사용법을 보여줌 (0 이면 끔)
+  // 소리 (관리자 메뉴에서도 켜고 끌 수 있음)
+  sound: true,           // 효과음: 스티커를 집을 때·붙일 때
+  voice: true,           // 음성: 감사 문구와 사용법 안내를 읽어 줌
+  // 읽어 줄 목소리 고르는 순서 (앞에 있을수록 먼저). 엣지 브라우저 + 인터넷이면 SunHi(여)/InJoon(남) AI 음성이 가장 자연스러움
+  // 남자 목소리를 원하면 'InJoon' 을 맨 앞으로. voice 폴더에 녹음 파일이 있으면 목소리 대신 그 파일을 틀어 줌 (README 참고)
+  voicePrefer: ['SunHi', 'InJoon', 'Natural', 'Online', 'Google', 'Heami'],
+  music: true,           // 배경 음악: 같은 폴더에 music.mp3 가 있으면 그 노래, 없으면 오르골 음악
+  soundVolume: 0.6,      // 효과음 크기 (0 ~ 1)
+  musicVolume: 0.25,     // 배경 음악 크기 (0 ~ 1)
+  fileName: '제14회_교육문화축제_만족도조사',
+  storageKey: 'edu-culture-festival-14'
+};
+// ============================================================================
+
+const $ = id => document.getElementById(id);
+$('subTitle').textContent = CONFIG.subTitle;
+$('titleNo').textContent = CONFIG.titleNo;
+$('titleMain').textContent = CONFIG.titleMain;
+$('titleTail').textContent = CONFIG.titleTail;
+$('question').innerHTML = CONFIG.question;
+$('yesLabel').textContent = CONFIG.yesLabel;
+$('noLabel').textContent = CONFIG.noLabel;
+$('aYesLabel').textContent = CONFIG.yesLabel;
+$('aNoLabel').textContent = CONFIG.noLabel;
+
+// ---------- 머리 장식: 금색 햇살, 깃발 가랜드 ----------
+function drawBurst(svg) {
+  let g = '';
+  for (let i = 0; i < 24; i++) {
+    const a1 = (i / 24) * Math.PI * 2, a2 = ((i + .5) / 24) * Math.PI * 2;
+    g += `<path d="M0 0 L${Math.cos(a1) * 100} ${Math.sin(a1) * 100} L${Math.cos(a2) * 100} ${Math.sin(a2) * 100}Z" fill="${i % 2 ? '#f9d56b' : '#efb73a'}"/>`;
+  }
+  svg.innerHTML = g + '<circle r="40" fill="#f6c544"/><circle r="31" fill="#fbe08c"/>';
+}
+drawBurst($('burstL')); drawBurst($('burstR'));
+function drawBunting() {
+  const svg = $('bunting'), w = 1000, h = 100, n = 15, sag = 32;
+  const colors = ['#7cb342', '#ffb14a', '#f6c544', '#f48fb1', '#64b5f6', '#ff8a65'];
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const yAt = x => 6 + sag * 4 * (x / w) * (1 - x / w); // 줄이 아래로 처진 모양
+  let g = `<path d="M0 6 Q${w / 2} ${6 + sag * 2} ${w} 6" stroke="#b08968" stroke-width="2" fill="none"/>`;
+  for (let i = 0; i < n; i++) {
+    const x1 = (i + .15) * w / n, x2 = (i + .85) * w / n, xm = (x1 + x2) / 2;
+    const y1 = yAt(x1), y2 = yAt(x2);
+    g += `<path class="flag" style="animation-delay:${-i * .37}s" d="M${x1} ${y1} L${x2} ${y2} L${xm} ${(y1 + y2) / 2 + 42}Z" fill="${colors[i % colors.length]}" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>`;
+  }
+  svg.innerHTML = g;
+}
+drawBunting();
+$('orgName').textContent = CONFIG.orgName;
+
+const svgFor = type => `<svg viewBox="0 0 100 100"><use href="#s-${type}"/></svg>`;
+const zones = [...document.querySelectorAll('.zone')];
+const zoneByName = Object.fromEntries(zones.map(z => [z.dataset.zone, z]));
+
+// ---------- 저장 ----------
+let state = { stickers: [], showCount: CONFIG.showCount, sound: CONFIG.sound, voice: CONFIG.voice, music: CONFIG.music };
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CONFIG.storageKey));
+    if (s && Array.isArray(s.stickers)) state = Object.assign(state, s);
+  } catch (e) {}
+}
+function save() {
+  try { localStorage.setItem(CONFIG.storageKey, JSON.stringify(state)); } catch (e) {}
+}
+
+// ---------- 붙은 스티커 그리기 ----------
+// 칸 넓이를 붙은 개수로 나눠 크기를 정함: 처음엔 크게, 많아질수록 모두 함께 작아짐 (px)
+function placedSize(zoneName, n) {
+  const r = zoneByName[zoneName].querySelector('.layer').getBoundingClientRect();
+  const u = Math.min(innerWidth, innerHeight) / 100;
+  const fit = Math.sqrt(r.width * r.height * 0.9 / Math.max(n, 1));
+  return Math.max(2.8 * u, Math.min(9 * u, fit));
+}
+// 놓은 자리에 이미 스티커가 있으면 가까운 빈자리로 살짝 비켜 붙임 (좌표는 붙임 영역 기준 px)
+function findSpot(zoneName, x0, y0, size, w, h) {
+  const others = state.stickers.filter(s => s.zone === zoneName).map(s => [s.x * w, s.y * h]);
+  const half = size / 2, need = size * 0.85;
+  const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+  let best = [clamp(x0, half, w - half), clamp(y0, half, h - half)], bestGap = -1;
+  for (let i = 0; i < 500; i++) {
+    const a = i * 2.4, rad = Math.sqrt(i) * size * 0.35;
+    const x = x0 + Math.cos(a) * rad, y = y0 + Math.sin(a) * rad;
+    if (x < half || x > w - half || y < half || y > h - half) continue;
+    let gap = Infinity;
+    for (const [ox, oy] of others) gap = Math.min(gap, Math.hypot(x - ox, y - oy));
+    if (gap >= need) return [x, y];
+    if (gap > bestGap) { bestGap = gap; best = [x, y]; }
+  }
+  return best;
+}
+function addPlaced(s, animate) {
+  const layer = zoneByName[s.zone].querySelector('.layer');
+  const el = document.createElement('div');
+  el.className = 'placed' + (animate ? ' pop' : '');
+  el.style.left = (s.x * 100) + '%';
+  el.style.top = (s.y * 100) + '%';
+  el.style.setProperty('--r', s.r + 'deg');
+  el.innerHTML = svgFor(s.type);
+  layer.appendChild(el);
+}
+function renderAll() {
+  zones.forEach(z => z.querySelector('.layer').innerHTML = '');
+  state.stickers.forEach(s => addPlaced(s, false));
+  updateCounts();
+}
+function updateCounts() {
+  const y = state.stickers.filter(s => s.zone === 'yes').length;
+  const n = state.stickers.length - y;
+  $('yesCount').textContent = y;
+  $('noCount').textContent = n;
+  zoneByName.yes.classList.toggle('filled', y > 0);
+  zoneByName.no.classList.toggle('filled', n > 0);
+  zoneByName.yes.style.setProperty('--ps', placedSize('yes', y) + 'px');
+  zoneByName.no.style.setProperty('--ps', placedSize('no', n) + 'px');
+  document.body.classList.toggle('hide-count', !state.showCount);
+  const total = y + n, yp = total ? Math.round(y / total * 100) : 0;
+  $('aYes').textContent = y; $('aNo').textContent = n;
+  $('aYesPct').textContent = (total ? yp : 0) + '%';
+  $('aNoPct').textContent = (total ? 100 - yp : 0) + '%';
+  $('aBar').style.width = (total ? yp : 50) + '%';
+  $('btnCount').textContent = '화면 숫자 표시: ' + (state.showCount ? '켜짐' : '꺼짐');
+  $('btnSound').textContent = '효과음: ' + (state.sound ? '켜짐' : '꺼짐');
+  $('btnVoice').textContent = '음성 안내: ' + (state.voice ? '켜짐' : '꺼짐');
+  $('btnMusic').textContent = '배경 음악: ' + (state.music ? '켜짐' : '꺼짐');
+}
+
+// ---------- 스티커 받침 ----------
+const tray = $('tray');
+CONFIG.stickers.forEach(type => {
+  const d = document.createElement('div');
+  d.className = 'src';
+  d.dataset.type = type;
+  d.innerHTML = svgFor(type);
+  tray.appendChild(d);
+});
+
+// ---------- 여러 손가락 동시 끌기 (Pointer Events) ----------
+const drags = new Map(); // pointerId -> { el, type, size, x, y, r }
+
+function zoneAt(x, y) {
+  for (const z of zones) {
+    const r = z.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return z;
+  }
+  return null;
+}
+function moveDrag(d, x, y) {
+  // 손가락에 가리지 않도록 스티커를 손가락보다 살짝 위에 띄움
+  d.x = x; d.y = y - d.size * 0.35;
+  d.el.style.transform = `translate(${d.x - d.size / 2}px, ${d.y - d.size / 2}px) rotate(${d.r}deg)`;
+}
+function refreshHover() {
+  const hovered = new Set();
+  drags.forEach(d => { const z = zoneAt(d.x, d.y); if (z) hovered.add(z); });
+  zones.forEach(z => z.classList.toggle('hover', hovered.has(z)));
+}
+
+// 끌기 시작·이동·끝. id 는 손가락(또는 마우스)마다 다른 값
+function startDrag(id, target, x, y) {
+  const src = target && target.closest && target.closest('.src');
+  if (!src || drags.has(id) || drags.size >= CONFIG.maxSimultaneous) return false;
+  const size = src.getBoundingClientRect().width * 1.25;
+  const el = document.createElement('div');
+  el.className = 'sticker dragging';
+  el.style.width = el.style.height = size + 'px';
+  el.innerHTML = svgFor(src.dataset.type);
+  document.body.appendChild(el);
+  const d = { el, type: src.dataset.type, size, r: Math.round(Math.random() * 30 - 15) };
+  drags.set(id, d);
+  moveDrag(d, x, y);
+  sfx.pick();
+  return true;
+}
+function dragMove(id, x, y) {
+  const d = drags.get(id);
+  if (!d) return false;
+  moveDrag(d, x, y);
+  refreshHover();
+  return true;
+}
+
+function endDrag(id, cancelled) {
+  const d = drags.get(id);
+  if (!d) return;
+  drags.delete(id);
+  const z = cancelled ? null : zoneAt(d.x, d.y);
+  if (z) {
+    const lr = z.querySelector('.layer').getBoundingClientRect();
+    const zone = z.dataset.zone;
+    // 이름표(Yes/No) 위에 놓아도 그 아래쪽 붙임 영역 안의 빈자리로 맞춰 붙임
+    const size = placedSize(zone, state.stickers.filter(s => s.zone === zone).length + 1);
+    const half = size / 2;
+    const [sx, sy] = findSpot(zone, d.x - lr.left, d.y - lr.top, size, lr.width, lr.height);
+    const px = lr.left + sx, py = lr.top + sy;
+    const s = {
+      type: d.type, zone,
+      x: +(sx / lr.width).toFixed(4),
+      y: +(sy / lr.height).toFixed(4),
+      r: d.r, t: new Date().toISOString()
+    };
+    state.stickers.push(s);
+    save();
+    addPlaced(s, true);
+    celebrate(px, py, zone);
+    updateCounts();
+    d.el.remove();
+    showToast(px, py - half, zone);
+    sfx[zone === 'yes' ? 'yes' : 'no']();
+  } else {
+    d.el.classList.add('vanish');
+    d.el.style.transform += ' scale(0.3)';
+    setTimeout(() => d.el.remove(), 320);
+    sfx.miss();
+  }
+  refreshHover();
+}
+
+// ---------- 입력 연결 ----------
+// 터치 화면 기기마다 브라우저가 터치를 넘겨주는 방식이 달라서 세 가지를 모두 받음.
+// 1) 터치 이벤트: 손가락은 항상 이것으로 처리 (여러 손가락 동시)
+// 2) 포인터 이벤트: 마우스·펜, 그리고 터치 이벤트가 없는 브라우저의 손가락
+// 3) 마우스 이벤트: 포인터 이벤트도 없는 오래된 브라우저
+const HAS_TOUCH = 'ontouchstart' in window;
+const HAS_POINTER = 'PointerEvent' in window;
+
+if (HAS_TOUCH) {
+  tray.addEventListener('touchstart', e => {
+    let started = false;
+    for (const t of e.changedTouches) {
+      if (startDrag('t' + t.identifier, document.elementFromPoint(t.clientX, t.clientY) || e.target, t.clientX, t.clientY)) started = true;
+    }
+    if (started) e.preventDefault(); // 터치 뒤에 따라오는 가짜 마우스 동작 막기
+  }, { passive: false });
+  window.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) dragMove('t' + t.identifier, t.clientX, t.clientY);
+  }, { passive: false });
+  window.addEventListener('touchend', e => { for (const t of e.changedTouches) endDrag('t' + t.identifier, false); });
+  window.addEventListener('touchcancel', e => { for (const t of e.changedTouches) endDrag('t' + t.identifier, true); });
+}
+
+if (HAS_POINTER) {
+  const skip = e => e.pointerType === 'touch' && HAS_TOUCH; // 손가락은 위의 터치 이벤트가 처리
+  tray.addEventListener('pointerdown', e => {
+    if (skip(e)) return;
+    if (startDrag('p' + e.pointerId, e.target, e.clientX, e.clientY)) {
+      e.preventDefault();
+      try { e.target.releasePointerCapture && e.target.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+  });
+  window.addEventListener('pointermove', e => {
+    if (!skip(e) && dragMove('p' + e.pointerId, e.clientX, e.clientY)) e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('pointerup', e => { if (!skip(e)) endDrag('p' + e.pointerId, false); });
+  // 브라우저가 화면 밀기로 착각해 끌기를 취소해도 스티커를 잃지 않도록, 취소 시점 위치에 놓은 것으로 처리
+  window.addEventListener('pointercancel', e => { if (!skip(e)) endDrag('p' + e.pointerId, false); });
+} else {
+  tray.addEventListener('mousedown', e => { if (startDrag('m', e.target, e.clientX, e.clientY)) e.preventDefault(); });
+  window.addEventListener('mousemove', e => dragMove('m', e.clientX, e.clientY));
+  window.addEventListener('mouseup', () => endDrag('m', false));
+}
+
+function showToast(x, y, zone) {
+  const list = zone === 'yes' ? CONFIG.thanksYes : CONFIG.thanksNo;
+  const color = zone === 'yes' ? 'var(--yes-text)' : 'var(--no-text)';
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.style.color = color;
+  const idx = Math.floor(Math.random() * list.length);
+  t.textContent = list[idx];
+  // 긴 문구는 읽을 수 있게 조금 더 오래 보여줌
+  const sec = Math.max(1.6, Math.min(3.2, t.textContent.length * 0.09));
+  t.style.animationDuration = sec + 's';
+  document.body.appendChild(t);
+  const w = t.offsetWidth / 2 + 10;
+  t.style.left = Math.min(Math.max(x, w), innerWidth - w) + 'px';
+  t.style.top = Math.max(y, 80) + 'px';
+  setTimeout(() => t.remove(), sec * 1000 + 100);
+  speak(t.textContent, false, `${zone}${idx + 1}`);
+}
+
+// 길게 누름 메뉴·두 손가락 확대·우클릭 등 브라우저 기본 동작 막기
+['contextmenu', 'gesturestart', 'dragstart', 'selectstart'].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault()));
+
+// ---------- 관리자 메뉴 ----------
+const adminBg = $('adminBg');
+let holdTimer = null;
+function holdStart() {
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => { updateCounts(); adminBg.classList.add('open'); }, CONFIG.adminHoldMs);
+}
+function holdEnd() { clearTimeout(holdTimer); }
+['touchstart', 'mousedown'].forEach(ev => $('footer').addEventListener(ev, holdStart));
+['touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach(ev => $('footer').addEventListener(ev, holdEnd));
+// 키보드가 연결되어 있으면 Ctrl+Shift+A 로도 열림
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') { updateCounts(); adminBg.classList.add('open'); }
+  if (e.key === 'Escape') adminBg.classList.remove('open');
+});
+
+$('btnClose').onclick = () => { adminBg.classList.remove('open'); disarmReset(); };
+$('btnCount').onclick = () => { state.showCount = !state.showCount; save(); updateCounts(); };
+$('btnSound').onclick = () => { state.sound = !state.sound; save(); updateCounts(); sfx.yes(); };
+$('btnVoice').onclick = () => { state.voice = !state.voice; save(); updateCounts(); if (state.voice) speak('음성 안내를 켰습니다'); else stopVoice(); };
+$('btnMusic').onclick = () => { state.music = !state.music; save(); updateCounts(); bgm.update(); };
+$('btnTest').onclick = () => { sfx.pick(); setTimeout(() => sfx.yes(), 400); setTimeout(() => sfx.no(), 1400); speak('안녕하세요! 소리가 잘 들리시나요?'); };
+$('btnReload').onclick = () => location.reload();
+
+// ---------- 터치 위치 확인 ----------
+const tcheck = $('tcheck');
+let tcheckTimer = null;
+function tcheckDot(x, y, kind, label) {
+  const d = document.createElement('div');
+  d.className = 'dot ' + kind;
+  d.style.left = x + 'px'; d.style.top = y + 'px';
+  if (x > innerWidth * 0.6) d.classList.add('left');
+  d.innerHTML = `<span>${label} (${Math.round(x)}, ${Math.round(y)})</span>`;
+  tcheck.appendChild(d);
+  const dots = tcheck.querySelectorAll('.dot');
+  if (dots.length > 40) dots[0].remove();
+}
+function tcheckClose() { clearTimeout(tcheckTimer); tcheck.classList.remove('open'); }
+$('btnTouch').onclick = () => {
+  adminBg.classList.remove('open');
+  tcheck.querySelectorAll('.dot, .target').forEach(e => e.remove());
+  [[10, 10], [90, 10], [50, 25], [10, 90], [90, 90], [50, 78]].forEach(([px, py]) => {
+    const t = document.createElement('div');
+    t.className = 'target';
+    t.style.left = px + '%'; t.style.top = py + '%';
+    tcheck.appendChild(t);
+  });
+  tcheck.classList.add('open');
+  clearTimeout(tcheckTimer);
+  tcheckTimer = setTimeout(tcheckClose, 120000); // 2분 뒤 자동으로 닫힘
+};
+tcheck.addEventListener('touchstart', e => {
+  for (const t of e.changedTouches) tcheckDot(t.clientX, t.clientY, 'touch', '터치 #' + t.identifier);
+}, { passive: true });
+tcheck.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'mouse' && !(e.pointerType === 'touch' && HAS_TOUCH)) tcheckDot(e.clientX, e.clientY, 'pointer', '포인터-' + e.pointerType);
+});
+tcheck.addEventListener('mousedown', e => tcheckDot(e.clientX, e.clientY, 'mouse', '마우스'));
+$('tcheckExit').addEventListener('click', tcheckClose);
+$('tcheckExit').addEventListener('touchend', e => { e.preventDefault(); tcheckClose(); });
+$('btnFull').onclick = () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement) document.exitFullscreen();
+  else (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+};
+$('btnUndo').onclick = () => {
+  if (!state.stickers.length) return;
+  state.stickers.pop(); save(); renderAll();
+};
+
+let resetArmed = null;
+function disarmReset() {
+  clearTimeout(resetArmed); resetArmed = null;
+  $('btnReset').classList.remove('armed');
+  $('btnReset').textContent = '전체 초기화';
+}
+$('btnReset').onclick = () => {
+  if (!resetArmed) {
+    $('btnReset').classList.add('armed');
+    $('btnReset').textContent = '정말 지울까요? 한 번 더 누르세요';
+    resetArmed = setTimeout(disarmReset, 4000);
+    return;
+  }
+  disarmReset();
+  state.stickers = []; save(); renderAll();
+};
+
+$('btnCsv').onclick = () => {
+  const y = state.stickers.filter(s => s.zone === 'yes').length;
+  const n = state.stickers.length - y;
+  const total = y + n;
+  const pct = v => total ? (v / total * 100).toFixed(1) + '%' : '0%';
+  const rows = [
+    ['문항', CONFIG.question.replace(/<br\s*\/?>/g, ' ').replace(/<[^>]+>/g, '')],
+    [],
+    ['응답', '개수', '비율'],
+    [CONFIG.yesLabel, y, pct(y)],
+    [CONFIG.noLabel, n, pct(n)],
+    ['합계', total, total ? '100%' : '0%'],
+    [],
+    ['순번', '응답', '스티커', '시각']
+  ];
+  state.stickers.forEach((s, i) => rows.push([
+    i + 1, s.zone === 'yes' ? CONFIG.yesLabel : CONFIG.noLabel, s.type,
+    s.t ? new Date(s.t).toLocaleString('ko-KR') : ''
+  ]));
+  const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const d = new Date();
+  a.download = `${CONFIG.fileName}_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+
+window.addEventListener('resize', updateCounts);
+$('diag').textContent = `기기 정보 · 터치이벤트: ${HAS_TOUCH ? '있음' : '없음'} · 포인터이벤트: ${HAS_POINTER ? '있음' : '없음'} · 동시 터치: ${navigator.maxTouchPoints || 0} · ${navigator.userAgent}`;
+
+// ---------- 움직이는 장식 ----------
+// 제목 글자를 한 글자씩 나눠 차례로 통통 튀게
+(function () {
+  const el = $('titleMain');
+  el.innerHTML = [...CONFIG.titleMain].map((c, i) =>
+    `<span class="ch" style="animation-delay:${i * .12}s">${c === ' ' ? '&nbsp;' : c}</span>`).join('');
+})();
+// 머리 띠에 떨어지는 색종이와 반짝이
+(function () {
+  const head = document.querySelector('header');
+  const colors = ['#7cb342', '#ffb14a', '#f6c544', '#f48fb1', '#64b5f6', '#ffffff'];
+  for (let i = 0; i < 16; i++) {
+    const c = document.createElement('i');
+    c.className = 'confetti';
+    c.style.left = (3 + Math.random() * 94) + '%';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = (5 + Math.random() * 5) + 's';
+    c.style.animationDelay = (-Math.random() * 10) + 's';
+    head.appendChild(c);
+  }
+  [[18, 62], [82, 58], [10, 80], [90, 82], [30, 92], [70, 93]].forEach(([x, y], i) => {
+    const sp = document.createElement('i');
+    sp.className = 'spark'; sp.textContent = '✦';
+    sp.style.left = x + '%'; sp.style.top = y + '%';
+    sp.style.animationDelay = (i * .37) + 's';
+    head.appendChild(sp);
+  });
+})();
+// 스티커를 붙이면 축하 조각이 톡톡 튀고 숫자가 커졌다 작아짐
+function celebrate(x, y, zone) {
+  const colors = zone === 'yes'
+    ? ['#7cb342', '#a5d36f', '#f6c544', '#ff8fb7', '#64b5f6']
+    : ['#ffb14a', '#f6c544', '#ffd180', '#a5d36f', '#ff8a65'];
+  const u = Math.min(innerWidth, innerHeight) / 100;
+  for (let i = 0; i < 12; i++) {
+    const b = document.createElement('i');
+    b.className = 'pop-bit' + (i % 3 === 0 ? ' star' : '');
+    b.style.background = colors[i % colors.length];
+    document.body.appendChild(b);
+    const ang = (i / 12) * Math.PI * 2 + Math.random() * .4, dist = (7 + Math.random() * 6) * u;
+    const dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist;
+    b.animate([
+      { transform: `translate(${x}px, ${y}px) scale(1)`, opacity: 1 },
+      { transform: `translate(${x + dx}px, ${y + dy + 3 * u}px) scale(.3) rotate(200deg)`, opacity: 0 }
+    ], { duration: 700 + Math.random() * 300, easing: 'cubic-bezier(.2,.7,.4,1)' }).onfinish = () => b.remove();
+  }
+  const cnt = $(zone + 'Count');
+  if (cnt.animate) cnt.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.5)' }, { transform: 'scale(1)' }], { duration: 450, easing: 'ease-out' });
+}
+
+// ---------- 사용법 자동 안내 ----------
+// 아무도 만지지 않으면 손가락 그림이 스티커를 눌러 칸으로 끌어다 붙이는 모습을 보여줌.
+// 누군가 화면을 만지면 바로 멈춤. 안내 스티커는 실제로 붙지 않음(결과에 안 들어감).
+const demo = { running: false, token: 0, anims: [], round: 0 };
+const dHand = $('demoHand'), dSticker = $('demoSticker'), dRing = $('demoRing'), dCap = $('demoCaption');
+const wait = (ms, tk) => new Promise((ok, no) => setTimeout(() => tk === demo.token ? ok() : no('stop'), ms));
+function play(el, frames, opts) {
+  const a = el.animate(frames, Object.assign({ fill: 'forwards' }, opts));
+  demo.anims.push(a);
+  return a;
+}
+function caption(step, text, sub, top, key) {
+  dCap.innerHTML = `<span class="step">${step}</span>${text}${sub ? `<small>${sub}</small>` : ''}`;
+  dCap.style.top = top + 'px';
+  dCap.classList.add('show');
+  speak(text.replace(/<[^>]+>/g, ''), true, key);
+}
+function stopDemo() {
+  demo.token++;
+  demo.running = false;
+  demo.anims.forEach(a => { try { a.cancel(); } catch (e) {} });
+  demo.anims = [];
+  stopVoice();
+  dCap.classList.remove('show');
+  document.querySelectorAll('.src.demo-press').forEach(e => e.classList.remove('demo-press'));
+  zones.forEach(z => z.classList.remove('hover'));
+}
+async function runDemo() {
+  if (demo.running || !dHand.animate) return;
+  demo.running = true;
+  const tk = ++demo.token;
+  const u = Math.min(innerWidth, innerHeight) / 100;
+  try {
+    while (tk === demo.token) {
+      const srcs = [...document.querySelectorAll('.src')];
+      const src = srcs[(demo.round * 3) % srcs.length];
+      const zone = zones[demo.round % 2 === 0 ? 0 : 1];
+      demo.round++;
+      const sr = src.getBoundingClientRect(), zr = zone.getBoundingClientRect(), tr = tray.getBoundingClientRect();
+      const sx = sr.left + sr.width / 2, sy = sr.top + sr.height / 2;
+      const tx = zr.left + zr.width / 2, ty = zr.top + zr.height * .55;
+      const hw = dHand.offsetWidth, hh = dHand.offsetHeight;
+      const hand = (x, y, sc = 1) => `translate(${x - hw * .48}px, ${y - hh * .07}px) scale(${sc})`;
+      const size = sr.width * 1.25;
+      dSticker.style.width = dSticker.style.height = size + 'px';
+      dSticker.innerHTML = svgFor(src.dataset.type);
+      const stk = (x, y, sc = 1, r = 0) => `translate(${x - size / 2}px, ${y - size * .35 - size / 2}px) scale(${sc}) rotate(${r}deg)`;
+      const capTop = zr.top + zr.height * .12;
+
+      // ① 스티커를 꾹 누르기
+      caption('1', '마음에 드는 <b style="color:var(--green-dark)">스티커</b>를 손가락으로 <b style="color:var(--green-dark)">꾹</b> 누르세요', '', capTop, 'step1');
+      play(dHand, [{ transform: hand(sx + 6 * u, tr.bottom + 4 * u), opacity: 0 }, { transform: hand(sx, sy), opacity: 1 }], { duration: 900, easing: 'ease-out' });
+      await wait(1000, tk);
+      src.classList.add('demo-press');
+      sfx.pick(.5);
+      play(dHand, [{ transform: hand(sx, sy) }, { transform: hand(sx, sy, .88) }], { duration: 250 });
+      dRing.style.width = dRing.style.height = sr.width * 1.4 + 'px';
+      play(dRing, [{ transform: `translate(${sx - sr.width * .7}px, ${sy - sr.width * .7}px) scale(.6)`, opacity: .9 },
+                   { transform: `translate(${sx - sr.width * .7}px, ${sy - sr.width * .7}px) scale(1.3)`, opacity: 0 }], { duration: 800, iterations: 2 });
+      await wait(1300, tk);
+
+      // ② 누른 채로 칸까지 끌기
+      const label = zone.dataset.zone === 'yes' ? CONFIG.yesLabel : CONFIG.noLabel;
+      caption('2', `누른 채로 <b style="color:${zone.dataset.zone === 'yes' ? 'var(--green-dark)' : 'var(--orange-dark)'}">‘${label}’</b> 칸까지 끌어오세요`, '그렇다 / 아니다 중 마음에 드는 칸으로!', capTop, 'step2-' + zone.dataset.zone);
+      src.classList.remove('demo-press');
+      const mx = (sx + tx) / 2 + (zone.dataset.zone === 'yes' ? -8 : 8) * u, my = (sy + ty) / 2 + 4 * u;
+      play(dSticker, [
+        { transform: stk(sx, sy, .8, 0), opacity: 1, offset: 0 },
+        { transform: stk(sx, sy, 1.1, -8), opacity: 1, offset: .12 },
+        { transform: stk(mx, my, 1.1, 6), opacity: 1, offset: .55 },
+        { transform: stk(tx, ty, 1.1, -4), opacity: 1, offset: 1 }
+      ], { duration: 2200, easing: 'ease-in-out' });
+      play(dHand, [
+        { transform: hand(sx, sy, .88), offset: 0 },
+        { transform: hand(sx, sy, .88), offset: .12 },
+        { transform: hand(mx, my, .88), offset: .55 },
+        { transform: hand(tx, ty, .88), offset: 1 }
+      ], { duration: 2200, easing: 'ease-in-out' });
+      await wait(1500, tk);
+      zone.classList.add('hover');
+      await wait(900, tk);
+
+      // ③ 손을 떼면 붙음
+      caption('3', '손을 떼면 <b style="color:var(--green-dark)">쏙!</b> 붙어요', '참여해 주셔서 감사합니다 💛', capTop, 'step3');
+      play(dHand, [{ transform: hand(tx, ty, .88), opacity: 1 }, { transform: hand(tx + 5 * u, ty + 9 * u, 1), opacity: 0 }], { duration: 700, easing: 'ease-in' });
+      play(dSticker, [
+        { transform: stk(tx, ty, 1.1, -4), opacity: 1 },
+        { transform: stk(tx, ty, .85, -4), opacity: 1, offset: .25 },
+        { transform: stk(tx, ty, 1, -4), opacity: 1, offset: .5 },
+        { transform: stk(tx, ty, 1, -4), opacity: 1, offset: .85 },
+        { transform: stk(tx, ty, 1, -4), opacity: 0 }
+      ], { duration: 1900 });
+      zone.classList.remove('hover');
+      celebrate(tx, ty - size * .35, zone.dataset.zone);
+      sfx[zone.dataset.zone === 'yes' ? 'yes' : 'no'](.5);
+      await wait(2300, tk);
+      dCap.classList.remove('show');
+      await wait(1300, tk);
+    }
+  } catch (e) { /* 누군가 화면을 만져 멈춤 */ }
+}
+let idleTimer = null;
+function armIdle() {
+  clearTimeout(idleTimer);
+  if (!CONFIG.idleSec) return;
+  idleTimer = setTimeout(() => {
+    // 관리자 메뉴·터치 확인 중이거나 누가 끌고 있으면 기다렸다가 다시
+    if (adminBg.classList.contains('open') || tcheck.classList.contains('open') || drags.size) return armIdle();
+    runDemo();
+  }, CONFIG.idleSec * 1000);
+}
+['touchstart', 'pointerdown', 'mousedown', 'keydown'].forEach(ev =>
+  window.addEventListener(ev, () => { if (demo.running) stopDemo(); armIdle(); }, true));
+armIdle();
+
+// ---------- 소리 ----------
+// 소리 파일 없이 브라우저에서 직접 만들어 냄 (인터넷 없어도 됨).
+// 브라우저 규칙상 첫 터치 전에는 소리가 나지 않음 → 노트북-실행.bat 으로 띄우면 처음부터 남.
+let actx = null, master = null;
+function audio() {
+  if (!actx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    actx = new AC();
+    master = actx.createGain();
+    master.gain.value = 1;
+    master.connect(actx.destination);
+  }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+// 맑은 종소리 한 음
+function note(freq, at, dur, vol, type, out) {
+  const c = actx, o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain();
+  o.type = type || 'sine'; o.frequency.value = freq;
+  o2.type = 'sine'; o2.frequency.value = freq * 2; // 배음으로 반짝이는 느낌
+  const g2 = c.createGain(); g2.gain.value = .25;
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(out || master);
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  o.start(at); o2.start(at); o.stop(at + dur + .05); o2.stop(at + dur + .05);
+}
+function sweep(f1, f2, dur, vol, type) {
+  const c = actx, o = c.createOscillator(), g = c.createGain(), t = c.currentTime;
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05);
+}
+const sfx = {
+  ok() { return state.sound && audio(); },
+  pick(k = 1) { if (!this.ok()) return; sweep(420, 980, .13, .35 * CONFIG.soundVolume * k, 'triangle'); },
+  // 그렇다: 도-미-솔-도 딩동댕
+  yes(k = 1) {
+    if (!this.ok()) return;
+    const t = actx.currentTime, v = .3 * CONFIG.soundVolume * k;
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => note(f, t + i * .085, .5, v, 'triangle'));
+    note(1568, t + .38, .7, v * .5);
+    note(2093, t + .46, .8, v * .35);
+  },
+  // 아니다: 부드럽고 따뜻한 차임 (서운하지 않게)
+  no(k = 1) {
+    if (!this.ok()) return;
+    const t = actx.currentTime, v = .28 * CONFIG.soundVolume * k;
+    [659.25, 783.99, 1046.5].forEach((f, i) => note(f, t + i * .16, .8, v));
+  },
+  miss() { if (!this.ok()) return; sweep(520, 220, .22, .25 * CONFIG.soundVolume, 'sine'); }
+};
+
+// 음성
+// 1순위: voice 폴더의 녹음 파일 (사람 목소리 그대로)
+// 2순위: 컴퓨터의 한국어 음성 중 가장 자연스러운 것 (엣지의 AI 음성 SunHi·InJoon 등)
+const voiceFiles = {};   // 파일 이름 → Audio (실제로 있는 파일만)
+let voicePlaying = null;
+(function findVoiceFiles() {
+  const keys = ['step1', 'step2-yes', 'step2-no', 'step3'];
+  CONFIG.thanksYes.forEach((_, i) => keys.push('yes' + (i + 1)));
+  CONFIG.thanksNo.forEach((_, i) => keys.push('no' + (i + 1)));
+  keys.forEach(k => {
+    const a = new Audio();
+    a.preload = 'auto';
+    a.addEventListener('canplaythrough', () => { voiceFiles[k] = a; pickVoice(); }, { once: true });
+    a.src = `voice/${k}.mp3`;
+  });
+})();
+let koVoice = null;
+function pickVoice() {
+  const vs = window.speechSynthesis ? speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang)) : [];
+  koVoice = null;
+  for (const want of CONFIG.voicePrefer) {
+    koVoice = vs.find(v => v.name.toLowerCase().includes(want.toLowerCase()));
+    if (koVoice) break;
+  }
+  koVoice = koVoice || vs[0] || null;
+  const el = $('voiceInfo');
+  if (el) el.textContent = '읽어 주는 목소리: ' + (koVoice ? koVoice.name : '한국어 음성 없음') +
+    ' · 녹음 파일: ' + (Object.keys(voiceFiles).length ? Object.keys(voiceFiles).sort().join(', ') : '없음');
+}
+if (window.speechSynthesis) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function stopVoice() {
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  if (voicePlaying) { voicePlaying.pause(); voicePlaying = null; }
+}
+function speak(text, isDemo, key) {
+  if (!state.voice) return;
+  stopVoice();
+  // 녹음 파일이 있으면 그것을 틂
+  const file = key && voiceFiles[key];
+  if (file) {
+    file.currentTime = 0;
+    file.volume = isDemo ? .85 : 1;
+    file.play().catch(() => {});
+    voicePlaying = file;
+    return;
+  }
+  if (!window.speechSynthesis || !koVoice) return;
+  const clean = text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️‍✦]/gu, '').replace(/\s+/g, ' ').trim();
+  if (!clean) return;
+  const u = new SpeechSynthesisUtterance(clean);
+  try { u.voice = koVoice; } catch (e) {}
+  // 높낮이는 그대로, 빠르기는 살짝 느리게 → 덜 기계적으로 들림
+  u.lang = koVoice.lang || 'ko-KR'; u.rate = isDemo ? .92 : .97; u.pitch = 1; u.volume = isDemo ? .85 : 1;
+  speechSynthesis.speak(u);
+}
+
+// 배경 음악: music.mp3 가 있으면 그 노래를 반복, 없으면 오르골 음악을 만들어 연주
+const bgm = {
+  file: null, fileOk: false, synthOn: false, timer: null, next: 0, step: 0, bus: null,
+  init() {
+    const a = new Audio();
+    a.loop = true; a.preload = 'auto';
+    a.addEventListener('canplaythrough', () => { this.fileOk = true; this.update(); }, { once: true });
+    a.addEventListener('error', () => { this.fileOk = false; this.update(); }, { once: true });
+    a.src = 'music.mp3';
+    this.file = a;
+  },
+  update() {
+    const want = state.music && !!actx;
+    if (this.fileOk) {
+      this.stopSynth();
+      this.file.volume = Math.min(1, CONFIG.musicVolume);
+      if (want) this.file.play().catch(() => {}); else this.file.pause();
+    } else {
+      if (want) this.startSynth(); else this.stopSynth();
+    }
+  },
+  // 8마디 밝은 멜로디 (8분음표 단위, 0 = 쉼표) 와 마디별 화음
+  mel: [523,659,784,659, 880,784,659,784, 698,880,1047,880, 784,659,587,659,
+        523,659,784,1047, 880,784,659,523, 587,698,659,587, 523,0,392,0],
+  bass: [131,110,87,98, 131,110,147,131],
+  chord: [[262,330,392],[220,262,330],[175,220,262],[196,247,294],[262,330,392],[220,262,330],[147,175,220],[262,330,392]],
+  startSynth() {
+    if (this.synthOn || !audio()) return;
+    this.synthOn = true;
+    this.bus = actx.createGain();
+    this.bus.gain.value = CONFIG.musicVolume * .9;
+    this.bus.connect(master);
+    this.next = actx.currentTime + .1; this.step = 0;
+    const beat = 60 / 112 / 2; // 112 BPM, 8분음표
+    this.timer = setInterval(() => {
+      while (this.next < actx.currentTime + .4) {
+        const i = this.step % 32, bar = Math.floor(i / 4);
+        const f = this.mel[i];
+        if (f) note(f, this.next, beat * 1.8, .16, 'triangle', this.bus);
+        if (i % 4 === 0) {
+          note(this.bass[bar], this.next, beat * 3.6, .22, 'sine', this.bus);
+          this.chord[bar].forEach((cf, k) => note(cf, this.next + beat * (k * .5 + 1), beat * 2.4, .05, 'sine', this.bus));
+        }
+        this.next += beat; this.step++;
+      }
+    }, 120);
+  },
+  stopSynth() {
+    if (!this.synthOn) return;
+    this.synthOn = false; clearInterval(this.timer);
+    const b = this.bus; this.bus = null;
+    if (b) { b.gain.setTargetAtTime(0, actx.currentTime, .2); setTimeout(() => b.disconnect(), 1500); }
+  }
+};
+bgm.init();
+// 첫 터치(또는 자동재생 허용 시 바로) 소리 시작
+function unlockAudio() { if (audio()) bgm.update(); }
+['touchstart', 'pointerdown', 'mousedown', 'keydown'].forEach(ev => window.addEventListener(ev, unlockAudio, true));
+// 자동재생이 허용된 실행(노트북-실행.bat)이면 손대기 전부터 음악이 나옴
+try {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (AC) { const probe = new AC(); if (probe.state === 'running') { probe.close(); unlockAudio(); } else probe.close(); }
+} catch (e) {}
+
+load();
+renderAll();
+</script>
+</body>
+</html>
