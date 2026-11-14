@@ -1,132 +1,222 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
   <base target="_top">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <style>
-    body { background-color: #f8f9fa; padding: 10px; font-family: 'Malgun Gothic', sans-serif; }
-    .container { max-width: 650px; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 50px; }
-    .container.admin-mode { max-width: 850px; }
-    .day-header { background-color: #f1f3f5; padding: 10px 15px; border-radius: 10px; font-weight: bold; margin-top: 25px; border-left: 5px solid #339af0; }
-    .course-item { border: 1px solid #dee2e6; padding: 15px; margin-bottom: 8px; border-radius: 12px; cursor: pointer; background: white; transition: 0.2s; }
-    .course-item.selected { background-color: #e7f5ff; border-color: #339af0; font-weight: bold; position: relative; }
-    .course-item.selected::after { content: '✔ 선택됨'; position: absolute; right: 15px; color: #339af0; }
-    #successView, #checkView, #resultView, #adminView { display: none; }
+    :root {
+      --bg: #f2f4f6;
+      --card: #ffffff;
+      --text: #191f28;
+      --sub: #6b7684;
+      --muted: #8b95a1;
+      --line: #e5e8eb;
+      --blue: #3182f6;
+      --blue-soft: #e8f3ff;
+      --green: #02a262;
+      --green-soft: #e6f7ef;
+      --orange: #f76808;
+      --orange-soft: #fff1e6;
+      --red: #f04452;
+      --red-soft: #feeceb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --bg: #17181c; --card: #22242a; --text: #f2f4f6; --sub: #b0b8c1; --muted: #8b95a1; --line: #33363d; --blue-soft: #1d2d44; --green-soft: #16372a; --orange-soft: #3d2a18; --red-soft: #3d1f22; }
+    }
+    :root[data-theme="dark"] { --bg: #17181c; --card: #22242a; --text: #f2f4f6; --sub: #b0b8c1; --muted: #8b95a1; --line: #33363d; --blue-soft: #1d2d44; --green-soft: #16372a; --orange-soft: #3d2a18; --red-soft: #3d1f22; }
 
-    .status-pass { background-color: #2f9e44; color: white; padding: 3px 8px; border-radius: 5px; font-weight: bold; font-size: 0.9rem; }
-    .status-wait { background-color: #f08c00; color: white; padding: 3px 8px; border-radius: 5px; font-weight: bold; font-size: 0.9rem; }
-    .result-box { border-left: 5px solid #1c7ed6; background: #f8f9fa; padding: 15px; margin-bottom: 15px; text-align: left; }
-    .badge-count { background-color: #e7f5ff; color: #1c7ed6; font-weight: bold; padding: 4px 8px; border-radius: 20px; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
+      letter-spacing: -0.2px; -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 520px; margin: 0 auto; padding: 24px 16px 140px; min-height: 100vh; }
+    .hidden { display: none !important; }
 
-    /* 대시보드 미니 카드 및 통계 스타일 */
-    .stat-card { background: white; border: 1px solid #e9ecef; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); transition: all 0.2s; }
-    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-    .card-stat { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); background: #ffffff; padding: 15px; text-align: center; }
-    .stat-val { font-size: 20px; font-weight: 800; margin-top: 5px; }
-    .progress { height: 16px; border-radius: 10px; margin-bottom: 8px; background-color: #e9ecef; }
-    .total-info-box { background: #e7f5ff; border-radius: 12px; padding: 10px; font-weight: bold; color: #1c7ed6; text-align: center; margin-bottom: 15px; font-size: 0.9rem; }
-    .table-total-row { background-color: #fff9db !important; font-weight: 800; border-top: 2px solid #f0adb4; }
+    /* 헤더 */
+    .brand { text-align: center; padding-top: 8px; }
+    .brand img { max-height: 44px; width: auto; object-fit: contain; }
+    .title { margin: 18px 4px 6px; font-size: 26px; font-weight: 800; line-height: 1.35; letter-spacing: -0.6px; }
+    .subtitle { margin: 0 4px 20px; font-size: 15px; color: var(--sub); line-height: 1.5; }
+    .pill-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+    .pill {
+      border: 0; background: var(--card); color: var(--text); font-size: 14px; font-weight: 600;
+      padding: 9px 14px; border-radius: 999px; box-shadow: 0 1px 3px rgba(0,0,0,.06); cursor: pointer;
+    }
+    .pill:active { transform: scale(.98); }
 
-    /* 💡 두 칸을 한 칸으로 통합 및 정돈한 스타일 개편 */
-    .mid-summary-box { background: #fdfdfd; border: 1px dashed #ced4da; border-radius: 12px; padding: 14px 18px; }
-    .mid-title { font-size: 0.85rem; font-weight: bold; color: #495057; display: flex; align-items: center; gap: 4px; }
-    .mid-value { font-size: 1.05rem; font-weight: 800; color: #212529; }
-    /* 신청 과목 목록 칸의 스타일 강제 지정 */
-  #adminApplicantTable td:nth-child(3) {
-    white-space: nowrap; /* 줄바꿈을 하지 않음 */
-    font-size: 0.9rem;   /* 폰트 크기 고정 */
-  }
+    /* 카드와 입력 */
+    .card { background: var(--card); border-radius: 20px; padding: 22px 18px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+    .section-title { font-size: 17px; font-weight: 700; margin: 0 0 14px; }
+    .field { margin-bottom: 18px; }
+    .field:last-child { margin-bottom: 0; }
+    .label { display: block; font-size: 14px; font-weight: 600; color: var(--sub); margin: 0 2px 8px; }
+    .input {
+      width: 100%; height: 56px; border: 0; border-radius: 14px; background: var(--bg); color: var(--text);
+      padding: 0 16px; font-size: 17px; font-weight: 500; outline: none; transition: box-shadow .15s, background .15s;
+    }
+    .input::placeholder { color: var(--muted); font-weight: 400; }
+    .input:focus { background: var(--card); box-shadow: 0 0 0 2px var(--blue); }
+    select.input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--sub) 50%), linear-gradient(135deg, var(--sub) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 16px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+
+    /* 성별 선택 (세그먼트) */
+    .segment { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .segment input { position: absolute; opacity: 0; pointer-events: none; }
+    .segment label {
+      height: 52px; border-radius: 14px; background: var(--bg); color: var(--sub); font-size: 16px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s;
+    }
+    .segment input:checked + label { background: var(--blue); color: #fff; }
+
+    /* 강좌 */
+    .day-title { font-size: 15px; font-weight: 700; color: var(--sub); margin: 22px 4px 10px; }
+    .day-title:first-child { margin-top: 4px; }
+    .course-card {
+      background: var(--card); border-radius: 18px; padding: 16px 18px; margin-bottom: 10px; cursor: pointer;
+      border: 2px solid transparent; box-shadow: 0 1px 4px rgba(0,0,0,.05); transition: border-color .15s, background .15s;
+    }
+    .course-card:active { transform: scale(.995); }
+    .course-card.selected { border-color: var(--blue); background: var(--blue-soft); }
+    .cc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .cc-name { font-size: 17px; font-weight: 700; line-height: 1.4; }
+    .cc-check { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .cc-meta { font-size: 14px; color: var(--sub); margin-top: 6px; line-height: 1.5; }
+    .cc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 8px; }
+    .badge.ok { background: var(--green-soft); color: var(--green); }
+    .badge.warn { background: var(--orange-soft); color: var(--orange); }
+    .badge.bad { background: var(--red-soft); color: var(--red); }
+    .fee { font-size: 14px; font-weight: 600; color: var(--sub); }
+    .empty { text-align: center; color: var(--muted); padding: 32px 0; font-size: 15px; }
+
+    /* 동의 */
+    .consent { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .consent input { width: 22px; height: 22px; accent-color: var(--blue); margin: 0; }
+
+    /* 하단 고정 버튼 */
+    .bottom-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, var(--bg) 70%, rgba(242,244,246,0));
+      padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); z-index: 20;
+    }
+    .bottom-inner { max-width: 520px; margin: 0 auto; }
+    .summary { font-size: 14px; color: var(--sub); margin: 0 4px 8px; text-align: center; }
+    .btn-primary {
+      width: 100%; height: 56px; border: 0; border-radius: 16px; background: var(--blue); color: #fff; font-size: 17px; font-weight: 700;
+      cursor: pointer; transition: opacity .15s, transform .05s;
+    }
+    .btn-primary:active { transform: scale(.99); }
+    .btn-primary:disabled { background: #c9ced6; cursor: default; }
+    .btn-ghost {
+      width: 100%; height: 52px; border: 0; border-radius: 14px; background: var(--card); color: var(--text); font-size: 16px; font-weight: 600;
+      cursor: pointer; margin-top: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    }
+    .btn-ghost.plain { background: transparent; box-shadow: none; color: var(--sub); }
+
+    /* 완료 화면 */
+    .done { text-align: center; padding: 56px 12px 24px; }
+    .done-icon { width: 84px; height: 84px; border-radius: 50%; background: var(--green-soft); color: var(--green); font-size: 44px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+    .done h2 { font-size: 24px; font-weight: 800; margin: 22px 0 8px; }
+    .done p { color: var(--sub); font-size: 15px; line-height: 1.6; margin: 0 0 28px; }
+
+    /* 결과 조회 */
+    .result-wrap .card { margin-bottom: 12px; }
+
+    @media (max-width: 380px) { .title { font-size: 23px; } .cc-name { font-size: 16px; } }
   </style>
 </head>
 <body>
 <?!= include('navbar'); ?>
-<div class="container" id="mainView">
-  <div class="text-center mb-4">
 
-    <div class="mb-2" style="min-height: 50px;">
-      <img id="mainLogoImg"
-           src=""
-           alt="거제시종합사회복지관 로고"
-           style="max-height: 50px; width: auto; object-fit: contain;">
+<!-- 신청 화면 -->
+<div class="page" id="mainView">
+  <div class="brand"><img id="mainLogoImg" src="" alt="거제시종합사회복지관 로고"></div>
+  <h1 class="title"><?= termName ?> 수강신청</h1>
+  <p class="subtitle">신청 정보를 입력하고 원하는 강좌를 선택해 주세요. 최대 5개까지 고를 수 있어요.</p>
+  <div class="pill-row">
+    <button type="button" class="pill" onclick="goToCheckPage()">🔍 내 신청 확인</button>
+    <button type="button" class="pill" onclick="safeRefresh()">🔄 새로고침</button>
+  </div>
+
+  <section class="card">
+    <h2 class="section-title">신청자 정보</h2>
+    <div class="field">
+      <label class="label" for="userName">성명</label>
+      <input type="text" id="userName" class="input" placeholder="실명을 입력해 주세요" onchange="checkJobTimeRealtime()">
     </div>
-
-    <!-- 메인 타이틀 (학기명은 학기목록 탭에서 가져옴) -->
-    <h3 class="fw-bold text-dark mb-3" style="font-size: 1.65rem; letter-spacing: -0.5px; margin-top: 5px;">
-      <?= termName ?> 수강신청
-    </h3>
-
-    <!-- 유틸리티 버튼 그룹 -->
-    <div class="d-flex justify-content-center gap-2">
-      <button type="button" onclick="goToCheckPage()" class="btn btn-light border fw-bold px-3 py-2" style="border-radius: 12px; font-size: 0.95rem; background-color: #fff;">
-        🔍 내 신청 확인
-      </button>
-      <button type="button" onclick="safeRefresh()" class="btn btn-light border fw-bold text-secondary px-3 py-2" style="border-radius: 12px; font-size: 0.95rem; background-color: #fff;">
-        🔄 새로고침
-      </button>
+    <div class="field">
+      <span class="label">성별</span>
+      <div class="segment">
+        <input type="radio" name="gender" id="m" value="남"><label for="m">남성</label>
+        <input type="radio" name="gender" id="f" value="여"><label for="f">여성</label>
+      </div>
     </div>
+    <div class="field">
+      <label class="label" for="userDob">생년월일 (6자리)</label>
+      <input type="number" id="userDob" class="input" placeholder="예) 500101" onchange="checkJobTimeRealtime()">
+    </div>
+    <div class="field">
+      <label class="label" for="userPhone">연락처</label>
+      <input type="tel" id="userPhone" class="input" placeholder="010-0000-0000" maxlength="13" oninput="formatPhone(this)">
+    </div>
+    <div class="field">
+      <label class="label" for="benefit">수강료 면제 사유</label>
+      <select id="benefit" class="input">
+        <option value="해당없음">해당없음</option><option value="기초생활수급자">기초생활수급자</option><option value="차상위계층">차상위계층</option><option value="국가유공자">국가유공자</option><option value="중증장애인">중증장애인</option>
+      </select>
+    </div>
+  </section>
 
-  </div>
-  <hr class="mb-4" style="border-color: #e9ecef; opacity: 0.6;">
+  <section class="card">
+    <h2 class="section-title">강좌 선택</h2>
+    <div id="courseList"><div class="empty">강좌를 불러오는 중이에요</div></div>
+  </section>
 
-  <div class="mb-3"><label class="fw-bold">성명</label><input type="text" id="userName" class="form-control form-control-lg" onchange="checkJobTimeRealtime()"></div>
-  <div class="mb-3">
-    <label class="fw-bold">성별</label><br>
-    <div class="btn-group w-100"><input type="radio" class="btn-check" name="gender" id="m" value="남"><label class="btn btn-outline-primary btn-lg" for="m">남성</label><input type="radio" class="btn-check" name="gender" id="f" value="여"><label class="btn btn-outline-primary btn-lg" for="f">여성</label></div>
-  </div>
-  <div class="mb-3"><label class="fw-bold">생년월일 (6자리)</label><input type="number" id="userDob" class="form-control form-control-lg" placeholder="예: 500101" onchange="checkJobTimeRealtime()"></div>
-  <div class="mb-3"><label class="fw-bold">연락처</label><input type="tel" id="userPhone" class="form-control form-control-lg" placeholder="010-0000-0000" maxlength="13" oninput="formatPhone(this)"></div>
-  <div class="mb-4">
-    <label class="fw-bold">수강료 면제 사유</label>
-    <select id="benefit" class="form-select form-select-lg">
-      <option value="해당없음">해당없음</option><option value="기초생활수급자">기초생활수급자</option><option value="차상위계층">차상위계층</option><option value="국가유공자">국가유공자</option><option value="중증장애인">중증장애인</option>
-    </select>
-  </div>
+  <section class="card">
+    <label class="consent"><input type="checkbox" id="consent"> 개인정보 수집·이용에 동의합니다 (필수)</label>
+  </section>
+</div>
 
-  <div id="courseList">로딩 중...</div>
-
-  <div class="sticky-bottom" style="position: sticky; bottom: 0; background: white; padding-top: 15px; z-index: 10;">
-    <div class="mb-2"><input type="checkbox" id="consent"> <label for="consent" class="fw-bold">개인정보 동의 (필수)</label></div>
-    <button onclick="submitData()" id="submitBtn" class="btn btn-primary w-100 btn-lg shadow">수강신청 완료하기</button>
+<div class="bottom-bar" id="bottomBar">
+  <div class="bottom-inner">
+    <div class="summary" id="selSummary">선택한 강좌 0개</div>
+    <button onclick="submitData()" id="submitBtn" class="btn-primary">수강신청 완료하기</button>
   </div>
 </div>
 
 <!-- 내 신청 및 결과 확인 화면 -->
-<div class="container" id="checkView">
-  <h4 class="mb-4 fw-bold">내 신청 및 결과 확인</h4>
-  <input type="text" id="chkName" class="form-control form-control-lg mb-2" placeholder="성명 (실명)">
-  <input type="number" id="chkDob" class="form-control form-control-lg mb-2" placeholder="생년월일 6자리">
-  <input type="tel" id="chkPhone" class="form-control form-control-lg mb-4" placeholder="연락처 010-0000-0000" maxlength="13" oninput="formatPhone(this)">
-
-  <button onclick="checkApp()" id="chkBtn" class="btn btn-primary w-100 btn-lg mb-2">조회하기</button>
-  <button onclick="hideCheckView()" class="btn btn-light w-100">돌아가기</button>
+<div class="page hidden" id="checkView">
+  <h1 class="title">내 신청 및 결과 확인</h1>
+  <p class="subtitle">신청할 때 입력한 정보를 똑같이 적어 주세요.</p>
+  <section class="card">
+    <div class="field"><label class="label" for="chkName">성명</label><input type="text" id="chkName" class="input" placeholder="실명"></div>
+    <div class="field"><label class="label" for="chkDob">생년월일 (6자리)</label><input type="number" id="chkDob" class="input" placeholder="예) 500101"></div>
+    <div class="field"><label class="label" for="chkPhone">연락처</label><input type="tel" id="chkPhone" class="input" placeholder="010-0000-0000" maxlength="13" oninput="formatPhone(this)"></div>
+  </section>
+  <button onclick="checkApp()" id="chkBtn" class="btn-primary">조회하기</button>
+  <button onclick="hideCheckView()" class="btn-ghost">돌아가기</button>
 </div>
 
 <!-- 조회 결과 화면 -->
-<div class="container" id="resultView">
-  <h4 id="resTitle" class="fw-bold mb-3">조회 결과</h4>
-
-  <?!= include('resultView'); ?>
-
-  <button onclick="hideCheckView()" class="btn btn-primary w-100 btn-lg mt-3">확인</button>
+<div class="page hidden" id="resultView">
+  <h1 class="title" id="resTitle">조회 결과</h1>
+  <div class="result-wrap">
+    <?!= include('resultView'); ?>
+  </div>
+  <button onclick="hideCheckView()" class="btn-primary" style="margin-top:12px">확인</button>
 </div>
 
 <!-- 접수 완료 화면 -->
-<div class="container text-center" id="successView" style="padding: 40px 10px;">
-  <h1 class="mb-3" style="font-size: 4rem;">✅</h1>
-  <h2 id="successMsg" class="mb-4" style="font-weight: 700; color: #2f9e44;">접수가 완료되었습니다!</h2>
-  <div class="d-grid gap-3 mt-4">
-
-    <button type="button"
-            onclick="goToNewApplication()"
-            style="width: 100%; padding: 15px; background-color: #ffffff; border: 1px solid #198754; border-radius: 12px; color: #198754; font-weight: bold; font-size: 1.25rem; cursor: pointer; margin-bottom: 10px;">
-      이어서 새로 신청하기 (다시 입력)
-    </button>
-
-    <button onclick="goToCheckDirectly()" class="btn btn-outline-success btn-lg p-3" style="font-weight: bold; border-radius: 12px;">🔎 방금 신청한 내역 확인하기</button>
+<div class="page hidden" id="successView">
+  <div class="done">
+    <div class="done-icon">✓</div>
+    <h2 id="successMsg">접수가 완료되었습니다!</h2>
+    <p>신청 내역은 아래에서 언제든지 확인할 수 있어요.</p>
   </div>
+  <button onclick="goToCheckDirectly()" class="btn-primary">방금 신청한 내역 확인하기</button>
+  <button type="button" onclick="goToNewApplication()" class="btn-ghost">다른 사람 신청하기</button>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
   // 학기 ID (웹앱 주소의 ?term= 값, 서버가 채워 줌)
@@ -171,62 +261,72 @@
   };
 
   function checkJobTimeRealtime() {
-    const name = document.getElementById('userName').value.trim().replace(/\s/g,'');
-    const dob = document.getElementById('userDob').value.trim().replace(/[^0-9]/g, "");
-    if(name && dob.length === 6) {
-      const key = name + "_" + dob;
-      if(jobTimes[key]) {
+    const name = document.getElementById('userName').value.trim().replace(/\s/g, '');
+    const dob = document.getElementById('userDob').value.trim().replace(/[^0-9]/g, '');
+    if (name && dob.length === 6) {
+      const key = name + '_' + dob;
+      if (jobTimes[key]) {
         currentUserJob = jobTimes[key];
-        alert(`[확인] 노인일자리 참여자입니다.\n활동시간(${currentUserJob.start}~${currentUserJob.end})과 겹치는 강좌는 요일 상관없이 제외됩니다.`);
-      } else { currentUserJob = null; }
+        alert('[확인] 노인일자리 참여자입니다.\n활동시간(' + currentUserJob.start + '~' + currentUserJob.end + ')과 겹치는 강좌는 요일 상관없이 제외됩니다.');
+      } else {
+        currentUserJob = null;
+      }
     }
-    selected = []; renderCourses();
+    selected = [];
+    renderCourses();
   }
 
   // 정원 초과 시 '추첨예정(정원초과 X명)'으로 표시
   function renderCourses() {
-    const list = document.getElementById('courseList'); list.innerHTML = '';
-    ['월','화','수','목','금'].forEach(d => {
+    const list = document.getElementById('courseList');
+    list.innerHTML = '';
+    ['월', '화', '수', '목', '금'].forEach(d => {
       const items = courses.filter(c => c.day === d);
-      if (items.length) {
-        const h = document.createElement('div'); h.className = 'day-header'; h.innerText = d + '요일'; list.appendChild(h);
-        items.forEach(c => {
-          const idx = courses.indexOf(c);
-          const div = document.createElement('div');
-          div.className = `course-item ${selected.includes(idx) ? 'selected' : ''}`;
+      if (!items.length) return;
+      const h = document.createElement('div');
+      h.className = 'day-title';
+      h.textContent = d + '요일';
+      list.appendChild(h);
 
-          let badgeStyle = "background-color: #2f9e44; color: white;";
-          let statusText = `잔여 ${c.remaining}석 (신청 ${c.current}명)`;
+      items.forEach(c => {
+        const idx = courses.indexOf(c);
+        const isSel = selected.includes(idx);
+        const parts = String(c.display).split('|').map(s => s.trim());
+        const name = parts[0];
+        const fee = parts.length > 1 ? parts[parts.length - 1] : '';
 
-          if (c.current >= c.quota) {
-            badgeStyle = "background-color: #e03131; color: white;";
-            const overCount = c.current - c.quota;
-            statusText = `🚨 추첨예정 (정원초과 ${overCount}명)`;
-          } else if (c.remaining <= 3) {
-            badgeStyle = "background-color: #f08c00; color: white;";
-            statusText = `⏳ 마감임박 (${c.remaining}석 남음 / 신청 ${c.current}명)`;
-          }
+        let badgeCls = 'ok';
+        let statusText = '잔여 ' + c.remaining + '석 · 신청 ' + c.current + '명';
+        if (c.current >= c.quota) {
+          badgeCls = 'bad';
+          statusText = '추첨예정 · 정원초과 ' + (c.current - c.quota) + '명';
+        } else if (c.remaining <= 3) {
+          badgeCls = 'warn';
+          statusText = '마감임박 · ' + c.remaining + '석 남음';
+        }
 
-          div.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <strong style="font-size: 1.1rem;">${c.display}</strong> <br>
-                <small class="text-muted">🕒 시간: ${c.start || '미지정'} ~ ${c.end || '미지정'}</small>
-              </div>
-              <div class="text-end" style="min-width: 190px; font-size: 0.85rem;">
-                <span class="badge bg-secondary mb-1" style="font-size: 0.75rem;">정원 ${c.quota}명</span> <br>
-                <span class="badge" style="${badgeStyle} font-size: 0.8rem; font-weight: bold; padding: 5px 10px; border-radius: 8px;">
-                  ${statusText}
-                </span>
-              </div>
-            </div>
-          `;
-
-          div.onclick = () => toggleCourse(idx);
-          list.appendChild(div);
-        });
-      }
+        const div = document.createElement('div');
+        div.className = 'course-card' + (isSel ? ' selected' : '');
+        div.innerHTML =
+          '<div class="cc-top"><div class="cc-name">' + escapeText(name) + '</div>' +
+          (isSel ? '<span class="cc-check">✓</span>' : '') + '</div>' +
+          '<div class="cc-meta">' + escapeText(c.start || '미지정') + ' ~ ' + escapeText(c.end || '미지정') + ' · 정원 ' + c.quota + '명</div>' +
+          '<div class="cc-foot"><span class="badge ' + badgeCls + '">' + escapeText(statusText) + '</span>' +
+          (fee ? '<span class="fee">' + escapeText(fee) + '</span>' : '') + '</div>';
+        div.onclick = () => toggleCourse(idx);
+        list.appendChild(div);
+      });
     });
+    if (!list.children.length) list.innerHTML = '<div class="empty">신청 가능한 강좌가 없어요</div>';
+    updateSummary();
+  }
+
+  function updateSummary() {
+    document.getElementById('selSummary').textContent = '선택한 강좌 ' + selected.length + '개' + (selected.length ? '' : ' · 강좌를 골라 주세요');
+  }
+
+  function escapeText(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   }
 
   function toggleCourse(idx) {
@@ -237,7 +337,7 @@
     if (currentUserJob && currentUserJob.start && currentUserJob.end) {
       if (target && target.start && target.end) {
         if (target.start < currentUserJob.end && target.end > currentUserJob.start) {
-          return alert(`[선택 불가] 노인일자리 시간(${currentUserJob.start}~${currentUserJob.end})과 중복됩니다.`);
+          return alert('[선택 불가] 노인일자리 시간(' + currentUserJob.start + '~' + currentUserJob.end + ')과 중복됩니다.');
         }
       }
     }
@@ -245,10 +345,10 @@
     if (selected.includes(idx)) {
       selected = selected.filter(i => i !== idx);
     } else {
-      if (selected.length >= 5) return alert("최대 5개 가능합니다.");
+      if (selected.length >= 5) return alert('최대 5개 가능합니다.');
 
       // 중복 신청 제한 그룹 체크
-      if (typeof restrictions !== 'undefined' && restrictions) {
+      if (restrictions) {
         for (let group of restrictions) {
           const myMatch = group.find(gName => targetName.includes(gName));
           if (myMatch) {
@@ -256,7 +356,7 @@
               const selName = courses[sIdx].display;
               const otherMatch = group.find(gName => selName.includes(gName));
               if (otherMatch && otherMatch !== myMatch) {
-                return alert(`[중복 신청 제한]\n\n'${myMatch}' 강좌는 '${otherMatch}' 강좌와 동시에 신청할 수 없습니다.\n둘 중 하나만 선택해 주세요.`);
+                return alert("[중복 신청 제한]\n\n'" + myMatch + "' 강좌는 '" + otherMatch + "' 강좌와 동시에 신청할 수 없습니다.\n둘 중 하나만 선택해 주세요.");
               }
             }
           }
@@ -270,8 +370,7 @@
         if (!target.start || !target.end || !selC.start || !selC.end) return false;
         return (target.start < selC.end && target.end > selC.start);
       });
-
-      if (isOverlap) return alert("선택한 다른 강좌와 시간이 겹칩니다.");
+      if (isOverlap) return alert('선택한 다른 강좌와 시간이 겹칩니다.');
 
       selected.push(idx);
     }
@@ -289,55 +388,71 @@
     const gender = document.querySelector('input[name="gender"]:checked')?.value;
     const benefit = document.getElementById('benefit').value;
     const consent = document.getElementById('consent').checked;
-    if (!name || !dob || !phone || !gender || !consent) return alert("필수 항목을 입력하세요.");
-    if (!PHONE_RE.test(phone)) return alert("연락처는 010-0000-0000 형식으로 입력해 주세요.");
-    if (selected.length === 0) return alert("과목을 선택하세요.");
+    if (!name || !dob || !phone || !gender || !consent) return alert('필수 항목을 입력하세요.');
+    if (!PHONE_RE.test(phone)) return alert('연락처는 010-0000-0000 형식으로 입력해 주세요.');
+    if (selected.length === 0) return alert('과목을 선택하세요.');
 
-    const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.innerText = "신청 중...";
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '신청 중...';
     google.script.run
       .withSuccessHandler(msg => {
-        document.getElementById('mainView').style.display = 'none';
-        document.getElementById('successView').style.display = 'block';
-        document.getElementById('successMsg').innerText = msg;
+        document.getElementById('mainView').classList.add('hidden');
+        document.getElementById('bottomBar').classList.add('hidden');
+        document.getElementById('successView').classList.remove('hidden');
+        document.getElementById('successMsg').textContent = msg;
+        window.scrollTo(0, 0);
       })
       .withFailureHandler(err => {
-        btn.disabled = false; btn.innerText = "수강신청 완료하기";
+        btn.disabled = false;
+        btn.textContent = '수강신청 완료하기';
         alert(err.message);
       })
       .submitForm({ name, dob, phone, gender, benefit, term: TERM, selectedCourses: selected.map(i => courses[i].display) });
   }
 
-  function showCheckView() { document.getElementById('mainView').style.display='none'; document.getElementById('checkView').style.display='block'; }
-  function hideCheckView() { document.getElementById('checkView').style.display='none'; document.getElementById('resultView').style.display='none'; document.getElementById('mainView').style.display='block'; }
+  function showCheckView() {
+    document.getElementById('mainView').classList.add('hidden');
+    document.getElementById('bottomBar').classList.add('hidden');
+    document.getElementById('checkView').classList.remove('hidden');
+  }
+
+  function hideCheckView() {
+    document.getElementById('checkView').classList.add('hidden');
+    document.getElementById('resultView').classList.add('hidden');
+    document.getElementById('mainView').classList.remove('hidden');
+    document.getElementById('bottomBar').classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
 
   function goToNewApplication() {
     window.top.location.href = '__WEB_APP_URL__?term=' + encodeURIComponent(TERM);
   }
 
   function goToCheckDirectly() {
-    const name = document.getElementById('userName').value.trim();
-    const dob = document.getElementById('userDob').value.trim();
-    const phone = document.getElementById('userPhone').value.trim();
-    document.getElementById('successView').style.display = 'none';
-    document.getElementById('checkView').style.display = 'block';
-    document.getElementById('chkName').value = name; document.getElementById('chkDob').value = dob; document.getElementById('chkPhone').value = phone;
+    document.getElementById('chkName').value = document.getElementById('userName').value.trim();
+    document.getElementById('chkDob').value = document.getElementById('userDob').value.trim();
+    document.getElementById('chkPhone').value = document.getElementById('userPhone').value.trim();
+    document.getElementById('successView').classList.add('hidden');
+    showCheckView();
   }
 
   function checkApp() {
     const name = document.getElementById('chkName').value.trim();
     const dob = document.getElementById('chkDob').value.trim();
     const phone = document.getElementById('chkPhone').value.trim();
-    if (!name || !dob || !phone) return alert("정보를 모두 입력하세요.");
-    if (!PHONE_RE.test(phone)) return alert("연락처는 010-0000-0000 형식으로 입력해 주세요.");
+    if (!name || !dob || !phone) return alert('정보를 모두 입력하세요.');
+    if (!PHONE_RE.test(phone)) return alert('연락처는 010-0000-0000 형식으로 입력해 주세요.');
 
     google.script.run
       .withSuccessHandler(res => {
-        if (!res.applied) return alert("입력하신 정보와 일치하는 신청 내역이 없습니다.");
-        document.getElementById('checkView').style.display = 'none';
-        document.getElementById('resultView').style.display = 'block';
+        if (!res.applied) return alert('입력하신 정보와 일치하는 신청 내역이 없습니다.');
+        document.getElementById('checkView').classList.add('hidden');
+        document.getElementById('resultView').classList.remove('hidden');
         renderUnifiedResultUI(res, name, dob, true);
+        window.scrollTo(0, 0);
       })
-      .withFailureHandler(err => alert("조회 중 오류가 발생했습니다: " + err.message))
+      .withFailureHandler(err => alert('조회 중 오류가 발생했습니다: ' + err.message))
       .checkTotalStatus(name, phone, dob, TERM);
   }
 
