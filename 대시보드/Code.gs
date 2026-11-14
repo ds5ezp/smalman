@@ -1968,7 +1968,7 @@ function meetingTab_(name, headers) {
   return sheet;
 }
 
-function meetingSheet_() {
+function meetingRecordSheet_() {
   return meetingTab_(MEETING.SHEET_NAME, MEETING.HEADERS);
 }
 
@@ -1986,7 +1986,7 @@ function monthText_(v) {
 }
 
 function meetingRows_() {
-  const values = meetingSheet_().getDataRange().getValues();
+  const values = meetingRecordSheet_().getDataRange().getValues();
   return values.slice(1).map((v, i) => ({
     row: i + 2,
     month: monthText_(v[0]),
@@ -2009,7 +2009,7 @@ function writeMeetingRow_(sheet, row, values) {
 
 // 같은 회의월·구분·사업명·항목의 본인 줄을 찾아 고치고, 내용이 비면 지움
 function upsertMeetingItem_(month, kind, biz, item, text, email, name) {
-  const sheet = meetingSheet_();
+  const sheet = meetingRecordSheet_();
   const mine = meetingRows_().filter(r =>
     r.month === month && r.kind === kind && r.biz === biz && r.item === item && r.email === email)[0];
   if (!String(text || '').trim()) {
