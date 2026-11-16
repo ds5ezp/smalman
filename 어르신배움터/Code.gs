@@ -141,6 +141,34 @@ function include(filename) {
 }
 
 // 강좌정보 탭 읽기 (제출 검증, 화면 표시, 수강료에 모두 사용)
+// 학년 목록 (순서대로 비교: 최소~최대 범위 확인에 씀)
+const GRADES_ = ['미취학', '1', '2', '3', '4', '5', '6', '중1', '중2', '중3'];
+const WEEKDAY_KO_ = ['일', '월', '화', '수', '목', '금', '토'];
+
+function gradeIdx_(g) {
+  return GRADES_.indexOf(String(g || '').trim());
+}
+
+// '2027-03-03', '2027. 3. 3.' 같은 입력을 yyyy-MM-dd 목록으로
+function parseDates_(text) {
+  const out = [];
+  String(text || '').split(/[,\n]/).forEach(x => {
+    const m = x.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    if (m) out.push(m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0'));
+  });
+  return out;
+}
+
+function weekdayOf_(ymd) {
+  const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? WEEKDAY_KO_[new Date(+m[1], +m[2] - 1, +m[3]).getDay()] : '';
+}
+
+// 특강·학년 열 머리글 판별 (요일 열과 같은 방식으로 과목 칸을 찾음)
+function isCourseHeader_(h) {
+  return (h.indexOf('요일') !== -1 || h.indexOf('특강') !== -1) && h.indexOf('면제') === -1 && h.indexOf('수강료') === -1;
+}
+
 function readCourses_(t) {
   const data = courseSheet_(t).getDataRange().getDisplayValues();
   const qIdx = data[0].findIndex(h => String(h).indexOf('정원') !== -1);
@@ -148,10 +176,20 @@ function readCourses_(t) {
   return data.slice(1).filter(r => String(r[0]).trim() !== '').map(r => {
     const display = String(r[0]).trim();
     const parts = display.split('|');
+    const type = String(r[6] || '').trim() === '특강' ? '특강' : '정규';
+    const dates = type === '특강' ? parseDates_(r[9]) : [];
+    const weekdays = type === '특강'
+      ? dates.map(weekdayOf_).filter((w, i, a) => w && a.indexOf(w) === i)
+      : [String(r[1] || '').replace('요일', '').trim()];
     return {
       display: display,
       name: parts[0].trim(),
-      day: String(r[1] || '').replace('요일', '').trim(),
+      type: type,
+      day: type === '특강' ? '특강' : String(r[1] || '').replace('요일', '').trim(),
+      weekdays: weekdays,
+      dates: dates,
+      gradeMin: String(r[7] || '').trim(),
+      gradeMax: String(r[8] || '').trim(),
       start: normalizeTime_(r[2]),
       end: normalizeTime_(r[3]),
       quota: parseInt(r[q], 10) || 20,
@@ -346,7 +384,7 @@ function toTs_(v) {
 function rowCellItems_(row, hdrs) {
   const items = [];
   hdrs.forEach((h, idx) => {
-    if (h.indexOf('요일') !== -1 && h.indexOf('면제') === -1 && row[idx]) {
+    if (isCourseHeader_(h) && row[idx]) {
       String(row[idx]).split(', ').forEach(c => { if (c.trim()) items.push(c.trim()); });
     }
   });
@@ -502,6 +540,25 @@ function submitForm(f) {
     const data = sheet.getDataRange().getValues();
     const hdrs = data[0].map(h => String(h).trim());
 
+    // 학년: 아동 학기는 학년을 꼭 고르고, 강좌의 학년 범위에 맞아야 신청할 수 있음
+    const grade = String(f.grade || '').trim();
+    const gi = gradeIdx_(grade);
+    const needGrade = t.group === '아동' || selected.some(d => byDisplay[d].gradeMin || byDisplay[d].gradeMax);
+    if (needGrade && gi === -1) throw new Error('학년을 골라 주세요.');
+    selected.forEach(d => {
+      const c = byDisplay[d];
+      if (!c.gradeMin && !c.gradeMax) return;
+      const lo = c.gradeMin ? gradeIdx_(c.gradeMin) : 0;
+      const hi = c.gradeMax ? gradeIdx_(c.gradeMax) : GRADES_.length - 1;
+      if (gi < lo || gi > hi) throw new Error('"' + c.name + '" 강좌는 선택한 학년이 대상이 아니에요.');
+    });
+    if (selected.some(d => byDisplay[d].type === '특강') && !hdrs.some(h => h.indexOf('특강') !== -1)) {
+      throw new Error("신청 시트에 '특강' 열이 없습니다. 학기 신청 시트를 확인해 주세요.");
+    }
+    if (needGrade && !hdrs.some(h => h.indexOf('학년') !== -1)) {
+      throw new Error("신청 시트에 '학년' 열이 없습니다. 학기 신청 시트를 확인해 주세요.");
+    }
+
     // 같은 사람이 이미 신청한 강좌는 막음 (다른 강좌는 추가 신청 가능)
     const already = {};
     personRows_(data, hdrs, name, dob, phone).forEach(r => {
@@ -524,6 +581,8 @@ function submitForm(f) {
     hdrs.forEach((h, i) => {
       if (h === '타임스탬프') { nRow[i] = new Date(); return; }
       if (h.indexOf('보호자') !== -1) { nRow[i] = guardian; return; }
+      if (h.indexOf('학년') !== -1) { nRow[i] = grade; return; }
+      if (h.indexOf('특강') !== -1) { nRow[i] = selected.filter(d => byDisplay[d].type === '특강').join(', '); return; }
       if (h.indexOf('성명') !== -1) { nRow[i] = name; return; }
       if (h.indexOf('생년월일') !== -1) { nRow[i] = dob; return; }
       if (h.indexOf('성별') !== -1) { nRow[i] = String(f.gender || ''); return; }
@@ -632,7 +691,7 @@ function getInitialData(termId) {
     const headers = appData[0].map(h => String(h).trim());
     const colIdx = [];
     headers.forEach((h, i) => {
-      if (h.indexOf('요일') !== -1 && h.indexOf('수강료') === -1 && h.indexOf('면제') === -1) colIdx.push(i);
+      if (isCourseHeader_(h)) colIdx.push(i);
     });
     appData.slice(1).forEach(row => {
       colIdx.forEach(idx => {
@@ -649,6 +708,11 @@ function getInitialData(termId) {
     return {
       name: c.name,
       day: c.day,
+      type: c.type,
+      weekdays: c.weekdays,
+      dates: c.dates,
+      gradeMin: c.gradeMin,
+      gradeMax: c.gradeMax,
       display: c.display,
       start: c.start,
       end: c.end,

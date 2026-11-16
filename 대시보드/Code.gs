@@ -95,7 +95,8 @@ const LEARN_APP_URL = 'https://script.google.com/a/macros/geojecwc.kr/s/AKfycbz1
 const LEARN_RESTRICT_TAB = '중복제한강좌';
 const LEARN_COURSE_HEADERS = ['강좌(표시)', '요일', '시작', '종료', '정원', '강의실'];
 const LEARN_JOB_HEADERS = ['연번', '성명', '생년월일', '사업', '활동시작', '활동종료'];
-const LEARN_FORM_DEFAULT_HEADERS = ['타임스탬프', '성명', '생년월일', '성별', '연락처', '수강료 면제 사유', '개인정보 동의', '월요일', '화요일', '수요일', '목요일', '금요일'];
+const LEARN_FORM_DEFAULT_HEADERS = ['타임스탬프', '성명', '생년월일', '성별', '연락처', '수강료 면제 사유', '개인정보 동의', '월요일', '화요일', '수요일', '목요일', '금요일', '학년', '특강'];
+const LEARN_GRADES = ['미취학', '1', '2', '3', '4', '5', '6', '중1', '중2', '중3'];
 
 // 셔틀버스 (GitHub Pages + Firebase). 운행 현황은 승객 화면과 같은 공개 경로(publicLiveStatus)를 화면에서 바로 읽음
 const SHUTTLE = {
@@ -1216,7 +1217,7 @@ function learnApplicants_(form, t) {
   const iPhone = find(x => x.indexOf('연락처') !== -1);
   const iBenefit = find(x => x.indexOf('면제') !== -1 || x.indexOf('수강료') !== -1);
   const courseCols = [];
-  h.forEach((x, i) => { if (x.indexOf('요일') !== -1 && x.indexOf('면제') === -1 && x.indexOf('수강료') === -1) courseCols.push(i); });
+  h.forEach((x, i) => { if ((x.indexOf('요일') !== -1 || x.indexOf('특강') !== -1) && x.indexOf('면제') === -1 && x.indexOf('수강료') === -1) courseCols.push(i); });
 
   const list = [];
   for (let i = 1; i < disp.length; i++) {
@@ -1601,21 +1602,38 @@ function learnCourseSheet_(t) {
 }
 
 // 과목 입력값 검사 + 강좌정보 시트 한 행 모양으로 바꿈 (표시 형식: 강좌명 | 시간 | 수강료)
+// 날짜 문자열 목록 (yyyy-MM-dd)
+function learnDates_(text) {
+  const out = [];
+  String(text || '').split(/[,\n]/).forEach(x => {
+    const m = x.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    if (m) out.push(m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0'));
+  });
+  return out;
+}
+
 function learnCourseInput_(c) {
   const name = String(c.name || '').trim();
-  const day = String(c.day || '').trim();
+  const type = String(c.type || '').trim() === '특강' ? '특강' : '정규';
+  const dates = type === '특강' ? learnDates_(c.dates) : [];
+  const gradeMin = LEARN_GRADES.indexOf(String(c.gradeMin || '')) !== -1 ? String(c.gradeMin) : '';
+  const gradeMax = LEARN_GRADES.indexOf(String(c.gradeMax || '')) !== -1 ? String(c.gradeMax) : '';
+  const day = type === '특강' ? '특강' : String(c.day || '').trim();
   const start = learnHHMM_(c.start), end = learnHHMM_(c.end);
   const quota = parseInt(c.quota, 10);
   const fee = parseInt(String(c.fee || '0').replace(/[^0-9]/g, ''), 10) || 0;
   const room = String(c.room || '').trim();
   if (!name) throw new Error('과목명을 입력해 주세요.');
   if (name.indexOf('|') !== -1) throw new Error('과목명에는 | 기호를 쓸 수 없습니다.');
-  if (['월', '화', '수', '목', '금'].indexOf(day) === -1) throw new Error('요일을 선택해 주세요.');
+  if (type === '정규' && ['월', '화', '수', '목', '금'].indexOf(day) === -1) throw new Error('요일을 선택해 주세요.');
+  if (type === '특강' && dates.length === 0) throw new Error('특강 날짜를 yyyy-MM-dd 형식으로 한 개 이상 입력해 주세요. 예) 2027-03-03, 2027-03-05');
+  if (gradeMin && gradeMax && LEARN_GRADES.indexOf(gradeMin) > LEARN_GRADES.indexOf(gradeMax)) throw new Error('최소 학년이 최대 학년보다 높아요.');
   if (!start || !end) throw new Error('시작·종료 시간을 HH:MM 형식으로 입력해 주세요. 예) 10:00');
   if (start >= end) throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
   if (!(quota > 0)) throw new Error('정원은 1명 이상이어야 합니다.');
   const feeText = String(fee).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
-  return { name: name, day: day, start: start, end: end, quota: quota, fee: fee, room: room,
+  return { name: name, day: day, type: type, dates: dates, gradeMin: gradeMin, gradeMax: gradeMax,
+    start: start, end: end, quota: quota, fee: fee, room: room,
     display: name + ' | ' + start + '~' + end + ' | ' + feeText };
 }
 
@@ -1628,7 +1646,11 @@ function learnCourseRowsAdmin_(t) {
       row: i + 2,
       display: raw,
       name: parts[0].trim(),
-      day: String(r[1] || '').replace('요일', '').trim(),
+      type: String(r[6] || '').trim() === '특강' ? '특강' : '정규',
+      day: String(r[6] || '').trim() === '특강' ? '특강' : String(r[1] || '').replace('요일', '').trim(),
+      dates: learnDates_(r[9]),
+      gradeMin: String(r[7] || '').trim(),
+      gradeMax: String(r[8] || '').trim(),
       start: String(r[2] || '').trim(),
       end: String(r[3] || '').trim(),
       quota: parseInt(r[4], 10) || 0,
@@ -1657,7 +1679,9 @@ function saveLearnCourse(termId, c, row) {
     const sheet = learnCourseSheet_(t);
     const existing = learnCourseRowsAdmin_(t);
     if (existing.some(x => x.name === v.name && x.row !== Number(row))) throw new Error('같은 이름의 강좌가 이미 있습니다.');
-    const values = [v.display, v.day + '요일', "'" + v.start, "'" + v.end, v.quota, v.room];
+    const values = v.type === '특강'
+      ? [v.display, '특강', "'" + v.start, "'" + v.end, v.quota, v.room, '특강', v.gradeMin, v.gradeMax, v.dates.join(', ')]
+      : [v.display, v.day + '요일', "'" + v.start, "'" + v.end, v.quota, v.room, '정규', v.gradeMin, v.gradeMax, ''];
     if (row) {
       const old = existing.find(x => x.row === Number(row));
       if (!old) throw new Error('수정할 강좌를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.');
@@ -1811,6 +1835,9 @@ function createLearnTerm(data) {
     if (group === '아동' && !header.some(x => String(x).indexOf('보호자') !== -1)) {
       header = header.concat(['보호자 성함']);
     }
+    ['학년', '특강'].forEach(name => {
+      if (!header.some(x => String(x).indexOf(name) !== -1)) header = header.concat([name]);
+    });
     const respSheet = formSs.getSheets()[0].setName('Form Responses 1');
     respSheet.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold');
     respSheet.setFrozenRows(1);

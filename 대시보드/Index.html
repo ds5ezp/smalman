@@ -819,6 +819,10 @@
                   <div class="col-4 col-md-2"><input id="ctQuota" type="number" min="1" class="form-control form-control-sm" placeholder="정원"></div>
                   <div class="col-4 col-md-3"><input id="ctFee" type="number" min="0" class="form-control form-control-sm" placeholder="수강료(원)"></div>
                   <div class="col-4 col-md-4"><input id="ctRoom" class="form-control form-control-sm" placeholder="강의실"></div>
+                  <div class="col-4 col-md-3"><select id="ctType" class="form-select form-select-sm" onchange="toggleCourseType()"><option value="정규">정규 (요일 반복)</option><option value="특강">특강 (날짜 지정)</option></select></div>
+                  <div class="col-4 col-md-3"><select id="ctGradeMin" class="form-select form-select-sm"><option value="">전체</option><option>미취학</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>중1</option><option>중2</option><option>중3</option></select></div>
+                  <div class="col-4 col-md-3"><select id="ctGradeMax" class="form-select form-select-sm"><option value="">전체</option><option>미취학</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>중1</option><option>중2</option><option>중3</option></select></div>
+                  <div class="col-12 col-md-3" id="ctDatesBox" style="display:none"><input id="ctDates" class="form-control form-control-sm" placeholder="특강 날짜 예) 2027-03-03, 2027-03-05"></div>
                   <div class="col-12 d-flex gap-2">
                     <button class="btn btn-primary btn-sm" id="ctSaveBtn" onclick="saveCourseValue()">추가</button>
                     <button class="btn btn-light btn-sm" onclick="resetCourseForm()">입력 지우기</button>
@@ -4558,7 +4562,7 @@
       run('getLearnCourseList', ctTermId).then(list => {
         state.courseAdmin = list;
         document.getElementById('ctRows').innerHTML = list.length ? list.map(c =>
-          '<tr><td>' + esc(c.day) + '</td><td class="fw-semibold">' + esc(c.name) + '</td><td class="text-nowrap">' + esc(c.start) + '~' + esc(c.end) + '</td>' +
+          '<tr><td>' + (c.type === '특강' ? '특강<br><small class="text-muted">' + esc((c.dates || []).join(', ')) + '</small>' : esc(c.day)) + '</td><td class="fw-semibold">' + esc(c.name) + (c.gradeMin || c.gradeMax ? '<br><small class="text-muted">' + esc(c.gradeMin || '') + ' ~ ' + esc(c.gradeMax || '') + '</small>' : '') + '</td><td class="text-nowrap">' + esc(c.start) + '~' + esc(c.end) + '</td>' +
           '<td class="text-end">' + c.quota + '</td><td class="text-nowrap">' + esc(Number(c.fee).toLocaleString()) + '원</td><td>' + esc(c.room) + '</td>' +
           '<td class="text-end">' + c.count + '</td>' +
           '<td class="text-end text-nowrap"><button class="btn btn-sm btn-light" onclick="editCourse(' + c.row + ')">수정</button> ' +
@@ -4596,6 +4600,11 @@
       document.getElementById('ctQuota').value = c.quota;
       document.getElementById('ctFee').value = c.fee;
       document.getElementById('ctRoom').value = c.room;
+      document.getElementById('ctType').value = c.type === '특강' ? '특강' : '정규';
+      document.getElementById('ctGradeMin').value = c.gradeMin || '';
+      document.getElementById('ctGradeMax').value = c.gradeMax || '';
+      document.getElementById('ctDates').value = (c.dates || []).join(', ');
+      toggleCourseType();
       document.getElementById('ctFormTitle').textContent = '과목 수정: ' + c.name;
       document.getElementById('ctSaveBtn').textContent = '수정 저장';
     }
@@ -4603,13 +4612,25 @@
     function resetCourseForm() {
       ctEditRow = null;
       document.getElementById('ctDay').value = '월';
-      ['ctName', 'ctStart', 'ctEnd', 'ctQuota', 'ctFee', 'ctRoom'].forEach(id => { document.getElementById(id).value = ''; });
+      ['ctName', 'ctStart', 'ctEnd', 'ctQuota', 'ctFee', 'ctRoom', 'ctDates'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('ctType').value = '정규';
+      document.getElementById('ctGradeMin').value = '';
+      document.getElementById('ctGradeMax').value = '';
+      toggleCourseType();
       document.getElementById('ctFormTitle').textContent = '과목 추가';
       document.getElementById('ctSaveBtn').textContent = '추가';
     }
 
+    // 특강이면 날짜 칸, 정규면 요일 칸
+    function toggleCourseType() {
+      const special = document.getElementById('ctType').value === '특강';
+      document.getElementById('ctDatesBox').style.display = special ? '' : 'none';
+      document.getElementById('ctDay').disabled = special;
+    }
+
     function saveCourseValue() {
-      const c = { day: lv('ctDay'), name: lv('ctName'), start: lv('ctStart'), end: lv('ctEnd'), quota: lv('ctQuota'), fee: lv('ctFee') || '0', room: lv('ctRoom') };
+      const c = { type: lv('ctType'), day: lv('ctDay'), name: lv('ctName'), start: lv('ctStart'), end: lv('ctEnd'), quota: lv('ctQuota'), fee: lv('ctFee') || '0', room: lv('ctRoom'),
+        gradeMin: lv('ctGradeMin'), gradeMax: lv('ctGradeMax'), dates: lv('ctDates') };
       save('saveLearnCourse', ctTermId, c, ctEditRow).then(() => {
         toast(ctEditRow ? '과목을 수정했습니다.' : '과목을 추가했습니다.');
         resetCourseForm();

@@ -251,6 +251,10 @@
     <div class="step-label">1 / 4 · 기본 정보</div>
     <h1 class="q" id="nameQ">성함을 적어 주세요</h1>
     <input type="text" id="name" class="text-input" placeholder="실명을 입력해 주세요" autocomplete="off" oninput="syncNames()">
+    <div id="gradeBox" class="hidden">
+      <div class="field-label">학년을 골라 주세요</div>
+      <div class="choice-grid grade" id="gradeGrid"></div>
+    </div>
     <div id="guardianBox" class="hidden">
       <div class="field-label">보호자 성함을 적어 주세요</div>
       <input type="text" id="guardian" class="text-input" placeholder="보호자 실명" autocomplete="off" oninput="syncNames()">
@@ -371,6 +375,7 @@
   let currentUserJob = null;
   let courseMode = '추첨';
   let group = '어르신';
+  const GRADE_LIST = ['미취학', '1', '2', '3', '4', '5', '6', '중1', '중2', '중3'];
   let refDate = '';
   let cutoffText = '';
   // 학기 설정값 (나이 범위, 최대 과목 수) — 서버에서 받아 옴
@@ -384,7 +389,7 @@
   let idleTimer = null;
 
   // 입력값 (숫자는 하이픈 없이 숫자만 저장)
-  const form = { name: '', guardian: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' };
+  const form = { name: '', guardian: '', grade: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' };
   const FIELDS = {
     dob:    { max: 6,  fmt: d => d },
     phone:  { max: 11, fmt: fmtPhone },
@@ -403,6 +408,8 @@
       group === '성인' ? '성인 배움터에 오신 걸 환영해요' : '어르신, 어서 오세요';
     const child = group === '아동';
     document.getElementById('guardianBox').classList.toggle('hidden', !child);
+    document.getElementById('gradeBox').classList.toggle('hidden', !child);
+    if (child) renderGrades();
     document.getElementById('nameQ').textContent = child ? '아동 성함을 적어 주세요' : '성함을 적어 주세요';
     document.getElementById('lab-dob').textContent = child ? '아동 생년월일 (6자리)' : '생년월일 (6자리)';
     document.getElementById('lab-phone').textContent = child ? '보호자 연락처' : '연락처';
@@ -526,6 +533,48 @@
     document.querySelectorAll('#genderGrid .choice').forEach(b => b.classList.toggle('on', b.dataset.g === g));
   }
 
+  // 학년 버튼 (아동 학기)
+  function renderGrades() {
+    const grid = document.getElementById('gradeGrid');
+    grid.innerHTML = GRADE_LIST.map(g => '<button class="choice" data-gr="' + esc(g) + '">' +
+      esc(g === '미취학' ? '미취학' : g.indexOf('중') === 0 ? g + '학년' : g + '학년') + '</button>').join('');
+    grid.onclick = e => {
+      const btn = e.target.closest('.choice');
+      if (btn) pickGrade(btn.dataset.gr);
+    };
+  }
+
+  function pickGrade(g) {
+    form.grade = g;
+    document.querySelectorAll('#gradeGrid .choice').forEach(b => b.classList.toggle('on', b.dataset.gr === g));
+  }
+
+  // 학년이 강좌 대상에 맞는지 (범위가 없으면 누구나)
+  function gradeOk(c) {
+    if (!c.gradeMin && !c.gradeMax) return true;
+    if (!form.grade) return true;
+    const idx = GRADE_LIST.indexOf(form.grade);
+    const lo = c.gradeMin ? GRADE_LIST.indexOf(c.gradeMin) : 0;
+    const hi = c.gradeMax ? GRADE_LIST.indexOf(c.gradeMax) : GRADE_LIST.length - 1;
+    return idx >= lo && idx <= hi;
+  }
+
+  function gradeRangeText(c) {
+    if (!c.gradeMin && !c.gradeMax) return '전체 학년';
+    const lab = g => g === '미취학' ? '미취학' : g + (g.indexOf('중') === 0 ? '학년' : '학년');
+    return (c.gradeMin ? lab(c.gradeMin) : '') + ' ~ ' + (c.gradeMax ? lab(c.gradeMax) : '');
+  }
+
+  // 두 강좌가 시간이 겹치는지 (특강은 날짜, 정규 수업은 요일 기준)
+  function conflict(a, b) {
+    if (!a.start || !a.end || !b.start || !b.end) return false;
+    if (!(a.start < b.end && a.end > b.start)) return false;
+    if (a.type === '특강' && b.type === '특강') return (a.dates || []).some(d => (b.dates || []).indexOf(d) !== -1);
+    const wa = a.type === '특강' ? (a.weekdays || []) : [a.day];
+    const wb = b.type === '특강' ? (b.weekdays || []) : [b.day];
+    return wa.some(w => wb.indexOf(w) !== -1);
+  }
+
   // 수강료 면제 항목 버튼 (학기 설정값)
   function renderBenefits() {
     const grid = document.getElementById('benefitGrid');
@@ -555,7 +604,8 @@
   // ---------- 처음 · 신청 흐름 ----------
   function resetAll(toHome) {
     clearTimeout(doneTimer);
-    Object.assign(form, { name: '', guardian: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' });
+    Object.assign(form, { name: '', guardian: '', grade: '', gender: '', benefit: '해당없음', dob: '', phone: '', consent: false, cname: '', cdob: '', cphone: '' });
+    pickGrade('');
     document.getElementById('guardian').value = '';
     selected = [];
     currentUserJob = null;
@@ -613,6 +663,7 @@
     if (stepId === 'sInfo') {
       if (!form.name) return alert(group === '아동' ? '아동 성함을 적어 주세요.' : '성함을 적어 주세요.');
       if (group === '아동' && !form.guardian) return alert('보호자 성함을 적어 주세요.');
+      if (group === '아동' && !form.grade) return alert('학년을 골라 주세요.');
       if (!form.gender) return alert('성별을 골라 주세요.');
       goStep('sNum');
     } else if (stepId === 'sNum') {
@@ -658,7 +709,8 @@
   // ---------- 강좌 ----------
   function renderDayTabs() {
     const tabs = document.getElementById('dayTabs');
-    tabs.innerHTML = DAYS.map(d => {
+    const tabList = DAYS.concat(courses.some(c => c.type === '특강') ? ['특강'] : []);
+    tabs.innerHTML = tabList.map(d => {
       const n = selected.filter(i => courses[i].day === d).length;
       return '<button class="day-tab' + (d === curDay ? ' on' : '') + '" onclick="setDay(\'' + d + '\')">' + d +
         (n ? '<span class="cnt">' + n + '</span>' : '') + '</button>';
@@ -693,12 +745,15 @@
         if (c.current >= c.quota) { cls = 'bad'; text = '추첨 예정 (정원 초과 ' + (c.current - c.quota) + '명)'; }
         else if (c.remaining <= 3) { cls = 'warn'; text = '마감 임박 · ' + c.remaining + '석 남음'; }
       }
-      const closed = !waitAllowed && c.current >= c.quota && !on;
-      if (closed) { cls = 'bad'; text = '정원 마감 (신청 불가)'; }
+      const gradeBad = !gradeOk(c);
+      if (gradeBad) { cls = 'bad'; text = '선택한 학년 대상 아님'; }
+      const closed = (!waitAllowed && c.current >= c.quota && !on) || (gradeBad && !on);
+      if (closed && !gradeBad) { cls = 'bad'; text = '정원 마감 (신청 불가)'; }
       return '<div class="course' + (on ? ' on' : '') + (closed ? ' closed' : '') + '" onclick="toggleCourse(' + idx + ')">' +
         '<div class="mark">✓</div>' +
         '<div class="body"><div class="cname">' + esc(name) + '</div>' +
-        '<div class="cmeta">' + esc(c.start || '미지정') + ' ~ ' + esc(c.end || '미지정') + (fee ? ' · ' + esc(fee) : '') + '</div>' +
+        '<div class="cmeta">' + (c.type === '특강' ? '특강 · ' + esc((c.dates || []).join(', ')) + ' · ' : '') + esc(c.start || '미지정') + ' ~ ' + esc(c.end || '미지정') +
+        (fee ? ' · ' + esc(fee) : '') + (c.gradeMin || c.gradeMax ? ' · ' + esc(gradeRangeText(c)) : '') + '</div>' +
         '<span class="badge ' + cls + '">' + esc(text) + '</span></div></div>';
     }).join('');
   }
@@ -714,6 +769,7 @@
   function toggleCourse(idx) {
     const target = courses[idx];
     const targetName = target.display;
+    if (!selected.includes(idx) && !gradeOk(target)) return alert('선택한 학년은 이 강좌의 대상이 아니에요.');
     if (!waitAllowed && !selected.includes(idx) && target.current >= target.quota) {
       return alert('정원이 마감된 강좌예요. 다른 강좌를 골라 주세요.');
     }
@@ -744,12 +800,7 @@
         }
       }
 
-      const overlap = selected.some(sIdx => {
-        const s = courses[sIdx];
-        if (s.day !== target.day) return false;
-        if (!target.start || !target.end || !s.start || !s.end) return false;
-        return target.start < s.end && target.end > s.start;
-      });
+      const overlap = selected.some(sIdx => conflict(courses[sIdx], target));
       if (overlap) return alert('이미 고른 강좌와 시간이 겹쳐요.');
 
       selected.push(idx);
@@ -765,7 +816,7 @@
     const info = [
       [child ? '아동 성함' : '성함', form.name]
     ];
-    if (child) info.push(['보호자 성함', form.guardian]);
+    if (child) info.push(['보호자 성함', form.guardian], ['학년', form.grade === '미취학' ? '미취학' : form.grade + '학년']);
     info.push(['성별', form.gender], ['생년월일', form.dob], [child ? '보호자 연락처' : '연락처', fmtPhone(form.phone)], ['면제 해당', form.benefit]);
     document.getElementById('sumInfo').innerHTML = info.map(r =>
       '<div class="sum-row"><span class="k">' + r[0] + '</span><span class="v">' + esc(r[1]) + '</span></div>').join('');
@@ -773,7 +824,7 @@
       selected.map(i => {
         const c = courses[i];
         return '<div class="sum-course">' + esc(String(c.display).split('|')[0].trim()) +
-          '<small>' + esc(c.day) + '요일 · ' + esc(c.start) + ' ~ ' + esc(c.end) + '</small></div>';
+          '<small>' + (c.type === '특강' ? '특강 · ' + esc((c.dates || []).join(', ')) : esc(c.day) + '요일') + ' · ' + esc(c.start) + ' ~ ' + esc(c.end) + '</small></div>';
       }).join('');
   }
 
@@ -803,7 +854,7 @@
         alert(err.message);
       })
       .submitForm({
-        name: form.name, guardian: form.guardian, dob: form.dob, phone: phone, gender: form.gender, benefit: form.benefit,
+        name: form.name, guardian: form.guardian, grade: form.grade, dob: form.dob, phone: phone, gender: form.gender, benefit: form.benefit,
         term: TERM, selectedCourses: selected.map(i => courses[i].display)
       });
   }
