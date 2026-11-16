@@ -1364,6 +1364,59 @@ function learnBackupRow_(sheet, row, type) {
   backup.appendRow([fmt_(new Date(), 'yyyy-MM-dd HH:mm:ss'), type].concat(sheet.getRange(row, 1, 1, lastCol).getValues()[0]));
 }
 
+// 신청 한 건에서 강좌 한 개만 취소 (나머지 강좌는 유지). 강좌가 하나도 안 남으면 그 행을 지움
+function cancelLearnCourse(row, courseName, name, dob, termId) {
+  requireUser_();
+  return withLock_(() => {
+    const t = getLearnTerm_(termId);
+    const form = learnForm_(t);
+    const sheet = form.getSheetByName(t.respTab);
+    const target = learnApplicants_(form, t).find(a => a.row === Number(row));
+    if (!target || learnNormName_(target.name) !== learnNormName_(name) || learnNormDob_(target.dob) !== learnNormDob_(dob)) {
+      throw new Error('그 사이에 명단이 바뀌었습니다. 새로고침 후 다시 시도해 주세요.');
+    }
+    const cname = String(courseName || '').trim();
+    if (target.courses.indexOf(cname) === -1) throw new Error('이 신청에 해당 강좌가 없습니다.');
+
+    const lastCol = sheet.getLastColumn();
+    const hdrs = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0].map(x => String(x).trim());
+    const vals = sheet.getRange(row, 1, 1, lastCol).getValues()[0];
+    const colIdx = [];
+    hdrs.forEach((h, i) => {
+      if ((h.indexOf('요일') !== -1 || h.indexOf('특강') !== -1) && h.indexOf('면제') === -1 && h.indexOf('수강료') === -1) colIdx.push(i);
+    });
+    const backupRow = vals.slice(), newRow = vals.slice();
+    let remain = 0;
+    colIdx.forEach(i => {
+      const items = String(vals[i] || '').split(', ').map(x => x.trim()).filter(Boolean);
+      const mine = items.filter(x => learnCourseName_(x) === cname);
+      const rest = items.filter(x => learnCourseName_(x) !== cname);
+      backupRow[i] = mine.join(', ');
+      newRow[i] = rest.join(', ');
+      remain += rest.length;
+    });
+
+    // 백업: 취소한 강좌만 담긴 행을 남김 (취소 기록으로 순번·대기 계산에 쓰임)
+    const ss = sheet.getParent();
+    let backup = ss.getSheetByName(LEARN_BACKUP_SHEET);
+    if (!backup) {
+      backup = ss.insertSheet(LEARN_BACKUP_SHEET);
+      backup.appendRow(['백업일시', '변경구분'].concat(hdrs));
+    }
+    backup.appendRow([fmt_(new Date(), 'yyyy-MM-dd HH:mm:ss'), '관리자강좌취소(대시보드) ' + cname].concat(backupRow));
+
+    if (remain === 0) {
+      sheet.deleteRow(target.row);
+    } else {
+      colIdx.forEach(i => {
+        if (newRow[i] !== String(vals[i] || '')) sheet.getRange(target.row, i + 1).setValue(newRow[i]);
+      });
+    }
+    log_('배움터 강좌 취소', t.name + ' / ' + target.name + ' (' + target.dob + ') ' + cname);
+    return getLearnApplicants(t.id);
+  });
+}
+
 function cancelLearnApplicant(row, name, dob, termId) {
   requireUser_();
   return withLock_(() => {

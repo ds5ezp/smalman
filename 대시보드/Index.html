@@ -4746,8 +4746,21 @@
         const idx = state.learnList.indexOf(a);
         return '<tr><td class="small text-nowrap">' + esc(a.date) + '</td><td class="fw-bold text-nowrap">' + esc(a.name) + '</td><td>' + esc(a.dob) + '</td><td>' + esc(a.gender) +
           '</td><td class="text-nowrap">' + esc(a.phone) + '</td><td class="small">' + (a.benefit && a.benefit !== '해당없음' ? esc(a.benefit) : '') + '</td><td class="small">' +
-          a.courses.map(esc).join('<br>') + '</td><td class="text-end"><button class="btn btn-sm btn-outline-danger text-nowrap" onclick="cancelLearn(' + idx + ')">취소</button></td></tr>';
+          a.courses.map((c, ci) => esc(c) + ' <button class="btn btn-sm btn-link text-danger p-0 small" onclick="cancelLearnCourseBtn(' + idx + ', ' + ci + ')">취소</button>').join('<br>') + '</td><td class="text-end"><button class="btn btn-sm btn-outline-danger text-nowrap" onclick="cancelLearn(' + idx + ')">취소</button></td></tr>';
       }).join('') : '<tr class="loading-row"><td colspan="8">해당하는 신청자가 없습니다.</td></tr>';
+    }
+
+    // 강좌 한 개만 취소 (같은 신청의 다른 강좌는 유지)
+    function cancelLearnCourseBtn(idx, ci) {
+      const a = state.learnList[idx];
+      const course = a && a.courses[ci];
+      if (!course) return;
+      if (!confirm(a.name + ' (' + a.dob + ') 님의 "' + course + '" 강좌만 취소할까요?\n다른 강좌 신청은 그대로 남습니다.\n\n원래 내용은 백업대장 탭에 남습니다.')) return;
+      save('cancelLearnCourse', a.row, course, a.name, a.dob, learnTermId()).then(list => {
+        state.learnList = list;
+        renderLearnList();
+        toast('"' + course + '" 강좌를 취소했습니다.');
+      }).catch(fail);
     }
 
     function cancelLearn(idx) {

@@ -798,6 +798,77 @@ function deleteApplicantByVerification(name, dob, phone, termId) {
   }
 }
 
+// 백업 대장에 값 목록 그대로 한 줄 추가 (백업일시, 변경구분, 원래 행)
+function backupRowValues_(sheet, values, type) {
+  const ss = sheet.getParent();
+  let bk = ss.getSheetByName(BACKUP_TAB);
+  if (!bk) {
+    bk = ss.insertSheet(BACKUP_TAB);
+    bk.appendRow(['백업일시', '변경구분'].concat(sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0]));
+  }
+  bk.appendRow([Utilities.formatDate(new Date(), 'GMT+9', 'yyyy-MM-dd HH:mm:ss'), type].concat(values));
+}
+
+// 신청 행들에서 강좌 한 개만 빼기 (다른 강좌는 그대로).
+// 백업에는 취소한 강좌만 담긴 행을 남기고, 강좌가 하나도 안 남은 행만 지움
+function removeCourseFromRows_(sheet, hdrs, data, rowNums, cname, type) {
+  const colIdx = [];
+  hdrs.forEach((h, i) => { if (isCourseHeader_(h)) colIdx.push(i); });
+  const toDelete = [];
+  rowNums.forEach(r => {
+    const row = data[r - 1];
+    const backupRow = row.slice();
+    const newRow = row.slice();
+    let hit = false, remain = 0;
+    colIdx.forEach(i => {
+      const items = String(row[i] || '').split(', ').map(x => x.trim()).filter(Boolean);
+      const mine = items.filter(x => courseNameOf_(x) === cname);
+      const rest = items.filter(x => courseNameOf_(x) !== cname);
+      if (mine.length) hit = true;
+      backupRow[i] = mine.join(', ');
+      newRow[i] = rest.join(', ');
+      remain += rest.length;
+    });
+    if (!hit) return;
+    backupRowValues_(sheet, backupRow, type);
+    if (remain === 0) { toDelete.push(r); return; }
+    colIdx.forEach(i => {
+      if (newRow[i] !== String(row[i] || '')) sheet.getRange(r, i + 1).setValue(newRow[i]);
+    });
+  });
+  // 행 번호가 밀리지 않도록 아래 행부터 지움
+  toDelete.slice().reverse().forEach(r => sheet.deleteRow(r));
+}
+
+// 신청자 본인: 강좌 한 개만 취소 (나머지 강좌 신청은 유지)
+function cancelCourseByVerification(name, dob, phone, courseName, termId) {
+  try {
+    return withLock_(() => {
+      const t = getTerm_(termId);
+      const s = scheduleOf_(t);
+      if (s.end && new Date() > s.end) {
+        return { success: false, msg: '접수 마감 후에는 취소할 수 없습니다.' };
+      }
+      if (!PHONE_RE.test(String(phone || '').trim())) {
+        return { success: false, msg: '연락처를 010-0000-0000 형식으로 입력해 주세요.' };
+      }
+      const cname = String(courseName || '').trim();
+      const sheet = respSheet_(t);
+      const data = sheet.getDataRange().getValues();
+      const hdrs = data[0].map(h => String(h).trim());
+      const rows = personRows_(data, hdrs, name, dob, String(phone).trim())
+        .filter(r => rowCourses_(data[r - 1], hdrs).indexOf(cname) !== -1);
+      if (!rows.length) {
+        return { success: false, msg: '❌ 취소할 강좌를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.' };
+      }
+      removeCourseFromRows_(sheet, hdrs, data, rows, cname, '본인직접취소(' + cname + ')');
+      return { success: true, msg: '✅ "' + cname + '" 강좌 접수를 취소했습니다. 다른 강좌 신청은 그대로예요.' };
+    });
+  } catch (e) {
+    return { success: false, msg: '❌ 서버 취소 오류 발생: ' + e.message };
+  }
+}
+
 // ==========================================
 // 8. 로고 이미지, 기타 유틸
 // ==========================================

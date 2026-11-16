@@ -14,6 +14,10 @@
   .rv-course:last-child { margin-bottom: 0; }
   .rv-cname { font-size: 28px; font-weight: 800; line-height: 1.35; word-break: keep-all; }
   .rv-cmeta { font-size: 21px; color: #6b7684; margin-top: 6px; line-height: 1.4; }
+  .rv-right { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+  .rv-cx { border: 0; background: #fff; color: #f04452; font-size: 20px; font-weight: 800; padding: 10px 14px; border-radius: 14px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.06); white-space: nowrap; }
+  .rv-cx:active { transform: scale(.98); }
+  .rv-hint { font-size: 21px; color: #8b95a1; margin: 0 0 14px; line-height: 1.5; }
   .rv-pill { flex: 0 0 auto; font-size: 21px; font-weight: 800; padding: 10px 16px; border-radius: 14px; white-space: nowrap; }
   .rv-pill.pass { background: #e6f7ef; color: #02a262; }
   .rv-pill.wait { background: #fff1e6; color: #f76808; }
@@ -73,6 +77,7 @@
 
   <section class="rv-card">
     <h2 class="rv-h">신청한 강좌</h2>
+    <p class="rv-hint">취소는 강좌를 하나씩 할 수 있어요. 다른 강좌 신청은 그대로 남아요.</p>
     <div id="rvCourses"></div>
   </section>
 
@@ -85,7 +90,6 @@
 
   <div class="rv-actions">
     <button type="button" class="rv-btn primary" onclick="rvGoHome()">확인 완료 · 처음 화면으로</button>
-    <button type="button" class="rv-btn danger" onclick="rvCancel()">신청 취소하기</button>
   </div>
 </div>
 
@@ -128,9 +132,11 @@
       const meta = parts.slice(1).filter(Boolean).join(' · ');
       const r = results.find(x => x.course === courseName);
       const st = rvStatusOf(open, r);
+      const canCancel = st.cls !== 'out';
       return '<div class="rv-course"><div><div class="rv-cname">' + rvEsc(courseName) + '</div>' +
         (meta ? '<div class="rv-cmeta">' + rvEsc(meta) + '</div>' : '') + '</div>' +
-        '<span class="rv-pill ' + st.cls + '">' + rvEsc(st.text) + '</span></div>';
+        '<div class="rv-right"><span class="rv-pill ' + st.cls + '">' + rvEsc(st.text) + '</span>' +
+        (canCancel ? '<button type="button" class="rv-cx" data-c="' + rvEsc(courseName) + '">취소</button>' : '') + '</div></div>';
     }).join('') : '<div class="rv-empty">신청한 강좌가 없어요</div>';
 
     // 결과 상태
@@ -168,17 +174,30 @@
     window.top.location.href = '__WEB_APP_URL__?term=' + encodeURIComponent(TERM);
   }
 
-  // 신청 취소 (접수 마감 전에만 서버에서 허용)
-  function rvCancel() {
+  // 강좌 하나만 취소 (접수 마감 전에만 서버에서 허용). 성공하면 남은 강좌를 다시 보여 줌
+  function rvCancelCourse(courseName) {
     const c = window.rvCtx || {};
     if (!c.name) return alert('조회 정보가 없어요. 다시 조회해 주세요.');
-    if (!confirm('신청을 취소할까요?\n취소하면 되돌릴 수 없어요.')) return;
+    if (!confirm('"' + courseName + '" 강좌만 취소할까요?\n다른 강좌 신청은 그대로 남아요.\n취소하면 되돌릴 수 없어요.')) return;
     google.script.run
       .withSuccessHandler(r => {
         alert(r.msg);
-        if (r.success) rvGoHome();
+        if (!r.success) return;
+        google.script.run
+          .withSuccessHandler(d => {
+            if (!d || !d.applied) return rvGoHome();
+            renderUnifiedResultUI(d, c.name, c.dob, false);
+          })
+          .withFailureHandler(() => rvGoHome())
+          .checkTotalStatus(c.name, c.phone, c.dob, TERM);
       })
       .withFailureHandler(err => alert('취소 중 오류가 생겼어요: ' + err.message))
-      .deleteApplicantByVerification(c.name, c.dob, c.phone, TERM);
+      .cancelCourseByVerification(c.name, c.dob, c.phone, courseName, TERM);
   }
+
+  // 강좌 옆 취소 버튼 (화면을 다시 그려도 동작하도록 목록에 한 번만 연결)
+  document.getElementById('rvCourses').addEventListener('click', e => {
+    const b = e.target.closest('.rv-cx');
+    if (b) rvCancelCourse(b.dataset.c);
+  });
 </script>
