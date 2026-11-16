@@ -267,6 +267,8 @@ function doGet(e) {
   const template = HtmlService.createTemplateFromFile(fileName);
   template.termId = t.id;
   template.termName = t.name;
+  // 대상(어르신·성인·아동)을 처음부터 넣어서, 화면이 기본값(어르신)으로 잠깐 보이지 않게 함
+  template.groupName = t.group || '어르신';
   const webAppUrl = s.appUrl || ScriptApp.getService().getUrl();
   const html = template.evaluate().getContent().replace(/__WEB_APP_URL__/g, webAppUrl);
 

@@ -227,7 +227,7 @@
     }
   </style>
 </head>
-<body>
+<body class="grp-<?= groupName ?>">
 <?!= include('navbar'); ?>
 <div class="kiosk">
 
@@ -374,7 +374,7 @@
   let selected = [];
   let currentUserJob = null;
   let courseMode = '추첨';
-  let group = '어르신';
+  let group = '<?= groupName ?>';
   const GRADE_LIST = ['미취학', '1', '2', '3', '4', '5', '6', '중1', '중2', '중3'];
   let refDate = '';
   let cutoffText = '';
