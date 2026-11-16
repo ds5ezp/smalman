@@ -4943,12 +4943,22 @@
       ).join('') : '<tr class="loading-row"><td colspan="7">해당하는 사람이 없습니다.</td></tr>';
     }
 
+    // 새 창을 열지 않고 이 화면에 인쇄용 표를 숨겨 두고 인쇄 (데스크톱 앱에서 새 창이 Windows로 넘어가는 문제 방지)
     function printWinners() {
-      const w = window.open('', '_blank');
-      w.document.write('<html><head><meta charset="utf-8"><title>배움터 합격자 대장</title><style>body{font-family:sans-serif;padding:20px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #999;padding:4px 6px;text-align:left}</style></head><body>' +
-        '<h3>어르신 배움터 합격자 대장</h3>' + document.getElementById('lwTable').outerHTML + '</body></html>');
-      w.document.close();
-      w.print();
+      let area = document.getElementById('lwPrintArea');
+      if (!area) {
+        area = document.createElement('div');
+        area.id = 'lwPrintArea';
+        document.body.appendChild(area);
+      }
+      area.innerHTML = '<style>' +
+        '#lwPrintArea{display:none}' +
+        '@media print{body *{visibility:hidden}#lwPrintArea,#lwPrintArea *{visibility:visible}' +
+        '#lwPrintArea{display:block;position:absolute;left:0;top:0;width:100%;padding:16px;font-family:sans-serif;color:#000}' +
+        '#lwPrintArea table{border-collapse:collapse;width:100%;font-size:12px}' +
+        '#lwPrintArea th,#lwPrintArea td{border:1px solid #999;padding:4px 6px;text-align:left}}' +
+        '</style><h3>어르신 배움터 합격자 대장</h3>' + document.getElementById('lwTable').outerHTML;
+      window.print();
     }
 
     // ---------- 일정·시트 ----------
