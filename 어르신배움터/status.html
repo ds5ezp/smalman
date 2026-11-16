@@ -58,6 +58,7 @@
       <h1 class="title"><?= termName ?> 접수 현황</h1>
       <div class="sub" id="updated">불러오는 중…</div>
     </div>
+    <button class="btn-home" type="button" onclick="refreshNow()">새로고침</button>
     <a class="btn-home" href="__WEB_APP_URL__?term=<?= termId ?>">신청 화면으로</a>
   </div>
 
@@ -141,9 +142,18 @@
             '<td><span class="pill ' + cls + '">' + esc(r.cancelled ? '취소' : r.status) + '</span></td></tr>';
         }).join('') : '<tr><td colspan="5" class="empty">아직 신청자가 없어요</td></tr>';
       })
-      .withFailureHandler(err => alert('현황을 불러오지 못했어요: ' + err.message))
+      .withFailureHandler(() => { document.getElementById('updated').textContent = '갱신하지 못했어요 · 새로고침 버튼을 눌러 주세요'; })
       .getPublicStatus(TERM, name);
   }
+
+  // 현재 과목을 다시 불러옴 (버튼 또는 자동 갱신)
+  function refreshNow() {
+    if (current) load();
+  }
+
+  // 30초마다 자동 갱신. 탭이 숨겨져 있으면 쉬고, 다시 보이면 바로 갱신
+  setInterval(() => { if (!document.hidden) refreshNow(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshNow(); });
 
   function stat(k, v) {
     return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>';
