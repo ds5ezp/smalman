@@ -1347,9 +1347,57 @@ function getLearnStatus(termId) {
 function getLearnApplicants(termId) {
   requireUser_();
   const t = getLearnTerm_(termId);
-  return learnApplicants_(learnForm_(t), t)
-    .map(a => ({ row: a.row, date: a.date, name: a.name, dob: a.dob, gender: a.gender, phone: a.phone, benefit: a.benefit, courses: a.courses }))
+  const form = learnForm_(t);
+  const active = learnApplicants_(form, t)
+    .map(a => ({ row: a.row, date: a.date, name: a.name, dob: a.dob, gender: a.gender, phone: a.phone, benefit: a.benefit, courses: a.courses, cancelled: false }))
     .reverse();
+  // 취소한 사람은 뒤에 "취소" 표시로 함께 보여 줌 (백업대장의 취소 기록 기준, 최근 취소가 위)
+  return active.concat(learnCancelledList_(form, t).reverse());
+}
+
+// 백업대장에서 취소 기록을 명단 형식으로 읽기
+function learnCancelledList_(form, t) {
+  const bk = form.getSheetByName(LEARN_BACKUP_SHEET);
+  if (!bk || bk.getLastRow() < 2) return [];
+  const data = bk.getDataRange().getDisplayValues();
+  const h = data[0].slice(2).map(x => String(x).trim());
+  const find = test => h.findIndex(test);
+  const iName = find(x => x.indexOf('성명') !== -1);
+  const iDob = find(x => x.indexOf('생년월일') !== -1);
+  const iGender = find(x => x.indexOf('성별') !== -1);
+  const iPhone = find(x => x.indexOf('연락처') !== -1);
+  const iBenefit = find(x => x.indexOf('면제') !== -1 || x.indexOf('수강료') !== -1);
+  const courseCols = [];
+  h.forEach((x, i) => { if ((x.indexOf('요일') !== -1 || x.indexOf('특강') !== -1) && x.indexOf('면제') === -1 && x.indexOf('수강료') === -1) courseCols.push(i); });
+  const out = [];
+  for (let i = 1; i < data.length; i++) {
+    const type = String(data[i][1] || '');
+    if (type.indexOf('취소') === -1) continue;
+    const r = data[i].slice(2);
+    const name = iName === -1 ? '' : String(r[iName]).trim();
+    if (!name) continue;
+    const courses = [];
+    courseCols.forEach(c => {
+      String(r[c] || '').split(', ').forEach(item => {
+        const cn = learnCourseName_(item);
+        if (cn && courses.indexOf(cn) === -1) courses.push(cn);
+      });
+    });
+    out.push({
+      row: null,
+      cancelled: true,
+      cancelAt: String(data[i][0] || ''),
+      cancelType: type,
+      date: String(r[0] || ''),
+      name: name,
+      dob: iDob === -1 ? '' : String(r[iDob]).trim(),
+      gender: iGender === -1 ? '' : String(r[iGender]).trim(),
+      phone: iPhone === -1 ? '' : String(r[iPhone]).trim(),
+      benefit: iBenefit === -1 ? '' : String(r[iBenefit]).trim(),
+      courses: courses
+    });
+  }
+  return out;
 }
 
 // 지우기 전에 배움터 접수 시스템과 같은 백업대장 탭에 그대로 옮겨 적음

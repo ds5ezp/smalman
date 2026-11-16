@@ -714,7 +714,7 @@
       <section data-panel="lList" class="d-none">
         <div class="card p-3">
           <div class="d-flex flex-wrap gap-2 mb-3">
-            <input id="lSearch" class="form-control" style="max-width:260px" placeholder="이름·생년월일·연락처 검색" oninput="renderLearnList()">
+            <input id="lSearch" class="form-control" style="max-width:260px" placeholder="이름·생년월일·연락처 검색" oninput="renderLearnList()"><label class="small align-self-center text-nowrap"><input type="checkbox" id="lShowCancel" class="form-check-input me-1" onchange="renderLearnList()">취소한 사람 보이기</label>
             <select id="lCourseFilter" class="form-select" style="max-width:260px" onchange="renderLearnList()"><option value="">전체 강좌</option></select>
             <span class="small text-muted align-self-center" id="lListCount"></span>
           </div>
@@ -4739,11 +4739,19 @@
       const course = document.getElementById('lCourseFilter').value;
       const digits = q.replace(/[^0-9]/g, '');
       const list = state.learnList.filter(a =>
+        (document.getElementById('lShowCancel').checked || !a.cancelled) &&
         (!course || a.courses.indexOf(course) !== -1) &&
         (!q || a.name.replace(/\s+/g, '').indexOf(q) !== -1 || (digits && (a.dob + a.phone).replace(/[^0-9]/g, '').indexOf(digits) !== -1)));
-      document.getElementById('lListCount').textContent = list.length + '명';
+      const cancelN = list.filter(a => a.cancelled).length;
+      document.getElementById('lListCount').textContent = (list.length - cancelN) + '명' + (cancelN ? ' · 취소 ' + cancelN + '건' : '');
       document.getElementById('lListRows').innerHTML = list.length ? list.map(a => {
         const idx = state.learnList.indexOf(a);
+        if (a.cancelled) {
+          return '<tr class="text-muted"><td class="small text-nowrap">' + esc(a.cancelAt) + '</td><td class="fw-bold text-nowrap">' + esc(a.name) +
+            ' <span class="badge text-bg-secondary">취소</span></td><td>' + esc(a.dob) + '</td><td>' + esc(a.gender) +
+            '</td><td class="text-nowrap">' + esc(a.phone) + '</td><td class="small">' + (a.benefit && a.benefit !== '해당없음' ? esc(a.benefit) : '') +
+            '</td><td class="small">' + a.courses.map(esc).join('<br>') + '</td><td class="small text-end text-nowrap">' + esc(a.cancelType) + '</td></tr>';
+        }
         return '<tr><td class="small text-nowrap">' + esc(a.date) + '</td><td class="fw-bold text-nowrap">' + esc(a.name) + '</td><td>' + esc(a.dob) + '</td><td>' + esc(a.gender) +
           '</td><td class="text-nowrap">' + esc(a.phone) + '</td><td class="small">' + (a.benefit && a.benefit !== '해당없음' ? esc(a.benefit) : '') + '</td><td class="small">' +
           a.courses.map((c, ci) => esc(c) + ' <button class="btn btn-sm btn-link text-danger p-0 small" onclick="cancelLearnCourseBtn(' + idx + ', ' + ci + ')">취소</button>').join('<br>') + '</td><td class="text-end"><button class="btn btn-sm btn-outline-danger text-nowrap" onclick="cancelLearn(' + idx + ')">취소</button></td></tr>';
