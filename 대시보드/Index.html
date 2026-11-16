@@ -820,8 +820,12 @@
                   <div class="col-4 col-md-3"><input id="ctFee" type="number" min="0" class="form-control form-control-sm" placeholder="수강료(원)"></div>
                   <div class="col-4 col-md-4"><input id="ctRoom" class="form-control form-control-sm" placeholder="강의실"></div>
                   <div class="col-4 col-md-3"><select id="ctType" class="form-select form-select-sm" onchange="toggleCourseType()"><option value="정규">정규 (요일 반복)</option><option value="특강">특강 (날짜 지정)</option></select></div>
-                  <div class="col-4 col-md-3"><select id="ctGradeMin" class="form-select form-select-sm"><option value="">전체</option><option>미취학</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>중1</option><option>중2</option><option>중3</option></select></div>
-                  <div class="col-4 col-md-3"><select id="ctGradeMax" class="form-select form-select-sm"><option value="">전체</option><option>미취학</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>중1</option><option>중2</option><option>중3</option></select></div>
+                  <div class="col-4 col-md-3"><select id="ctGradeMin" class="form-select form-select-sm" onchange="updateGradeHint()"><option value="">전체</option><option>미취학</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>중1</option><option>중2</option><option>중3</option></select></div>
+                  <div class="col-4 col-md-3"><select id="ctGradeMax" class="form-select form-select-sm" onchange="updateGradeHint()"><option value="">전체</option><option>미취학</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>중1</option><option>중2</option><option>중3</option></select></div>
+                  <div class="col-12"><div class="small text-muted" style="line-height:1.6">
+                    학년 제한 설정 방법: <b>왼쪽 = 최소 학년, 오른쪽 = 최대 학년</b>입니다. 예) 왼쪽 <b>1</b>, 오른쪽 <b>3</b> → 1~3학년만 신청 가능 · 둘 다 <b>전체</b> → 학년 제한 없음 · 둘 다 <b>3</b> → 3학년만 신청 가능<br>
+                    <span id="ctGradeHint" class="fw-semibold text-dark"></span>
+                  </div></div>
                   <div class="col-12 col-md-3" id="ctDatesBox" style="display:none"><input id="ctDates" class="form-control form-control-sm" placeholder="특강 날짜 예) 2027-03-03, 2027-03-05"></div>
                   <div class="col-12 d-flex gap-2">
                     <button class="btn btn-primary btn-sm" id="ctSaveBtn" onclick="saveCourseValue()">추가</button>
@@ -4631,6 +4635,22 @@
       const special = document.getElementById('ctType').value === '특강';
       document.getElementById('ctDatesBox').style.display = special ? '' : 'none';
       document.querySelectorAll('.ctDayChk').forEach(x => { x.disabled = special; });
+      updateGradeHint();
+    }
+
+    // 학년 선택에 따라 "지금 설정하면 어떻게 되는지" 안내
+    function updateGradeHint() {
+      const lo = document.getElementById('ctGradeMin').value;
+      const hi = document.getElementById('ctGradeMax').value;
+      const lab = v => v === '미취학' ? v : v + '학년';
+      let text;
+      if (!lo && !hi) text = '→ 현재: 학년 제한 없음 (모든 학년 신청 가능)';
+      else if (lo && !hi) text = '→ 현재: ' + lab(lo) + ' 이상만 신청 가능';
+      else if (!lo && hi) text = '→ 현재: ' + lab(hi) + ' 이하만 신청 가능';
+      else if (lo === hi) text = '→ 현재: ' + lab(lo) + '만 신청 가능';
+      else text = '→ 현재: ' + lab(lo) + ' ~ ' + lab(hi) + ' 신청 가능';
+      const el = document.getElementById('ctGradeHint');
+      if (el) el.textContent = text;
     }
 
     function saveCourseValue() {
