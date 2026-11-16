@@ -4532,9 +4532,21 @@
       document.getElementById('ltList').innerHTML = list.length ? list.map(t =>
         '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><div class="fw-semibold">' + esc(t.name) + '</div><div class="text-muted">' + esc(t.id) + ' · ' + esc(t.group || '어르신') + '</div></div>' +
         '<div class="d-flex flex-wrap gap-1 justify-content-end"><a class="btn btn-sm btn-light border" href="' + esc(t.url) + '" target="_blank" rel="noopener">신청 화면 보기</a>' +
-        '<a class="btn btn-sm btn-light border" href="' + esc(t.statusUrl) + '" target="_blank" rel="noopener">접수 현황</a>' +
+        '<button class="btn btn-sm btn-light border" onclick="openLearnFull(\'' + esc(t.id) + '\')">접수 현황</button>' +
+        '<a class="btn btn-sm btn-light border" href="' + esc(t.statusUrl) + '" target="_blank" rel="noopener">공개 현황</a>' +
         (t.active ? '<span class="badge text-bg-success align-self-center">사용 중</span>' : '<button class="btn btn-sm btn-outline-primary" onclick="activateTermValue(\'' + esc(t.id) + '\')">사용으로 전환</button>') + '</div></div>'
       ).join('') : '<span class="text-muted">학기가 없습니다.</span>';
+    }
+
+    // 학기 목록의 '접수 현황': 대시보드에서 전체 정보(이름·생년월일·연락처)가 보이는 접수자 명단으로 이동
+    function openLearnFull(termId) {
+      state.learnTerm = termId;
+      const sel = document.getElementById('lTerm');
+      if (sel) sel.value = termId;
+      state.learnStatus = null;
+      showModule('learn');
+      showTab('lList');
+      loadLearnList();
     }
 
     function activateTermValue(termId) {

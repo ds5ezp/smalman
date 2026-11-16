@@ -560,11 +560,14 @@ function submitForm(f) {
       const hi = c.gradeMax ? gradeIdx_(c.gradeMax) : GRADES_.length - 1;
       if (gi < lo || gi > hi) throw new Error('"' + c.name + '" 강좌는 선택한 학년이 대상이 아니에요.');
     });
+    // 예전에 만든 신청 시트에 '특강'·'학년' 열이 없으면 맨 오른쪽에 머리글만 추가 (기존 데이터는 그대로)
     if (selected.some(d => byDisplay[d].type === '특강') && !hdrs.some(h => h.indexOf('특강') !== -1)) {
-      throw new Error("신청 시트에 '특강' 열이 없습니다. 학기 신청 시트를 확인해 주세요.");
+      sheet.getRange(1, hdrs.length + 1).setValue('특강');
+      hdrs.push('특강');
     }
     if (needGrade && !hdrs.some(h => h.indexOf('학년') !== -1)) {
-      throw new Error("신청 시트에 '학년' 열이 없습니다. 학기 신청 시트를 확인해 주세요.");
+      sheet.getRange(1, hdrs.length + 1).setValue('학년');
+      hdrs.push('학년');
     }
 
     // 같은 사람이 이미 신청한 강좌는 막음 (다른 강좌는 추가 신청 가능)
