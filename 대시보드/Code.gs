@@ -90,6 +90,8 @@ const TRUCK = {
 const LEARN_REGISTRY_ID = '1_mRID4mwFypGU8pSFMZcwf35NDqjpTLuUUoe2a-mPvc';
 const LEARN_REGISTRY_TAB = '학기목록';
 const LEARN_BACKUP_SHEET = '★접수변경_백업대장';
+// 접수 웹앱 주소 (학기와 상관없이 하나). 대시보드의 '신청 화면' 링크는 여기에 ?term=학기ID 를 붙여서 엶
+const LEARN_APP_URL = 'https://script.google.com/a/macros/geojecwc.kr/s/AKfycbwkb0hHisTfHP25V2M7AdsuQKPs1fGq1DdVhjtahXfKq-lQ7_wvr7_yaXWnQbrOy4eWjg/exec';
 const LEARN_RESTRICT_TAB = '중복제한강좌';
 const LEARN_COURSE_HEADERS = ['강좌(표시)', '요일', '시작', '종료', '정원', '강의실'];
 const LEARN_JOB_HEADERS = ['연번', '성명', '생년월일', '사업', '활동시작', '활동종료'];
@@ -1259,7 +1261,7 @@ function learnSchedule_(info) {
     phase: phase,
     start: text(start), end: text(end), result: text(result),
     startInput: input(start), endInput: input(end), resultInput: input(result),
-    appUrl: config ? String(config.getRange('D2').getValue()).trim() : ''
+    appUrl: LEARN_APP_URL
   };
 }
 
