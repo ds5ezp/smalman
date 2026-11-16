@@ -4523,7 +4523,9 @@
     function renderTermList(list) {
       document.getElementById('ltList').innerHTML = list.length ? list.map(t =>
         '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><div class="fw-semibold">' + esc(t.name) + '</div><div class="text-muted">' + esc(t.id) + ' · ' + esc(t.group || '어르신') + '</div></div>' +
-        (t.active ? '<span class="badge text-bg-success">사용 중</span>' : '<button class="btn btn-sm btn-outline-primary" onclick="activateTermValue(\'' + esc(t.id) + '\')">사용으로 전환</button>') + '</div>'
+        '<div class="d-flex flex-wrap gap-1 justify-content-end"><a class="btn btn-sm btn-light border" href="' + esc(t.url) + '" target="_blank" rel="noopener">신청 화면 보기</a>' +
+        '<a class="btn btn-sm btn-light border" href="' + esc(t.statusUrl) + '" target="_blank" rel="noopener">접수 현황</a>' +
+        (t.active ? '<span class="badge text-bg-success align-self-center">사용 중</span>' : '<button class="btn btn-sm btn-outline-primary" onclick="activateTermValue(\'' + esc(t.id) + '\')">사용으로 전환</button>') + '</div></div>'
       ).join('') : '<span class="text-muted">학기가 없습니다.</span>';
     }
 

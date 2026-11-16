@@ -1135,7 +1135,11 @@ function getLearnTerm_(termId) {
 
 function listLearnTerms() {
   requireUser_();
-  return listLearnTerms_().map(t => ({ id: t.id, name: t.name, group: t.group, active: t.active }));
+  return listLearnTerms_().map(t => ({
+    id: t.id, name: t.name, group: t.group, active: t.active,
+    url: LEARN_APP_URL + '?term=' + encodeURIComponent(t.id),
+    statusUrl: LEARN_APP_URL + '?page=status&term=' + encodeURIComponent(t.id)
+  }));
 }
 
 function learnForm_(t) {
