@@ -1714,10 +1714,12 @@
     <button class="stage-close" onclick="closeStage()" title="닫기"><i class="bi bi-x-lg"></i></button>
     <div class="stage-title" id="stageTitle"></div>
     <div class="stage-info" id="stageInfo"></div>
+    <div class="stage-roll d-none" id="stageRoll"></div>
     <div class="stage-section">합격</div>
     <div class="stage-grid" id="stagePass"></div>
     <div class="stage-section wait">대기</div>
     <div class="stage-grid" id="stageWait"></div>
+    <button class="stage-next" id="stageNextBtn" onclick="revealNextStage()" disabled>추첨 중…</button>
   </div>
   </div>
 
@@ -4856,14 +4858,62 @@
       document.getElementById('stageTitle').textContent = d.course + ' 추첨 결과';
       document.getElementById('stageInfo').textContent = '정원 ' + d.quota + '명 · 신청 ' + d.total + '명 · 합격 ' + passN + '명 · 대기 ' + (d.list.length - passN) + '명';
       const card = x => '<div class="stage-card' + (x.pass ? '' : ' wait') + '"><small>' + esc(x.label) + '</small>' + esc(x.display) + '</div>';
-      document.getElementById('stagePass').innerHTML = d.list.filter(x => x.pass).map(card).join('');
-      document.getElementById('stageWait').innerHTML = d.list.filter(x => !x.pass).map(card).join('');
+      // 처음엔 비워 두고, 이름이 돌아간 뒤 한 명씩 공개 (합격자 먼저, 그다음 대기자)
+      document.getElementById('stagePass').innerHTML = '';
+      document.getElementById('stageWait').innerHTML = '';
+      stageQueue = d.list.filter(x => x.pass).concat(d.list.filter(x => !x.pass));
+      stageIdx = 0;
+      stageReady = false;
+      const nb = document.getElementById('stageNextBtn');
+      nb.disabled = true;
+      nb.textContent = '추첨 중…';
       const stage = document.getElementById('stage');
       stage.classList.remove('d-none');
       try { stage.requestFullscreen && stage.requestFullscreen(); } catch (e) {}
-      const cards = stage.querySelectorAll('.stage-card');
-      cards.forEach((el, i) => setTimeout(() => el.classList.add('show'), 250 * i + 300));
+      stageRollAnim(d.list, () => {
+        stageReady = true;
+        nb.disabled = false;
+        nb.textContent = '다음 발표 ▶';
+      });
     }
+
+    // 발표 화면 진행: 이름이 빠르게 돌아가다 멈춘 뒤, 다음 버튼·스페이스·→ 로 한 명씩 공개
+    let stageQueue = [], stageIdx = 0, stageReady = false;
+
+    function stageRollAnim(list, done) {
+      const roll = document.getElementById('stageRoll');
+      roll.classList.remove('d-none');
+      const start = Date.now();
+      const tick = () => {
+        const pick = list.length ? list[Math.floor(Math.random() * list.length)] : null;
+        roll.textContent = pick ? pick.display : '';
+        if (Date.now() - start < 2500) { setTimeout(tick, 80); return; }
+        roll.classList.add('d-none');
+        done();
+      };
+      tick();
+    }
+
+    function revealNextStage() {
+      if (!stageReady || stageIdx >= stageQueue.length) return;
+      const x = stageQueue[stageIdx++];
+      const el = document.createElement('div');
+      el.className = 'stage-card' + (x.pass ? '' : ' wait');
+      el.innerHTML = '<small>' + esc(x.label) + '</small>' + esc(x.display);
+      document.getElementById(x.pass ? 'stagePass' : 'stageWait').appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      const nb = document.getElementById('stageNextBtn');
+      const done = stageIdx >= stageQueue.length;
+      nb.textContent = done ? '발표 끝' : '다음 발표 ▶';
+      nb.disabled = done;
+    }
+
+    document.addEventListener('keydown', e => {
+      const st = document.getElementById('stage');
+      if (!st || st.classList.contains('d-none')) return;
+      if (e.key === 'Escape') return closeStage();
+      if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); revealNextStage(); }
+    });
 
     function closeStage() {
       document.getElementById('stage').classList.add('d-none');
