@@ -812,7 +812,7 @@
               <div class="border rounded-3 p-2 bg-light">
                 <div class="fw-semibold small mb-2" id="ctFormTitle">과목 추가</div>
                 <div class="row g-2">
-                  <div class="col-4 col-md-2"><select id="ctDay" class="form-select form-select-sm"><option>월</option><option>화</option><option>수</option><option>목</option><option>금</option></select></div>
+                  <div class="col-12"><div class="small text-muted mb-1">요일 (정규는 주 2~3일도 선택 가능)</div><div class="d-flex flex-wrap gap-3"><label class="form-check"><input class="form-check-input ctDayChk" type="checkbox" value="월"> 월</label><label class="form-check"><input class="form-check-input ctDayChk" type="checkbox" value="화"> 화</label><label class="form-check"><input class="form-check-input ctDayChk" type="checkbox" value="수"> 수</label><label class="form-check"><input class="form-check-input ctDayChk" type="checkbox" value="목"> 목</label><label class="form-check"><input class="form-check-input ctDayChk" type="checkbox" value="금"> 금</label></div></div>
                   <div class="col-8 col-md-5"><input id="ctName" class="form-control form-control-sm" placeholder="과목명"></div>
                   <div class="col-6 col-md-3"><input id="ctStart" class="form-control form-control-sm" placeholder="시작 10:00"></div>
                   <div class="col-6 col-md-3"><input id="ctEnd" class="form-control form-control-sm" placeholder="종료 11:30"></div>
@@ -4589,11 +4589,16 @@
       }).catch(fail);
     }
 
+    // 요일 체크박스 값 설정 (배열)
+    function setCtDays(days) {
+      document.querySelectorAll('.ctDayChk').forEach(x => { x.checked = days.indexOf(x.value) !== -1; });
+    }
+
     function editCourse(row) {
       const c = (state.courseAdmin || []).find(x => x.row === row);
       if (!c) return;
       ctEditRow = row;
-      document.getElementById('ctDay').value = c.day;
+      setCtDays(c.type === '특강' ? [] : (c.days || String(c.day || '').split(',').map(s => s.trim())));
       document.getElementById('ctName').value = c.name;
       document.getElementById('ctStart').value = c.start;
       document.getElementById('ctEnd').value = c.end;
@@ -4611,7 +4616,7 @@
 
     function resetCourseForm() {
       ctEditRow = null;
-      document.getElementById('ctDay').value = '월';
+      setCtDays([]);
       ['ctName', 'ctStart', 'ctEnd', 'ctQuota', 'ctFee', 'ctRoom', 'ctDates'].forEach(id => { document.getElementById(id).value = ''; });
       document.getElementById('ctType').value = '정규';
       document.getElementById('ctGradeMin').value = '';
@@ -4625,11 +4630,12 @@
     function toggleCourseType() {
       const special = document.getElementById('ctType').value === '특강';
       document.getElementById('ctDatesBox').style.display = special ? '' : 'none';
-      document.getElementById('ctDay').disabled = special;
+      document.querySelectorAll('.ctDayChk').forEach(x => { x.disabled = special; });
     }
 
     function saveCourseValue() {
-      const c = { type: lv('ctType'), day: lv('ctDay'), name: lv('ctName'), start: lv('ctStart'), end: lv('ctEnd'), quota: lv('ctQuota'), fee: lv('ctFee') || '0', room: lv('ctRoom'),
+      const days = Array.from(document.querySelectorAll('.ctDayChk')).filter(x => x.checked).map(x => x.value);
+      const c = { type: lv('ctType'), day: days.join(', '), days: days, name: lv('ctName'), start: lv('ctStart'), end: lv('ctEnd'), quota: lv('ctQuota'), fee: lv('ctFee') || '0', room: lv('ctRoom'),
         gradeMin: lv('ctGradeMin'), gradeMax: lv('ctGradeMax'), dates: lv('ctDates') };
       save('saveLearnCourse', ctTermId, c, ctEditRow).then(() => {
         toast(ctEditRow ? '과목을 수정했습니다.' : '과목을 추가했습니다.');
@@ -4730,7 +4736,7 @@
           '<div class="col-12 col-md-6 col-xl-4"><div class="card p-3 h-100">' +
           '<div class="d-flex justify-content-between align-items-start mb-2"><div class="fw-bold">' + esc(c.name) + '</div>' +
           (c.done ? '<span class="badge text-bg-primary">추첨 완료</span>' : '<span class="badge text-bg-warning">추첨 필요</span>') + '</div>' +
-          '<div class="small text-muted mb-3">' + esc(c.day) + '요일 · 정원 ' + c.quota + '명 / 신청 ' + c.count + '명</div>' +
+          '<div class="small text-muted mb-3">' + esc(String(c.day || '').split(', ').map(d => d + '요일').join(', ')) + ' · 정원 ' + c.quota + '명 / 신청 ' + c.count + '명</div>' +
           '<div class="d-flex gap-2 mt-auto">' +
           (c.needed ? '<button class="btn btn-sm btn-primary flex-fill" onclick="startDraw(' + idx + ')">' + (c.done ? '다시 추첨' : '추첨하기') + '</button>' : '') +
           (c.done ? '<button class="btn btn-sm btn-light flex-fill" onclick="showSavedDraw(' + idx + ')">저장된 결과</button>' : '') +

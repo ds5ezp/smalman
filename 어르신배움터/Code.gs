@@ -164,6 +164,14 @@ function weekdayOf_(ymd) {
   return m ? WEEKDAY_KO_[new Date(+m[1], +m[2] - 1, +m[3]).getDay()] : '';
 }
 
+// 정규 과목 요일 문자열 → 요일 배열 ("월요일, 수요일" / "월,수" / "월/수" 모두 허용)
+function parseWeekdays_(text) {
+  const list = String(text || '').split(/[,\/\s]+/)
+    .map(s => s.replace('요일', '').trim())
+    .filter(s => ['월', '화', '수', '목', '금'].indexOf(s) !== -1);
+  return list.filter((w, i, a) => a.indexOf(w) === i);
+}
+
 // 특강·학년 열 머리글 판별 (요일 열과 같은 방식으로 과목 칸을 찾음)
 function isCourseHeader_(h) {
   return (h.indexOf('요일') !== -1 || h.indexOf('특강') !== -1) && h.indexOf('면제') === -1 && h.indexOf('수강료') === -1;
@@ -180,12 +188,12 @@ function readCourses_(t) {
     const dates = type === '특강' ? parseDates_(r[9]) : [];
     const weekdays = type === '특강'
       ? dates.map(weekdayOf_).filter((w, i, a) => w && a.indexOf(w) === i)
-      : [String(r[1] || '').replace('요일', '').trim()];
+      : parseWeekdays_(r[1]);
     return {
       display: display,
       name: parts[0].trim(),
       type: type,
-      day: type === '특강' ? '특강' : String(r[1] || '').replace('요일', '').trim(),
+      day: type === '특강' ? '특강' : (weekdays[0] || ''),
       weekdays: weekdays,
       dates: dates,
       gradeMin: String(r[7] || '').trim(),
@@ -591,7 +599,7 @@ function submitForm(f) {
       if (h.indexOf('동의') !== -1) { nRow[i] = '동의'; return; }
       if (h.indexOf('수강료') !== -1) return;
       const day = dayOfHeader_(h);
-      if (day) nRow[i] = selected.filter(d => byDisplay[d].day === day).join(', ');
+      if (day) nRow[i] = selected.filter(d => byDisplay[d].type !== '특강' && (byDisplay[d].weekdays || []).indexOf(day) !== -1).join(', ');
     });
     sheet.appendRow(nRow);
     return '접수가 완료되었습니다.';

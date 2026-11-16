@@ -1193,7 +1193,7 @@ function learnCourses_(info, t) {
       return {
         name: parts[0].trim(),
         display: String(r[0]).trim(),
-        day: String(r[1] || '').replace('요일', '').trim(),
+        day: learnWeekdays_(r[1]).join(', '),
         start: String(r[2] || '').trim(),
         end: String(r[3] || '').trim(),
         quota: parseInt(r[qIdx], 10) || 20,
@@ -1612,27 +1612,35 @@ function learnDates_(text) {
   return out;
 }
 
+// "월요일, 수요일" / "월,수" / ["월","수"] → ["월","수"] (월~금만)
+function learnWeekdays_(text) {
+  return String(text || '').split(/[,\/\s]+/)
+    .map(s => s.replace('요일', '').trim())
+    .filter((s, i, a) => ['월', '화', '수', '목', '금'].indexOf(s) !== -1 && a.indexOf(s) === i);
+}
+
 function learnCourseInput_(c) {
   const name = String(c.name || '').trim();
   const type = String(c.type || '').trim() === '특강' ? '특강' : '정규';
   const dates = type === '특강' ? learnDates_(c.dates) : [];
   const gradeMin = LEARN_GRADES.indexOf(String(c.gradeMin || '')) !== -1 ? String(c.gradeMin) : '';
   const gradeMax = LEARN_GRADES.indexOf(String(c.gradeMax || '')) !== -1 ? String(c.gradeMax) : '';
-  const day = type === '특강' ? '특강' : String(c.day || '').trim();
+  const days = type === '특강' ? [] : learnWeekdays_(Array.isArray(c.days) ? c.days.join(',') : c.day);
+  const day = type === '특강' ? '특강' : days.join(', ');
   const start = learnHHMM_(c.start), end = learnHHMM_(c.end);
   const quota = parseInt(c.quota, 10);
   const fee = parseInt(String(c.fee || '0').replace(/[^0-9]/g, ''), 10) || 0;
   const room = String(c.room || '').trim();
   if (!name) throw new Error('과목명을 입력해 주세요.');
   if (name.indexOf('|') !== -1) throw new Error('과목명에는 | 기호를 쓸 수 없습니다.');
-  if (type === '정규' && ['월', '화', '수', '목', '금'].indexOf(day) === -1) throw new Error('요일을 선택해 주세요.');
+  if (type === '정규' && days.length === 0) throw new Error('요일을 한 개 이상 골라 주세요.');
   if (type === '특강' && dates.length === 0) throw new Error('특강 날짜를 yyyy-MM-dd 형식으로 한 개 이상 입력해 주세요. 예) 2027-03-03, 2027-03-05');
   if (gradeMin && gradeMax && LEARN_GRADES.indexOf(gradeMin) > LEARN_GRADES.indexOf(gradeMax)) throw new Error('최소 학년이 최대 학년보다 높아요.');
   if (!start || !end) throw new Error('시작·종료 시간을 HH:MM 형식으로 입력해 주세요. 예) 10:00');
   if (start >= end) throw new Error('종료 시간은 시작 시간보다 늦어야 합니다.');
   if (!(quota > 0)) throw new Error('정원은 1명 이상이어야 합니다.');
   const feeText = String(fee).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
-  return { name: name, day: day, type: type, dates: dates, gradeMin: gradeMin, gradeMax: gradeMax,
+  return { name: name, day: day, days: days, type: type, dates: dates, gradeMin: gradeMin, gradeMax: gradeMax,
     start: start, end: end, quota: quota, fee: fee, room: room,
     display: name + ' | ' + start + '~' + end + ' | ' + feeText };
 }
@@ -1647,7 +1655,8 @@ function learnCourseRowsAdmin_(t) {
       display: raw,
       name: parts[0].trim(),
       type: String(r[6] || '').trim() === '특강' ? '특강' : '정규',
-      day: String(r[6] || '').trim() === '특강' ? '특강' : String(r[1] || '').replace('요일', '').trim(),
+      day: String(r[6] || '').trim() === '특강' ? '특강' : learnWeekdays_(r[1]).join(', '),
+      days: String(r[6] || '').trim() === '특강' ? [] : learnWeekdays_(r[1]),
       dates: learnDates_(r[9]),
       gradeMin: String(r[7] || '').trim(),
       gradeMax: String(r[8] || '').trim(),
@@ -1681,7 +1690,7 @@ function saveLearnCourse(termId, c, row) {
     if (existing.some(x => x.name === v.name && x.row !== Number(row))) throw new Error('같은 이름의 강좌가 이미 있습니다.');
     const values = v.type === '특강'
       ? [v.display, '특강', "'" + v.start, "'" + v.end, v.quota, v.room, '특강', v.gradeMin, v.gradeMax, v.dates.join(', ')]
-      : [v.display, v.day + '요일', "'" + v.start, "'" + v.end, v.quota, v.room, '정규', v.gradeMin, v.gradeMax, ''];
+      : [v.display, v.days.map(d => d + '요일').join(', '), "'" + v.start, "'" + v.end, v.quota, v.room, '정규', v.gradeMin, v.gradeMax, ''];
     if (row) {
       const old = existing.find(x => x.row === Number(row));
       if (!old) throw new Error('수정할 강좌를 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.');

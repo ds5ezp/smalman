@@ -570,8 +570,8 @@
     if (!a.start || !a.end || !b.start || !b.end) return false;
     if (!(a.start < b.end && a.end > b.start)) return false;
     if (a.type === '특강' && b.type === '특강') return (a.dates || []).some(d => (b.dates || []).indexOf(d) !== -1);
-    const wa = a.type === '특강' ? (a.weekdays || []) : [a.day];
-    const wb = b.type === '특강' ? (b.weekdays || []) : [b.day];
+    const wa = a.weekdays && a.weekdays.length ? a.weekdays : [a.day];
+    const wb = b.weekdays && b.weekdays.length ? b.weekdays : [b.day];
     return wa.some(w => wb.indexOf(w) !== -1);
   }
 
@@ -644,7 +644,7 @@
     } else if (id === 'sNum') {
       setFoot('이전', '다음', true, true);
     } else if (id === 'sCourse') {
-      curDay = DAYS.find(d => courses.some(c => c.day === d)) || '월';
+      curDay = DAYS.find(d => courses.some(c => inDay(c, d))) || '월';
       renderDayTabs();
       renderCourses();
       updateCourseButtons();
@@ -707,11 +707,17 @@
   }
 
   // ---------- 강좌 ----------
+  // 강좌가 그 탭(요일 또는 특강)에 보이는지: 정규는 주 2~3일 가능, 특강은 특강 탭
+  function inDay(c, d) {
+    if (d === '특강') return c.type === '특강';
+    return c.type !== '특강' && (c.weekdays && c.weekdays.length ? c.weekdays : [c.day]).indexOf(d) !== -1;
+  }
+
   function renderDayTabs() {
     const tabs = document.getElementById('dayTabs');
     const tabList = DAYS.concat(courses.some(c => c.type === '특강') ? ['특강'] : []);
     tabs.innerHTML = tabList.map(d => {
-      const n = selected.filter(i => courses[i].day === d).length;
+      const n = selected.filter(i => inDay(courses[i], d)).length;
       return '<button class="day-tab' + (d === curDay ? ' on' : '') + '" onclick="setDay(\'' + d + '\')">' + d +
         (n ? '<span class="cnt">' + n + '</span>' : '') + '</button>';
     }).join('');
@@ -726,7 +732,7 @@
   function renderCourses() {
     const list = document.getElementById('courseList');
     if (!list) return;
-    const items = courses.filter(c => c.day === curDay);
+    const items = courses.filter(c => inDay(c, curDay));
     if (!items.length) {
       list.innerHTML = '<div class="empty">이 요일에는 신청할 강좌가 없어요</div>';
       return;
@@ -824,7 +830,7 @@
       selected.map(i => {
         const c = courses[i];
         return '<div class="sum-course">' + esc(String(c.display).split('|')[0].trim()) +
-          '<small>' + (c.type === '특강' ? '특강 · ' + esc((c.dates || []).join(', ')) : esc(c.day) + '요일') + ' · ' + esc(c.start) + ' ~ ' + esc(c.end) + '</small></div>';
+          '<small>' + (c.type === '특강' ? '특강 · ' + esc((c.dates || []).join(', ')) : esc((c.weekdays && c.weekdays.length ? c.weekdays : [c.day]).map(d => d + '요일').join(', '))) + ' · ' + esc(c.start) + ' ~ ' + esc(c.end) + '</small></div>';
       }).join('');
   }
 
