@@ -829,6 +829,12 @@
             <div class="card p-3 mb-3">
               <h6 class="mb-2">신청 조건 · 결과 화면 안내</h6>
               <p class="small text-muted mb-2">나이와 과목 수는 비워 두면 기본값(어르신 60세 이상, 성인 20~64세, 아동 6~13세, 최대 5과목)을 씁니다.</p>
+              <div class="row g-2 mb-2">
+                <div class="col-12 col-md-4"><label class="form-label small">나이 기준일 방식</label>
+                  <select id="ntcRefMode" class="form-select form-select-sm" onchange="updateAgeHint()"><option value="접수">접수 시작일</option><option value="과정">과정 시작일</option><option value="직접">직접 입력</option></select></div>
+                <div class="col-6 col-md-4"><label class="form-label small">과정 시작일</label><input id="ntcCourseStart" type="date" class="form-control form-control-sm" oninput="updateAgeHint()"></div>
+                <div class="col-6 col-md-4"><label class="form-label small">직접 입력 기준일</label><input id="ntcRefDate" type="date" class="form-control form-control-sm" oninput="updateAgeHint()"></div>
+              </div>
               <div class="small mb-2" id="ntcAgeHint" style="color:#1b64da"></div>
               <div class="row g-2 mb-2">
                 <div class="col-4"><label class="form-label small">나이 최소 (세)</label><input id="ntcAgeMin" type="number" min="0" class="form-control form-control-sm" placeholder="예) 60" oninput="updateAgeHint()"></div>
@@ -4566,6 +4572,10 @@
         document.getElementById('ntcMode').value = n.mode || '추첨';
         document.getElementById('ntcAgeMin').value = n.ageMin || '';
         document.getElementById('ntcAgeMax').value = n.ageMax || '';
+        document.getElementById('ntcRefMode').value = n.refMode || '접수';
+        document.getElementById('ntcRefDate').value = n.refDate || '';
+        document.getElementById('ntcCourseStart').value = n.courseStart || '';
+        ntcStartDate = n.startDate || '';
         updateAgeHint();
         document.getElementById('ntcMaxCourses').value = n.maxCourses || '';
         document.getElementById('ntcBenefits').value = n.benefits || '';
@@ -4623,23 +4633,30 @@
       }).catch(fail);
     }
 
-    // 나이를 입력하면 올해 기준 출생연도 범위를 바로 보여 줌
+    let ntcStartDate = '';
+
+    // 기준일(접수 시작일 / 과정 시작일 / 직접 입력)에 따라 출생 날짜 기준을 바로 보여 줌
     function updateAgeHint() {
+      const mode = document.getElementById('ntcRefMode').value;
+      const ref = mode === '과정' ? document.getElementById('ntcCourseStart').value
+        : mode === '직접' ? document.getElementById('ntcRefDate').value : ntcStartDate;
       const min = parseInt(document.getElementById('ntcAgeMin').value, 10);
       const max = parseInt(document.getElementById('ntcAgeMax').value, 10);
       const hint = document.getElementById('ntcAgeHint');
-      const cy = new Date().getFullYear();
-      if (isNaN(min) && isNaN(max)) { hint.textContent = '비워 두면 기본값(어르신 60세 이상, 성인 20~64세, 아동 6~13세)을 써요.'; return; }
-      const lo = isNaN(max) ? null : cy - max, hi = isNaN(min) ? null : cy - min;
-      let text = '올해(' + cy + '년) 기준: ';
-      text += (lo === null ? '' : lo + '년생 ~ ') + (hi === null ? '' : hi + '년생') + (lo === null ? ' 이전 출생' : '');
-      text += ' 신청 가능 (생일이 아직 안 지났으면 1년 차이가 날 수 있어요)';
-      hint.textContent = text;
+      if (!ref) { hint.textContent = '기준일이 없어요. 접수 시작일을 입력하거나 과정 시작일·직접 입력 날짜를 넣어 주세요.'; return; }
+      if (isNaN(min) && isNaN(max)) { hint.textContent = '기준일 ' + ref + ' · 나이를 비워 두면 기본값(어르신 60세 이상, 성인 20~64세, 아동 6~13세)을 써요.'; return; }
+      const [y, m, d] = ref.split('-').map(Number);
+      const fmt = dt => dt.getFullYear() + '년 ' + (dt.getMonth() + 1) + '월 ' + dt.getDate() + '일';
+      let text = '기준일 ' + ref + ' · ';
+      if (!isNaN(min)) text += fmt(new Date(y - min, m - 1, d)) + ' 이전 출생';
+      if (!isNaN(max) && max < 120) text += ' ~ ' + fmt(new Date(y - max - 1, m - 1, d + 1)) + ' 이후 출생';
+      hint.textContent = text + ' 신청 가능';
     }
 
     function saveNoticeValue() {
       const data = { mode: lv('ntcMode'), period: lv('ntcPeriod'), contact: lv('ntcContact'), extra: document.getElementById('ntcExtra').value.trim(),
         ageMin: lv('ntcAgeMin'), ageMax: lv('ntcAgeMax'), maxCourses: lv('ntcMaxCourses'),
+        refMode: lv('ntcRefMode'), refDate: lv('ntcRefDate'), courseStart: lv('ntcCourseStart'),
         benefits: document.getElementById('ntcBenefits').value, waitAllowed: lv('ntcWait') !== 'N' };
       save('saveLearnNotice', ctTermId, data).then(() => toast('접수 결과 안내 문구를 저장했습니다.')).catch(fail);
     }

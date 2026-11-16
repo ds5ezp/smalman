@@ -371,6 +371,8 @@
   let currentUserJob = null;
   let courseMode = '추첨';
   let group = '어르신';
+  let refDate = '';
+  let cutoffText = '';
   // 학기 설정값 (나이 범위, 최대 과목 수) — 서버에서 받아 옴
   let ageRange = [0, 200];
   let maxCourses = 5;
@@ -406,22 +408,15 @@
     document.getElementById('lab-phone').textContent = child ? '보호자 연락처' : '연락처';
   }
 
-  // 올해 기준 출생연도 범위 문구
-  function birthYearRange(ageMin, ageMax) {
-    const cy = new Date().getFullYear();
-    const latest = cy - ageMin, earliest = cy - ageMax;
-    return ageMax >= 120 ? latest + '년생 이전 출생' : earliest + '년생 ~ ' + latest + '년생';
-  }
-
-  // 만 나이 (화면에서 바로 확인용, 서버에서도 한 번 더 확인)
-  function ageYears(dob6) {
+  // 기준일 기준 만 나이 (서버와 같은 방식)
+  function ageAt(dob6, refStr) {
     const yy = +dob6.slice(0, 2), mm = +dob6.slice(2, 4), dd = +dob6.slice(4, 6);
+    const m = String(refStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
     const now = new Date();
-    const cy = now.getFullYear();
-    const by = (yy > cy % 100 ? 1900 : 2000) + yy;
-    let age = cy - by;
-    const cm = now.getMonth() + 1;
-    if (cm < mm || (cm === mm && now.getDate() < dd)) age--;
+    const ry = m ? +m[1] : now.getFullYear(), rm = m ? +m[2] : now.getMonth() + 1, rd = m ? +m[3] : now.getDate();
+    const by = (yy > ry % 100 ? 1900 : 2000) + yy;
+    let age = ry - by;
+    if (rm < mm || (rm === mm && rd < dd)) age--;
     return age;
   }
 
@@ -623,9 +618,9 @@
     } else if (stepId === 'sNum') {
       if (form.dob.length !== 6) return alert('생년월일 6자리를 눌러 주세요.');
       if (!/^01[016789]\d{7,8}$/.test(form.phone)) return alert('연락처를 바르게 눌러 주세요.');
-      const age = ageYears(form.dob);
+      const age = ageAt(form.dob, refDate);
       if (age < ageRange[0] || age > ageRange[1]) {
-        return alert('이 배움터는 ' + birthYearRange(ageRange[0], ageRange[1]) + ' 대상이에요.\n(만 ' + ageRange[0] + '세 이상' + (ageRange[1] >= 120 ? '' : ' ~ ' + ageRange[1] + '세 이하') + ')');
+        return alert('이 배움터는 ' + cutoffText + ' 신청할 수 있어요.\n(만 ' + ageRange[0] + '세 이상' + (ageRange[1] >= 120 ? '' : ' ~ ' + ageRange[1] + '세 이하') + ')');
       }
       checkJobWithName();
       goStep('sCourse');
@@ -864,7 +859,9 @@
         courseMode = data.mode || '추첨';
         group = data.group || '어르신';
         ageRange = [data.ageMin, data.ageMax];
-        document.getElementById('yearHint').textContent = '올해 기준 ' + birthYearRange(ageRange[0], ageRange[1]) + ' 신청 가능';
+        refDate = data.refDate || '';
+        cutoffText = data.cutoffText || '';
+        document.getElementById('yearHint').textContent = (refDate ? '기준일 ' + refDate + ' · ' : '') + cutoffText + ' 신청 가능';
         benefits = (data.benefits && data.benefits.length) ? data.benefits : ['해당없음'];
         waitAllowed = data.waitAllowed !== false;
         renderBenefits();

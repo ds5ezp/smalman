@@ -248,17 +248,27 @@ function headerIdx_(hdrs, key) {
 }
 
 // 생년월일 6자리(yymmdd)로 만 나이 계산 (한국 시간 기준)
-function ageOf_(dob6) {
+// 기준일(yyyy-MM-dd, 없으면 오늘) 기준 만 나이
+function ageOf_(dob6, refStr) {
   const yy = parseInt(dob6.slice(0, 2), 10), mm = parseInt(dob6.slice(2, 4), 10), dd = parseInt(dob6.slice(4, 6), 10);
   if (isNaN(yy) || isNaN(mm) || isNaN(dd)) return NaN;
-  const now = new Date();
-  const cy = Number(Utilities.formatDate(now, 'GMT+9', 'yyyy'));
-  const cm = Number(Utilities.formatDate(now, 'GMT+9', 'M'));
-  const cd = Number(Utilities.formatDate(now, 'GMT+9', 'd'));
-  const by = (yy > cy % 100 ? 1900 : 2000) + yy;
-  let age = cy - by;
-  if (cm < mm || (cm === mm && cd < dd)) age--;
+  const ref = parseRef_(refStr);
+  const by = (yy > ref.y % 100 ? 1900 : 2000) + yy;
+  let age = ref.y - by;
+  if (ref.m < mm || (ref.m === mm && ref.d < dd)) age--;
   return age;
+}
+
+// 기준일 문자열을 {y, m, d} 로 (형식이 아니면 오늘)
+function parseRef_(refStr) {
+  const m = String(refStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return { y: +m[1], m: +m[2], d: +m[3] };
+  const n = new Date();
+  return {
+    y: Number(Utilities.formatDate(n, 'GMT+9', 'yyyy')),
+    m: Number(Utilities.formatDate(n, 'GMT+9', 'M')),
+    d: Number(Utilities.formatDate(n, 'GMT+9', 'd'))
+  };
 }
 
 // 학기별 신청 조건: 환경설정 B8 나이 최소, B9 나이 최대, B10 최대 신청 과목 수 (비우면 대상별 기본값)
@@ -284,7 +294,19 @@ function conditionsOf_(t) {
   let benefits = txt('B11').split(/[,\n]/).map(x => x.trim()).filter(Boolean);
   if (!benefits.length) benefits = DEFAULT_BENEFITS_.slice();
   const waitAllowed = txt('B12') !== 'N';
-  return { ageMin: min, ageMax: max, maxCourses: maxCourses, benefits: benefits, waitAllowed: waitAllowed };
+  // 기준일 방식: 접수시작(기본) / 과정시작(B15) / 직접(B13)
+  const isDate = v => /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const method = txt('B14');
+  let refDate = '';
+  if (method === '과정시작' && isDate(txt('B15'))) refDate = txt('B15');
+  else if (method === '직접' && isDate(txt('B13'))) refDate = txt('B13');
+  if (!refDate) {
+    const start = scheduleOf_(t).start;
+    refDate = start ? Utilities.formatDate(start, 'GMT+9', 'yyyy-MM-dd') : '';
+  }
+  const cond = { ageMin: min, ageMax: max, maxCourses: maxCourses, benefits: benefits, waitAllowed: waitAllowed, refDate: refDate };
+  cond.cutoffText = cutoffText_(cond);
+  return cond;
 }
 
 // 한 강좌에 지금 신청되어 있는 인원 (행 기준)
@@ -296,19 +318,22 @@ function countCourse_(data, hdrs, courseName) {
   return n;
 }
 
-// 나이 확인 (생년월일 6자리 기준)
+// 나이 확인 (기준일 기준 만 나이)
 function checkAge_(cond, dob6) {
-  const age = ageOf_(dob6);
+  const age = ageOf_(dob6, cond.refDate);
   if (isNaN(age) || age < cond.ageMin || age > cond.ageMax) {
-    throw new Error('이 배움터는 ' + birthYearText_(cond.ageMin, cond.ageMax) + ' 대상이에요.\n(만 ' + cond.ageMin + '세 이상' + (cond.ageMax >= 120 ? '' : ' ~ ' + cond.ageMax + '세 이하') + ')');
+    throw new Error('이 배움터는 ' + cond.cutoffText + ' 신청할 수 있어요.\n(만 ' + cond.ageMin + '세 이상' + (cond.ageMax >= 120 ? '' : ' ~ ' + cond.ageMax + '세 이하') + ', 기준일 ' + cond.refDate + ')');
   }
 }
 
-// 올해 기준 출생연도 범위 문구 (예: 1946년생 ~ 1966년생)
-function birthYearText_(ageMin, ageMax) {
-  const cy = Number(Utilities.formatDate(new Date(), 'GMT+9', 'yyyy'));
-  const latest = cy - ageMin, earliest = cy - ageMax;
-  return ageMax >= 120 ? latest + '년생 이전 출생' : earliest + '년생 ~ ' + latest + '년생';
+// 기준일 기준 출생 날짜 안내 (예: 1946년 8월 9일 ~ 1966년 8월 8일 출생)
+function cutoffText_(cond) {
+  const r = parseRef_(cond.refDate);
+  const fmt = (y, m, d) => y + '년 ' + m + '월 ' + d + '일';
+  const latest = fmt(r.y - cond.ageMin, r.m, r.d) + ' 이전 출생';
+  if (cond.ageMax >= 120) return latest;
+  const e = new Date(r.y - cond.ageMax - 1, r.m - 1, r.d + 1);
+  return fmt(e.getFullYear(), e.getMonth() + 1, e.getDate()) + ' 이후 출생 ~ ' + latest;
 }
 
 function toTs_(v) {
@@ -662,7 +687,7 @@ function getInitialData(termId) {
   const cond = conditionsOf_(t);
   return { courses: cs, jobTimes: jobTimes, restrictions: restrictions, mode: modeOf_(t), group: t.group,
     ageMin: cond.ageMin, ageMax: cond.ageMax, maxCourses: cond.maxCourses,
-    benefits: cond.benefits, waitAllowed: cond.waitAllowed };
+    benefits: cond.benefits, waitAllowed: cond.waitAllowed, refDate: cond.refDate, cutoffText: cond.cutoffText };
 }
 
 // ==========================================
