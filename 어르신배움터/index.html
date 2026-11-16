@@ -858,7 +858,9 @@
         restrictions = data.restrictions || [];
         courseMode = data.mode || '추첨';
         group = data.group || '어르신';
-        ageRange = [data.ageMin, data.ageMax];
+        // 나이 기준을 못 받으면 대상별 기본값으로 막음 (빈 값으로 통과시키지 않음)
+        const defAge = { '어르신': [60, 120], '성인': [20, 64], '아동': [6, 13] }[data.group || '어르신'] || [60, 120];
+        ageRange = [Number(data.ageMin) > 0 ? Number(data.ageMin) : defAge[0], Number(data.ageMax) > 0 ? Number(data.ageMax) : defAge[1]];
         refDate = data.refDate || '';
         cutoffText = data.cutoffText || '';
         document.getElementById('yearHint').textContent = (refDate ? '기준일 ' + refDate + ' · ' : '') + cutoffText + ' 신청 가능';
