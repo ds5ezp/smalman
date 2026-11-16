@@ -271,6 +271,7 @@
     <div class="progress"><span class="on"></span><span class="on"></span><span></span><span></span></div>
     <div class="step-label">2 / 4 · 연락처</div>
     <h1 class="q">생년월일과 연락처를<br>눌러서 적어 주세요</h1>
+    <div class="hint" id="yearHint"></div>
     <div class="fbox active" data-f="dob" onclick="pickField('dob')">
       <span class="flabel" id="lab-dob">생년월일 (6자리)</span>
       <span class="fval ph" id="v-dob" data-ph="예) 500101"></span>
@@ -403,6 +404,13 @@
     document.getElementById('nameQ').textContent = child ? '아동 성함을 적어 주세요' : '성함을 적어 주세요';
     document.getElementById('lab-dob').textContent = child ? '아동 생년월일 (6자리)' : '생년월일 (6자리)';
     document.getElementById('lab-phone').textContent = child ? '보호자 연락처' : '연락처';
+  }
+
+  // 올해 기준 출생연도 범위 문구
+  function birthYearRange(ageMin, ageMax) {
+    const cy = new Date().getFullYear();
+    const latest = cy - ageMin, earliest = cy - ageMax;
+    return ageMax >= 120 ? latest + '년생 이전 출생' : earliest + '년생 ~ ' + latest + '년생';
   }
 
   // 만 나이 (화면에서 바로 확인용, 서버에서도 한 번 더 확인)
@@ -617,7 +625,7 @@
       if (!/^01[016789]\d{7,8}$/.test(form.phone)) return alert('연락처를 바르게 눌러 주세요.');
       const age = ageYears(form.dob);
       if (age < ageRange[0] || age > ageRange[1]) {
-        return alert('이 배움터는 ' + ageRange[0] + '세 이상 ' + ageRange[1] + '세 이하만 신청할 수 있어요.');
+        return alert('이 배움터는 ' + birthYearRange(ageRange[0], ageRange[1]) + ' 대상이에요.\n(만 ' + ageRange[0] + '세 이상' + (ageRange[1] >= 120 ? '' : ' ~ ' + ageRange[1] + '세 이하') + ')');
       }
       checkJobWithName();
       goStep('sCourse');
@@ -856,6 +864,7 @@
         courseMode = data.mode || '추첨';
         group = data.group || '어르신';
         ageRange = [data.ageMin, data.ageMax];
+        document.getElementById('yearHint').textContent = '올해 기준 ' + birthYearRange(ageRange[0], ageRange[1]) + ' 신청 가능';
         benefits = (data.benefits && data.benefits.length) ? data.benefits : ['해당없음'];
         waitAllowed = data.waitAllowed !== false;
         renderBenefits();

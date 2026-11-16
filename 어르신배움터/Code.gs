@@ -300,8 +300,15 @@ function countCourse_(data, hdrs, courseName) {
 function checkAge_(cond, dob6) {
   const age = ageOf_(dob6);
   if (isNaN(age) || age < cond.ageMin || age > cond.ageMax) {
-    throw new Error('이 배움터는 ' + cond.ageMin + '세 이상 ' + cond.ageMax + '세 이하만 신청할 수 있어요.');
+    throw new Error('이 배움터는 ' + birthYearText_(cond.ageMin, cond.ageMax) + ' 대상이에요.\n(만 ' + cond.ageMin + '세 이상' + (cond.ageMax >= 120 ? '' : ' ~ ' + cond.ageMax + '세 이하') + ')');
   }
+}
+
+// 올해 기준 출생연도 범위 문구 (예: 1946년생 ~ 1966년생)
+function birthYearText_(ageMin, ageMax) {
+  const cy = Number(Utilities.formatDate(new Date(), 'GMT+9', 'yyyy'));
+  const latest = cy - ageMin, earliest = cy - ageMax;
+  return ageMax >= 120 ? latest + '년생 이전 출생' : earliest + '년생 ~ ' + latest + '년생';
 }
 
 function toTs_(v) {
