@@ -665,7 +665,7 @@
      <!-- ===================== 어르신 배움터 (4단계) ===================== -->
      <div data-module-view="learn" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <h4 class="mb-0">어르신 배움터 접수</h4>
+        <h4 class="mb-0" id="lTitle">배움터 접수</h4>
         <div class="d-flex flex-wrap gap-2 align-items-center">
           <select id="lTerm" class="form-select form-select-sm" style="max-width:260px" onchange="changeLearnTerm()"></select>
           <a class="btn btn-sm btn-outline-secondary d-none" id="learnAppLink" target="_blank"><i class="bi bi-box-arrow-up-right me-1"></i>신청 화면</a>
@@ -684,6 +684,14 @@
 
       <!-- 현황 -->
       <section data-panel="lStatus" class="d-none">
+        <div class="card p-3 mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">신청 화면 미리보기 <span class="text-muted small fw-normal">(세로 화면 기준)</span></h6>
+            <button class="btn btn-sm btn-outline-primary" id="lPrevBtn" onclick="toggleLearnPreview()">미리보기 켜기</button>
+          </div>
+          <div class="preview-wrap" id="lPreviewWrap" data-w="1080" data-h="1920" style="height:70vh"><div class="preview-placeholder small">미리보기 켜기를 누르면 지금 선택한 학기의 신청 화면이 여기에 나옵니다.</div></div>
+          <div class="small text-muted mt-2">미리보기에 '현재 파일을 열 수 없습니다'가 나오면 브라우저에 구글 계정이 여러 개 로그인된 경우예요. <a id="lPrevNewTab" target="_blank">새 창에서 보기 <i class="bi bi-box-arrow-up-right"></i></a></div>
+        </div>
         <div class="d-flex justify-content-between align-items-center mb-2">
           <span class="small text-muted" id="lCheckedAt">불러오는 중…</span>
           <button class="btn btn-sm btn-light" onclick="loadLearnStatus()"><i class="bi bi-arrow-clockwise"></i> 새로고침</button>
@@ -714,7 +722,7 @@
       <section data-panel="lList" class="d-none">
         <div class="card p-3">
           <div class="d-flex flex-wrap gap-2 mb-3">
-            <input id="lSearch" class="form-control" style="max-width:260px" placeholder="이름·생년월일·연락처 검색" oninput="renderLearnList()"><label class="small align-self-center text-nowrap"><input type="checkbox" id="lShowCancel" class="form-check-input me-1" onchange="renderLearnList()">취소한 사람 보이기</label>
+            <input id="lSearch" class="form-control" style="max-width:260px" placeholder="이름·생년월일·연락처 검색" oninput="renderLearnList()"><label class="small align-self-center text-nowrap"><input type="checkbox" id="lShowCancel" class="form-check-input me-1" onchange="renderLearnList()">취소한 사람 보이기</label><button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="downloadLearnCsv()"><i class="bi bi-download me-1"></i>엑셀(CSV) 받기</button><button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="printLearnList()"><i class="bi bi-printer me-1"></i>인쇄</button>
             <select id="lCourseFilter" class="form-select" style="max-width:260px" onchange="renderLearnList()"><option value="">전체 강좌</option></select>
             <span class="small text-muted align-self-center" id="lListCount"></span>
           </div>
@@ -4433,6 +4441,74 @@
     function learnTermId() { return state.learnTerm; }
 
     // 신청 화면 주소에 학기 ID를 붙여서 그 학기 화면이 열리게 함
+    // 상단 제목: 선택한 학기 이름 + 접수 (예: 2027년 상반기 어르신 배움터 접수)
+    function updateLearnTitle() {
+      const sel = document.getElementById('lTerm');
+      const opt = sel && sel.options[sel.selectedIndex];
+      document.getElementById('lTitle').textContent = opt ? opt.textContent.replace(' (사용 중)', '') + ' 접수' : '배움터 접수';
+    }
+
+    // 접수자 명단 CSV 받기 · 인쇄 (화면에 보이는 명단 그대로)
+    function downloadLearnCsv() {
+      const list = visibleLearnList();
+      const rows = [['상태', '접수일시·취소시각', '성명', '생년월일', '성별', '연락처', '면제', '신청 강좌']];
+      list.forEach(a => rows.push([a.cancelled ? '취소' : '접수', a.cancelled ? a.cancelAt : a.date, a.name, a.dob, a.gender, a.phone, a.benefit || '', a.courses.join(' / ')]));
+      const csv = rows.map(r => r.map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = document.getElementById('lTitle').textContent + ' 명단.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
+    function printLearnList() {
+      const body = visibleLearnList().map(a => '<tr><td>' + (a.cancelled ? '취소' : '접수') + '</td><td>' + esc(a.cancelled ? a.cancelAt : a.date) +
+        '</td><td>' + esc(a.name) + '</td><td>' + esc(a.dob) + '</td><td>' + esc(a.gender) + '</td><td>' + esc(a.phone) +
+        '</td><td>' + esc(a.benefit || '') + '</td><td>' + esc(a.courses.join(' / ')) + '</td></tr>').join('');
+      printTableArea('lPrintArea', document.getElementById('lTitle').textContent + ' 접수자 명단',
+        '<table><thead><tr><th>상태</th><th>접수일시</th><th>성명</th><th>생년월일</th><th>성별</th><th>연락처</th><th>면제</th><th>신청 강좌</th></tr></thead><tbody>' + body + '</tbody></table>');
+    }
+
+    // 화면에 숨겨 둔 영역에 표를 넣고 인쇄 (새 창을 열지 않음)
+    function printTableArea(id, title, tableHtml) {
+      let area = document.getElementById(id);
+      if (!area) {
+        area = document.createElement('div');
+        area.id = id;
+        document.body.appendChild(area);
+      }
+      area.innerHTML = '<style>#' + id + '{display:none}' +
+        '@media print{body *{visibility:hidden}#' + id + ',#' + id + ' *{visibility:visible}' +
+        '#' + id + '{display:block;position:absolute;left:0;top:0;width:100%;padding:16px;font-family:sans-serif;color:#000}' +
+        '#' + id + ' table{border-collapse:collapse;width:100%;font-size:12px}' +
+        '#' + id + ' th,#' + id + ' td{border:1px solid #999;padding:4px 6px;text-align:left}}</style>' +
+        '<h3>' + esc(title) + '</h3>' + tableHtml;
+      window.print();
+    }
+
+    // 현황 탭: 신청 화면 미리보기 (세로 1080×1920 기준으로 맞춤)
+    function toggleLearnPreview() {
+      const wrap = document.getElementById('lPreviewWrap');
+      const btn = document.getElementById('lPrevBtn');
+      const off = '<div class="preview-placeholder small">미리보기 켜기를 누르면 지금 선택한 학기의 신청 화면이 여기에 나옵니다.</div>';
+      if (wrap.querySelector('iframe')) {
+        wrap.innerHTML = off;
+        btn.textContent = '미리보기 켜기';
+        return;
+      }
+      run('listLearnTerms').then(list => {
+        const t = list.find(x => x.id === learnTermId());
+        if (!t || !t.url) return toast('이 학기의 신청 화면 주소를 찾을 수 없어요.');
+        wrap.innerHTML = '<iframe src="' + esc(t.url) + '"></iframe>';
+        document.getElementById('lPrevNewTab').href = t.url;
+        btn.textContent = '미리보기 끄기';
+        fitPreview();
+      }).catch(fail);
+    }
+
     function withTermParam(url, termId) {
       if (!url) return '';
       return url + (url.indexOf('?') === -1 ? '?' : '&') + 'term=' + encodeURIComponent(termId || '');
@@ -4445,12 +4521,14 @@
         const active = list.find(t => t.active) || list[0];
         state.learnTerm = active ? active.id : undefined;
         if (state.learnTerm) sel.value = state.learnTerm;
+        updateLearnTitle();
         loadLearnStatus();
       }).catch(fail);
     }
 
     function changeLearnTerm() {
       state.learnTerm = document.getElementById('lTerm').value;
+      updateLearnTitle();
       state.learnList = [];
       state.learnStatus = null;
       state.lotteryCourses = null;
@@ -4545,6 +4623,7 @@
       state.learnTerm = termId;
       const sel = document.getElementById('lTerm');
       if (sel) sel.value = termId;
+      updateLearnTitle();
       state.learnStatus = null;
       showModule('learn');
       showTab('lList');
@@ -4736,14 +4815,19 @@
       run('getLearnApplicants', learnTermId()).then(list => { state.learnList = list; renderLearnList(); }).catch(fail);
     }
 
-    function renderLearnList() {
+    // 검색·강좌 필터·취소 표시 옵션을 적용한 명단 (화면 표시, CSV, 인쇄가 같이 씀)
+    function visibleLearnList() {
       const q = document.getElementById('lSearch').value.trim().replace(/\s+/g, '');
       const course = document.getElementById('lCourseFilter').value;
       const digits = q.replace(/[^0-9]/g, '');
-      const list = state.learnList.filter(a =>
+      return state.learnList.filter(a =>
         (document.getElementById('lShowCancel').checked || !a.cancelled) &&
         (!course || a.courses.indexOf(course) !== -1) &&
         (!q || a.name.replace(/\s+/g, '').indexOf(q) !== -1 || (digits && (a.dob + a.phone).replace(/[^0-9]/g, '').indexOf(digits) !== -1)));
+    }
+
+    function renderLearnList() {
+      const list = visibleLearnList();
       const cancelN = list.filter(a => a.cancelled).length;
       document.getElementById('lListCount').textContent = (list.length - cancelN) + '명' + (cancelN ? ' · 취소 ' + cancelN + '건' : '');
       document.getElementById('lListRows').innerHTML = list.length ? list.map(a => {

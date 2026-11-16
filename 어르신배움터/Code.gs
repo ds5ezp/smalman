@@ -272,6 +272,7 @@ function doGet(e) {
 
   return HtmlService.createHtmlOutput(html)
     .setTitle(pageTitle)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
