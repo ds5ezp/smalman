@@ -882,7 +882,10 @@
             </div>
             <div class="card p-3">
               <h6 class="mb-2">중복 신청 제한</h6>
-              <p class="small text-muted mb-2">함께 신청할 수 없는 강좌를 한 줄에 하나씩 쓰세요. 예) <code>컴퓨터 기초, 스마트폰 기초</code><br>저장하면 제한 목록 전체가 바뀝니다.</p>
+              <p class="small text-muted mb-2">한 줄이 <b>제한 묶음 하나</b>입니다. 그 줄 안에서 <b>같이 신청할 수 없는 강좌</b>를 <code>、</code>로 나눠 쓰세요. (쉼표 <code>,</code>도 됩니다)<br>
+                예) <code>컴퓨터 기초、스마트폰 기초</code> 한 줄 → 두 강좌 중 하나만 신청 가능<br>
+                다음 줄에 <code>한자、서예</code>처럼 다른 묶음을 또 쓸 수 있습니다.<br>
+                저장하면 제한 목록 전체가 바뀝니다.</p>
               <textarea id="restrictText" class="form-control form-control-sm" rows="4"></textarea>
               <button class="btn btn-outline-primary btn-sm mt-2" onclick="saveRestrictionsValue()">제한 저장</button>
             </div>

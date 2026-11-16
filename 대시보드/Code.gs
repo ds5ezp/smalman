@@ -1821,13 +1821,13 @@ function deleteLearnCourse(termId, row) {
   });
 }
 
-// 중복 신청 제한: 한 줄에 한 그룹, 강좌명은 쉼표로 구분
+// 중복 신청 제한: 한 줄이 한 묶음, 묶음 안 강좌명은 、 (또는 ,) 로 구분
 function getLearnRestrictions(termId) {
   requireUser_();
   const sheet = learnInfo_(getLearnTerm_(termId)).getSheetByName(LEARN_RESTRICT_TAB);
   if (!sheet) return '';
   return sheet.getDataRange().getDisplayValues()
-    .map(r => r.filter(x => String(x).trim() !== '').map(x => String(x).trim()).join(', '))
+    .map(r => r.filter(x => String(x).trim() !== '').map(x => String(x).trim()).join('、'))
     .filter(line => line !== '')
     .join('\n');
 }
@@ -1837,7 +1837,7 @@ function saveLearnRestrictions(termId, text) {
   return withLock_(() => {
     const t = getLearnTerm_(termId);
     const groups = String(text || '').split('\n')
-      .map(line => line.split(',').map(x => x.trim()).filter(x => x !== ''))
+      .map(line => line.split(/[、,]/).map(x => x.trim()).filter(x => x !== ''))
       .filter(g => g.length > 1);
     const info = learnInfo_(t);
     const sheet = info.getSheetByName(LEARN_RESTRICT_TAB) || info.insertSheet(LEARN_RESTRICT_TAB);
