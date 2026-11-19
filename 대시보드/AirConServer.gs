@@ -8,6 +8,8 @@
 const AC = {
   API: 'https://api.smartthings.com/v1',
   FILE_NAME: '에어컨 예약',
+  // 복지관 에어컨이 아니라서 목록·예약·홈 화면에서 뺄 기기 이름 (스마트싱스 기기 이름과 같아야 함)
+  EXCLUDE_NAMES: ['에어컨 리모컨'],
   TAB: '예약',
   HEADERS: ['번호', '기기ID', '기기 이름', '요일', '시각', '동작', '사용', '작성자', '작성일시', '마지막 실행', '마지막 결과'],
   DAYS: ['월', '화', '수', '목', '금', '토', '일'],
@@ -54,7 +56,7 @@ function acAttr_(main, capability, attribute) {
 function getAirConUnits() {
   requireUser_();
   const devices = acCall_('GET', '/devices').items || [];
-  return devices.filter(acIsAirCon_).map(d => {
+  return devices.filter(acIsAirCon_).filter(d => AC.EXCLUDE_NAMES.indexOf(d.label || d.name || '') === -1).map(d => {
     const unit = { id: d.deviceId, name: d.label || d.name || '에어컨', on: false, online: true, current: null, setpoint: null, mode: null, modes: [] };
     try {
       const main = acCall_('GET', '/devices/' + encodeURIComponent(d.deviceId) + '/status').components.main;
