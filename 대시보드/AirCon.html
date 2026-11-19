@@ -101,6 +101,11 @@
           '<div class="col-6"><div class="text-muted">현재 온도</div><div class="fw-bold">' + temp(u.current, '°C') + '</div></div>' +
           '<div class="col-6"><div class="text-muted">설정 온도</div><div class="fw-bold">' + temp(u.setpoint, '°C') + '</div></div>' +
         '</div>' +
+        (u.modes && u.modes.length
+          ? '<select class="form-select form-select-sm mb-3" aria-label="모드" ' + (!u.online ? 'disabled' : '') + ' onchange="changeAirConMode(\'' + esc(u.id) + '\', this.value)">' +
+              u.modes.map(m => '<option value="' + esc(m) + '"' + (m === u.mode ? ' selected' : '') + '>' + esc(AC_MODE_LABEL[m] || m) + '</option>').join('') +
+            '</select>'
+          : '') +
         '<div class="d-flex gap-2">' +
           '<button class="btn btn-primary flex-fill" ' + (!u.online || u.on ? 'disabled' : '') + ' onclick="controlAirCon(\'' + esc(u.id) + '\', true)"><i class="bi bi-power me-1"></i>켜기</button>' +
           '<button class="btn btn-outline-secondary flex-fill" ' + (!u.online || !u.on ? 'disabled' : '') + ' onclick="controlAirCon(\'' + esc(u.id) + '\', false)"><i class="bi bi-power me-1"></i>끄기</button>' +
@@ -130,6 +135,17 @@
         '<td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="removeAcReservation(' + esc(r.no) + ')">삭제</button></td>' +
       '</tr>'
     ).join('') : '<tr><td colspan="7" class="text-muted">예약이 없습니다.</td></tr>';
+  }
+
+  // 모드 이름 한글 표시 (목록에 없는 모드는 영문 그대로)
+  const AC_MODE_LABEL = { cool: '냉방', heat: '난방', auto: '자동', dry: '제습', wind: '송풍', fan: '송풍', eco: '절전', rush: '강풍' };
+
+  // 모드 선택: 명령을 보낸 뒤 몇 초 후 상태를 다시 읽음
+  function changeAirConMode(id, mode) {
+    save('setAirConMode', id, mode).then(() => {
+      toast('모드를 바꿉니다. 잠시 후 반영돼요.');
+      setTimeout(loadAirCon, 3000);
+    }).catch(err => { fail(err); loadAirCon(); });
   }
 
   // 켜기·끄기 버튼: 명령을 보낸 뒤 몇 초 후 상태를 다시 읽음

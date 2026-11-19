@@ -55,12 +55,16 @@ function getAirConUnits() {
   requireUser_();
   const devices = acCall_('GET', '/devices').items || [];
   return devices.filter(acIsAirCon_).map(d => {
-    const unit = { id: d.deviceId, name: d.label || d.name || '에어컨', on: false, online: true, current: null, setpoint: null };
+    const unit = { id: d.deviceId, name: d.label || d.name || '에어컨', on: false, online: true, current: null, setpoint: null, mode: null, modes: [] };
     try {
       const main = acCall_('GET', '/devices/' + encodeURIComponent(d.deviceId) + '/status').components.main;
       unit.on = acAttr_(main, 'switch', 'switch') === 'on';
       unit.current = acAttr_(main, 'temperatureMeasurement', 'temperature');
       unit.setpoint = acAttr_(main, 'thermostatCoolingSetpoint', 'coolingSetpoint');
+      // 모드: 현재 모드와 이 기기가 지원하는 모드 목록 (모델마다 다르므로 목록에서만 고르게 함)
+      unit.mode = acAttr_(main, 'airConditionerMode', 'airConditionerMode');
+      const supported = acAttr_(main, 'airConditionerMode', 'supportedAcModes');
+      unit.modes = Array.isArray(supported) ? supported : [];
     } catch (e) {
       unit.online = false;
     }
@@ -75,6 +79,19 @@ function setAirCon(deviceId, on) {
     commands: [{ component: 'main', capability: 'switch', command: on ? 'on' : 'off' }]
   });
   log_('에어컨 ' + (on ? '켜기' : '끄기'), deviceId);
+  return true;
+}
+
+// 모드 바꾸기 (cool·heat·auto·dry·wind 등). 기기가 지원하는 모드가 아니면 보내지 않음
+function setAirConMode(deviceId, mode) {
+  requireUser_();
+  const main = acCall_('GET', '/devices/' + encodeURIComponent(deviceId) + '/status').components.main;
+  const supported = acAttr_(main, 'airConditionerMode', 'supportedAcModes') || [];
+  if (supported.indexOf(mode) === -1) throw new Error('이 에어컨이 지원하지 않는 모드입니다: ' + mode);
+  acCall_('POST', '/devices/' + encodeURIComponent(deviceId) + '/commands', {
+    commands: [{ component: 'main', capability: 'airConditionerMode', command: 'setAirConditionerMode', arguments: [mode] }]
+  });
+  log_('에어컨 모드 변경', deviceId + ' → ' + mode);
   return true;
 }
 
