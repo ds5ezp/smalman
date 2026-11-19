@@ -21,10 +21,25 @@
       </div>
       <div class="col-6 col-md-2">
         <label class="form-label small fw-bold" for="acAction">동작</label>
-        <select class="form-select" id="acAction">
+        <select class="form-select" id="acAction" onchange="toggleAcOnFields()">
           <option value="켜기">켜기</option>
           <option value="끄기">끄기</option>
         </select>
+      </div>
+      <div class="col-6 col-md-2" id="acModeBox">
+        <label class="form-label small fw-bold" for="acMode">모드</label>
+        <select class="form-select" id="acMode">
+          <option value="">변경 안 함</option>
+          <option value="cool">냉방</option>
+          <option value="heat">난방</option>
+          <option value="auto">자동</option>
+          <option value="dry">제습</option>
+          <option value="wind">송풍</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2" id="acEndBox">
+        <label class="form-label small fw-bold" for="acEndTime">끄는 시각</label>
+        <input type="time" class="form-control" id="acEndTime" step="60" placeholder="비우면 끄기 없음">
       </div>
       <div class="col-6 col-md-2">
         <label class="form-label small fw-bold" for="acTime">시각</label>
@@ -127,7 +142,7 @@
       '<tr>' +
         '<td class="fw-bold">' + esc(r.time) + '</td>' +
         '<td class="small">' + esc(nameOf[r.deviceId] || r.name) + '</td>' +
-        '<td class="small">' + esc(r.action) + '</td>' +
+        '<td class="small">' + esc(r.action) + (r.mode ? ' · ' + esc(AC_MODE_LABEL[r.mode] || r.mode) : '') + '</td>' +
         '<td class="small">' + esc(r.days) + '</td>' +
         '<td><div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" ' + (r.enabled ? 'checked' : '') +
           ' onchange="toggleAcReservation(' + esc(r.no) + ', this.checked)" aria-label="예약 사용"></div></td>' +
@@ -156,6 +171,13 @@
     }).catch(fail);
   }
 
+  // 끄기를 고르면 모드·끄는 시각 칸은 숨김 (켜기에만 쓰임)
+  function toggleAcOnFields() {
+    const on = document.getElementById('acAction').value === '켜기';
+    document.getElementById('acModeBox').classList.toggle('d-none', !on);
+    document.getElementById('acEndBox').classList.toggle('d-none', !on);
+  }
+
   function saveAcReservation() {
     const sel = document.getElementById('acDevice');
     const days = Array.from(document.querySelectorAll('#acDays .ac-day')).filter(i => i.checked).map(i => i.value);
@@ -165,6 +187,8 @@
       name: sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : '',
       action: document.getElementById('acAction').value,
       time: document.getElementById('acTime').value,
+      mode: document.getElementById('acMode').value,
+      endTime: document.getElementById('acEndTime').value,
       days: days
     };
     save('saveAirConReservation', entry).then(() => {

@@ -11,7 +11,9 @@ const AC = {
   // 복지관 에어컨이 아니라서 목록·예약·홈 화면에서 뺄 기기 이름 (스마트싱스 기기 이름과 같아야 함)
   EXCLUDE_NAMES: ['에어컨 리모컨'],
   TAB: '예약',
-  HEADERS: ['번호', '기기ID', '기기 이름', '요일', '시각', '동작', '사용', '작성자', '작성일시', '마지막 실행', '마지막 결과'],
+  HEADERS: ['번호', '기기ID', '기기 이름', '요일', '시각', '동작', '사용', '작성자', '작성일시', '마지막 실행', '마지막 결과', '모드'],
+  // 켜기 때 함께 보낼 모드 (기기가 지원하지 않으면 실행 결과에 실패로 남음)
+  MODES: ['cool', 'heat', 'auto', 'dry', 'wind', 'fan'],
   DAYS: ['월', '화', '수', '목', '금', '토', '일'],
   ACTIONS: { '켜기': 'on', '끄기': 'off' }
 };
@@ -117,6 +119,11 @@ function acSheet_() {
     sheet.getRange(1, 1, 1, AC.HEADERS.length).setValues([AC.HEADERS]).setFontWeight('bold');
     sheet.setFrozenRows(1);
   }
+  // 예전에 만든 시트에 새로 추가된 머리글(모드 등)이 없으면 오른쪽에 채움
+  const cur = sheet.getLastColumn();
+  if (cur < AC.HEADERS.length) {
+    sheet.getRange(1, cur + 1, 1, AC.HEADERS.length - cur).setValues([AC.HEADERS.slice(cur)]).setFontWeight('bold');
+  }
   return sheet;
 }
 
@@ -136,7 +143,8 @@ function acRows_() {
     author: String(v[7]),
     created: String(v[8]),
     lastRun: String(v[9]),
-    lastResult: String(v[10])
+    lastResult: String(v[10]),
+    mode: String(v[11] || '')
   })).filter(r => r.no);
 }
 
@@ -156,7 +164,7 @@ function getAirConReservations() {
   requireUser_();
   return acRows_().sort((a, b) => a.time.localeCompare(b.time) || a.no - b.no).map(r => ({
     no: r.no, deviceId: r.deviceId, name: r.name, days: r.days, time: r.time, action: r.action,
-    enabled: r.enabled, author: r.author, lastRun: r.lastRun, lastResult: r.lastResult
+    enabled: r.enabled, author: r.author, lastRun: r.lastRun, lastResult: r.lastResult, mode: r.mode
   }));
 }
 
@@ -184,6 +192,12 @@ function saveAirConReservation(entry) {
   const days = acDays_(entry.days);
   if (!days) throw new Error('요일을 하나 이상 골라 주세요.');
   const name = String(entry.name || '').trim();
+  // 모드·끄는 시각은 켜기에만 쓰임. 끄는 시각을 넣으면 같은 요일에 끄기 예약 줄이 함께 만들어짐
+  const mode = entry.action === '켜기' ? String(entry.mode || '').trim() : '';
+  if (mode && AC.MODES.indexOf(mode) === -1) throw new Error('모드를 확인해 주세요.');
+  const endTime = entry.action === '켜기' ? String(entry.endTime || '').trim() : '';
+  if (endTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)) throw new Error('끄는 시각을 확인해 주세요.');
+  if (endTime && endTime === String(entry.time)) throw new Error('켜는 시각과 끄는 시각이 같을 수 없어요.');
   return withLock_(() => {
     const sheet = acSheet_();
     if (entry.no) {
@@ -192,16 +206,22 @@ function saveAirConReservation(entry) {
       sheet.getRange(hit.row, 2, 1, 7).setNumberFormat('@').setValues([[
         deviceId, name, days, String(entry.time), entry.action, hit.enabled ? 'Y' : 'N', email
       ]]);
+      sheet.getRange(hit.row, 12).setNumberFormat('@').setValue(mode);
       log_('에어컨 예약 수정', entry.time + ' ' + entry.action + ' ' + name);
       return hit.no;
     }
-    const no = acRows_().reduce((max, r) => Math.max(max, r.no), 0) + 1;
+    const first = acRows_().reduce((max, r) => Math.max(max, r.no), 0) + 1;
+    const now = fmt_(new Date(), 'yyyy-MM-dd HH:mm');
     writeMeetingRow_(sheet, 0, [
-      no, deviceId, name, days, String(entry.time), entry.action, 'Y', email,
-      fmt_(new Date(), 'yyyy-MM-dd HH:mm'), '', ''
+      first, deviceId, name, days, String(entry.time), entry.action, 'Y', email, now, '', '', mode
     ]);
-    log_('에어컨 예약 등록', entry.time + ' ' + entry.action + ' ' + name);
-    return no;
+    if (endTime) {
+      writeMeetingRow_(sheet, 0, [
+        first + 1, deviceId, name, days, endTime, '끄기', 'Y', email, now, '', '', ''
+      ]);
+    }
+    log_('에어컨 예약 등록', entry.time + ' ' + entry.action + (mode ? '(' + mode + ')' : '') + (endTime ? ' ~ ' + endTime + ' 끄기' : '') + ' ' + name);
+    return first;
   });
 }
 
@@ -239,9 +259,12 @@ function runAirConReservations() {
   due.forEach(r => {
     let result = '성공';
     try {
-      acCall_('POST', '/devices/' + encodeURIComponent(r.deviceId) + '/commands', {
-        commands: [{ component: 'main', capability: 'switch', command: AC.ACTIONS[r.action] }]
-      });
+      const commands = [{ component: 'main', capability: 'switch', command: AC.ACTIONS[r.action] }];
+      // 켜기 예약에 모드가 있으면 같은 요청으로 모드도 바꿈
+      if (r.action === '켜기' && r.mode) {
+        commands.push({ component: 'main', capability: 'airConditionerMode', command: 'setAirConditionerMode', arguments: [r.mode] });
+      }
+      acCall_('POST', '/devices/' + encodeURIComponent(r.deviceId) + '/commands', { commands: commands });
     } catch (e) {
       result = '실패: ' + e.message;
     }
