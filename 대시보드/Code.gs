@@ -2948,9 +2948,10 @@ const LED = {
     ['hall', '3층 대강당', 2304, 256, '10.10.10.11']
   ],
   ITEM_TAB: '콘텐츠',
-  ITEM_HEADERS: ['ID', '종류', '제목', '대상', '순서', '사용', '시작', '종료', '표시초', '문구', '글자색', '배경색', '글자크기', '효과', '맞춤', '원본파일', '화면파일', '원본크기', '등록자', '수정일시', '로고'],
+  ITEM_HEADERS: ['ID', '종류', '제목', '대상', '순서', '사용', '시작', '종료', '표시초', '문구', '글자색', '배경색', '글자크기', '효과', '맞춤', '원본파일', '화면파일', '원본크기', '등록자', '수정일시', '로고', '그라데이션', '그라데이션 색', '문구 띠'],
   TYPES: ['이미지', '문구'],
   EFFECTS: ['고정', '흐름', '깜빡임', '확대·축소', '글자 타자', '무지개'],
+  GRADS: ['없음', '가로', '세로', '대각선'],
   FITS: ['맞춤', '채움', '늘림'],
   FOLDER_NAME: '전광판 이미지',
   // GitHub에 올린 표시 페이지 주소 (전광판에 등록할 주소의 앞부분)
@@ -3071,7 +3072,10 @@ function ledItems_() {
     originalSize: String(v[17] || ''),
     author: String(v[18] || ''),
     updatedAt: ledTime_(v[19]),
-    logos: parseLedLogos_(v[20])
+    logos: parseLedLogos_(v[20]),
+    grad: LED.GRADS.indexOf(String(v[21] || '').trim()) === -1 ? '없음' : String(v[21]).trim(),
+    grad2: String(v[22] || '').trim(),
+    band: String(v[23] || '').trim().toUpperCase() === 'Y'
   })).filter(r => r.id).sort((a, b) => a.order - b.order || a.row - b.row);
 }
 
@@ -3080,7 +3084,7 @@ function ledItemValues_(it) {
     it.id, it.type, it.title, it.targets.join(','), String(it.order), it.enabled ? 'Y' : 'N', it.start, it.end,
     String(it.seconds), it.text, it.color, it.bg, String(it.size), it.effect, it.fit, it.original,
     Object.keys(it.files).map(k => k + ':' + it.files[k]).join(','), it.originalSize, it.author, it.updatedAt,
-    JSON.stringify(it.logos || [])
+    JSON.stringify(it.logos || []), it.grad || '없음', it.grad2 || '', it.band ? 'Y' : 'N'
   ];
 }
 
@@ -3236,6 +3240,9 @@ function saveLedItem(input) {
       files: files,
       originalSize: type === '이미지' ? String(input.originalSize || '') : '',
       logos: sanitizeLedLogos_(input.logos),
+      grad: type === '문구' && LED.GRADS.indexOf(input.grad) !== -1 ? input.grad : '없음',
+      grad2: type === '문구' && /^#[0-9a-fA-F]{6}$/.test(String(input.grad2 || '')) ? String(input.grad2).toLowerCase() : '',
+      band: type === '문구' && !!input.band,
       author: old ? old.author : staffName_(email),
       updatedAt: fmt_(new Date(), 'yyyy-MM-dd HH:mm')
     };

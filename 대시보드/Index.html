@@ -1685,6 +1685,13 @@
                   <div class="col-4"><label class="form-label small fw-bold" for="ledEffect">효과</label>
                     <select class="form-select" id="ledEffect" onchange="ledFormChanged()"><option value="고정">고정</option><option value="흐름">흐르는 자막</option><option value="깜빡임">깜빡임</option><option value="확대·축소">확대·축소</option><option value="글자 타자">글자 타자 (한 글자씩)</option><option value="무지개">무지개 색 변화</option></select></div>
                 </div>
+                <div class="row g-2 mb-2">
+                  <div class="col-6"><label class="form-label small fw-bold" for="ledGrad">배경 그라데이션</label>
+                    <select class="form-select" id="ledGrad" onchange="ledFormChanged()"><option value="없음">없음 (배경색 한 가지)</option><option value="가로">가로 방향</option><option value="세로">세로 방향</option><option value="대각선">대각선 방향</option></select></div>
+                  <div class="col-3"><label class="form-label small fw-bold" for="ledGrad2">끝 색</label><input type="color" class="form-control form-control-color w-100" id="ledGrad2" value="#1e3a8a" oninput="ledFormChanged()"></div>
+                  <div class="col-3 d-flex align-items-end"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="ledBand" onchange="ledFormChanged()"><label class="form-check-label small" for="ledBand">문구 뒤 띠</label></div></div>
+                  <div class="col-12 small text-muted">그라데이션은 '배경색'에서 '끝 색'으로 바뀝니다. 띠는 문구 뒤에 '끝 색'의 흐린 띠를 깝니다.</div>
+                </div>
                 <div class="mb-2">
                   <label class="form-label small fw-bold" for="ledSize">글자 크기 <span class="text-muted fw-normal">(화면 높이의 <span id="ledSizeLabel">60</span>%)</span></label>
                   <input type="range" class="form-range" id="ledSize" min="20" max="100" step="5" value="60" oninput="ledFormChanged()">
@@ -2165,6 +2172,14 @@
     }
 
     // box 안에 화면 하나를 그림. src 를 주면 그 이미지를 씀(저장 전 미리보기). 표시 시간(ms)을 돌려줌
+    // 배경: 배경색 한 가지 또는 배경색 → 끝 색 그라데이션
+    function ledBgCss(it) {
+      const base = it.bg || '#000000';
+      if (it.type !== '문구' || !it.grad || it.grad === '없음' || !it.grad2) return base;
+      const dir = { '가로': 'to right', '세로': 'to bottom', '대각선': 'to bottom right' }[it.grad] || 'to right';
+      return 'linear-gradient(' + dir + ', ' + base + ', ' + it.grad2 + ')';
+    }
+
     // 화면 한 칸에 그린 뒤 로고를 겹침. 미리보기(ledEdit_)에서는 끌어서 옮길 수 있음
     function ledRender(box, it, s, animate, src) {
       const ms = ledRenderBase(box, it, s, animate, src);
@@ -2196,7 +2211,13 @@
         }
         return ms;
       }
-      inner.style.background = it.bg || '#000';
+      inner.style.background = ledBgCss(it);
+      if (it.band && it.type === '문구') {
+        // 문구 뒤의 띠: 위아래가 흐려지는 '끝 색' 줄무늬
+        const band = document.createElement('div');
+        band.style.cssText = 'position:absolute;left:0;right:0;top:20%;height:60%;background:linear-gradient(to bottom, transparent, ' + (it.grad2 || '#1e3a8a') + ' 50%, transparent)';
+        inner.appendChild(band);
+      }
       const fontPx = Math.max(8, Math.round(s.h * (Number(it.size) || 60) / 100));
       if (it.effect === '흐름') {
         const runEl = document.createElement('div');
@@ -2405,6 +2426,10 @@
       document.getElementById('ledEnabled').checked = it ? it.enabled : true;
       state.ledLogos = initLedLogos(it);
       renderLedLogoInputs();
+      const textItem = it && it.type === '문구';
+      document.getElementById('ledGrad').value = textItem && it.grad ? it.grad : '없음';
+      document.getElementById('ledGrad2').value = textItem && it.grad2 ? it.grad2 : '#1e3a8a';
+      document.getElementById('ledBand').checked = !!(textItem && it.band);
       ledTypeChanged();
       bootstrap.Modal.getOrCreateInstance(document.getElementById('ledModal')).show();
     }
@@ -2676,7 +2701,10 @@
         end: fromLocalInput(document.getElementById('ledEnd').value),
         seconds: Number(document.getElementById('ledSeconds').value),
         enabled: document.getElementById('ledEnabled').checked,
-        logos: ledLogoItems()
+        logos: ledLogoItems(),
+        grad: document.getElementById('ledGrad').value,
+        grad2: document.getElementById('ledGrad2').value,
+        band: document.getElementById('ledBand').checked
       };
     }
 
