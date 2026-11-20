@@ -2948,7 +2948,7 @@ const LED = {
     ['hall', '3층 대강당', 2304, 256, '10.10.10.11']
   ],
   ITEM_TAB: '콘텐츠',
-  ITEM_HEADERS: ['ID', '종류', '제목', '대상', '순서', '사용', '시작', '종료', '표시초', '문구', '글자색', '배경색', '글자크기', '효과', '맞춤', '원본파일', '화면파일', '원본크기', '등록자', '수정일시'],
+  ITEM_HEADERS: ['ID', '종류', '제목', '대상', '순서', '사용', '시작', '종료', '표시초', '문구', '글자색', '배경색', '글자크기', '효과', '맞춤', '원본파일', '화면파일', '원본크기', '등록자', '수정일시', '로고'],
   TYPES: ['이미지', '문구'],
   EFFECTS: ['고정', '흐름', '깜빡임', '확대·축소', '글자 타자', '무지개'],
   FITS: ['맞춤', '채움', '늘림'],
@@ -3000,7 +3000,13 @@ function ledScreenSheet_() {
 }
 
 function ledItemSheet_() {
-  return ledTab_(LED.ITEM_TAB, LED.ITEM_HEADERS);
+  const sheet = ledTab_(LED.ITEM_TAB, LED.ITEM_HEADERS);
+  // 예전에 만든 콘텐츠 시트에 새 머리글(로고 등)이 없으면 오른쪽에 채움
+  const cur = sheet.getLastColumn();
+  if (cur < LED.ITEM_HEADERS.length) {
+    sheet.getRange(1, cur + 1, 1, LED.ITEM_HEADERS.length - cur).setValues([LED.ITEM_HEADERS.slice(cur)]).setFontWeight('bold');
+  }
+  return sheet;
 }
 
 function ledScreens_() {
@@ -3064,7 +3070,8 @@ function ledItems_() {
     files: parseLedFiles_(v[16]),
     originalSize: String(v[17] || ''),
     author: String(v[18] || ''),
-    updatedAt: ledTime_(v[19])
+    updatedAt: ledTime_(v[19]),
+    logos: parseLedLogos_(v[20])
   })).filter(r => r.id).sort((a, b) => a.order - b.order || a.row - b.row);
 }
 
@@ -3072,8 +3079,35 @@ function ledItemValues_(it) {
   return [
     it.id, it.type, it.title, it.targets.join(','), String(it.order), it.enabled ? 'Y' : 'N', it.start, it.end,
     String(it.seconds), it.text, it.color, it.bg, String(it.size), it.effect, it.fit, it.original,
-    Object.keys(it.files).map(k => k + ':' + it.files[k]).join(','), it.originalSize, it.author, it.updatedAt
+    Object.keys(it.files).map(k => k + ':' + it.files[k]).join(','), it.originalSize, it.author, it.updatedAt,
+    JSON.stringify(it.logos || [])
   ];
+}
+
+// 로고 목록: 항목마다 최대 2개. 위치·크기·투명도는 화면 비율 %로 저장 (해상도가 달라도 같은 자리)
+function clampNum_(v, lo, hi, dflt) {
+  const n = Number(v);
+  if (v === '' || v === null || v === undefined || isNaN(n)) return dflt;
+  return Math.min(hi, Math.max(lo, Math.round(n)));
+}
+
+function sanitizeLedLogos_(list) {
+  return (Array.isArray(list) ? list : []).slice(0, 2).map(l => ({
+    file: String((l && l.file) || '').trim(),
+    x: clampNum_(l && l.x, 0, 100, 0),
+    y: clampNum_(l && l.y, 0, 100, 0),
+    size: clampNum_(l && l.size, 5, 100, 20),
+    role: l && l.role === '배경' ? '배경' : '위',
+    opacity: clampNum_(l && l.opacity, 0, 100, 100)
+  })).filter(l => l.file);
+}
+
+function parseLedLogos_(text) {
+  try {
+    return sanitizeLedLogos_(JSON.parse(String(text || '[]')));
+  } catch (e) {
+    return [];
+  }
 }
 
 function ledPageUrl_(screen) {
@@ -3201,6 +3235,7 @@ function saveLedItem(input) {
       original: type === '이미지' ? String(input.original) : '',
       files: files,
       originalSize: type === '이미지' ? String(input.originalSize || '') : '',
+      logos: sanitizeLedLogos_(input.logos),
       author: old ? old.author : staffName_(email),
       updatedAt: fmt_(new Date(), 'yyyy-MM-dd HH:mm')
     };
@@ -3208,8 +3243,8 @@ function saveLedItem(input) {
     sheet.getRange(row, 1, 1, LED.ITEM_HEADERS.length).setNumberFormat('@').setValues([ledItemValues_(item)]);
     if (old) {
       // 바뀐 이미지의 예전 파일 정리
-      const keep = [item.original].concat(Object.keys(files).map(k => files[k]));
-      trashLedFiles_([old.original].concat(Object.keys(old.files).map(k => old.files[k])).filter(id => keep.indexOf(id) === -1));
+      const keep = [item.original].concat(Object.keys(files).map(k => files[k])).concat(item.logos.map(l => l.file));
+      trashLedFiles_([old.original].concat(Object.keys(old.files).map(k => old.files[k])).concat((old.logos || []).map(l => l.file)).filter(id => keep.indexOf(id) === -1));
     }
     log_(old ? '전광판 수정' : '전광판 등록', item.type + ' ' + (item.title || item.text.slice(0, 20)) + ' → ' + targets.join(','));
     return item.id;
@@ -3249,7 +3284,7 @@ function deleteLedItem(id) {
     const hit = ledItems_().filter(r => r.id === id)[0];
     if (!hit) throw new Error('해당 콘텐츠를 찾을 수 없습니다. 새로고침해 주세요.');
     ledItemSheet_().deleteRow(hit.row);
-    trashLedFiles_([hit.original].concat(Object.keys(hit.files).map(k => hit.files[k])));
+    trashLedFiles_([hit.original].concat(Object.keys(hit.files).map(k => hit.files[k])).concat((hit.logos || []).map(l => l.file)));
     log_('전광판 삭제', hit.type + ' ' + (hit.title || hit.text.slice(0, 20)));
     return true;
   });
