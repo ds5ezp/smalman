@@ -3297,6 +3297,115 @@ function deleteLedItem(id) {
   });
 }
 
+// ---------- 자동 안내 (오늘 방문 기관, 접수 마감 D-day) · 긴급 안내 ----------
+
+// 자동 항목 한 줄 저장 (같은 ID가 있으면 고치고, 없으면 추가)
+function upsertLedAuto_(id, fields) {
+  const sheet = ledItemSheet_();
+  const hit = ledItems_().filter(r => r.id === id)[0];
+  const item = Object.assign({
+    id: id, type: '문구', title: '', targets: [], order: 40, enabled: true,
+    start: '', end: '', seconds: 10, text: '', color: '#ffffff', bg: '#000000', size: 60,
+    effect: '고정', fit: '맞춤', original: '', files: {}, originalSize: '', author: '자동',
+    updatedAt: fmt_(new Date(), 'yyyy-MM-dd HH:mm'), logos: [], grad: '없음', grad2: '', band: false
+  }, fields);
+  const row = hit ? hit.row : sheet.getLastRow() + 1;
+  sheet.getRange(row, 1, 1, LED.ITEM_HEADERS.length).setNumberFormat('@').setValues([ledItemValues_(item)]);
+}
+
+// 오늘 방문 기관 + 접수 마감 D-day 를 콘텐츠로 맞춤 (없는 날은 자동 항목을 끔)
+function syncLedAuto_() {
+  return withLock_(() => {
+    const today = fmt_(new Date(), 'yyyy-MM-dd');
+    const now = new Date();
+    const screens = ledScreens_().map(s => s.code);
+
+    // 1) 오늘 방문 기관 (기관방문 목록에서 사용 Y 인 것)
+    const names = [];
+    readVisits_().forEach(v => {
+      if (v.date === today && v.use === 'Y' && v.name && names.indexOf(v.name) === -1) names.push(v.name);
+    });
+    if (names.length) {
+      upsertLedAuto_('AUTO_VISIT', {
+        title: '(자동) 오늘 방문 기관', targets: screens, order: 30, enabled: true,
+        start: today + ' 00:00', end: today + ' 23:59',
+        text: '환영합니다\n' + names.join(' · '), bg: '#0b3d91', size: 45, seconds: 12
+      });
+    } else {
+      upsertLedAuto_('AUTO_VISIT', { title: '(자동) 오늘 방문 기관', targets: screens, order: 30, enabled: false, text: '환영합니다' });
+    }
+
+    // 2) 배움터 접수 마감 D-day (접수 중이고 마감까지 7일 이내인 학기)
+    listLearnTerms_().forEach(t => {
+      const id = 'AUTO_LEARN_' + t.id;
+      try {
+        const info = learnSchedule_(learnInfo_(getLearnTerm_(t.id)));
+        const end = learnParseInput_(info.endInput);
+        const msLeft = end ? end.getTime() - now.getTime() : -1;
+        if (info.phase === '접수 중' && msLeft > 0 && msLeft <= 7 * 86400000) {
+          const days = Math.max(1, Math.ceil(msLeft / 86400000));
+          upsertLedAuto_(id, {
+            title: '(자동) ' + t.name + ' 접수 마감', targets: screens, order: 40, enabled: true,
+            start: fmt_(now, 'yyyy-MM-dd HH:mm'), end: fmt_(end, 'yyyy-MM-dd HH:mm'),
+            text: t.name + ' 접수 마감 D-' + days + '\n' + fmt_(end, 'M월 d일 HH:mm') + '까지 접수합니다',
+            bg: '#7c2d12', size: 45, seconds: 12
+          });
+        } else {
+          upsertLedAuto_(id, { title: '(자동) ' + t.name + ' 접수 마감', targets: screens, order: 40, enabled: false, text: t.name });
+        }
+      } catch (e) {
+        // 한 학기 설정이 잘못되어도 나머지 자동 안내는 계속 만듦
+        console.error('자동 안내 오류 (' + t.id + '): ' + e.message);
+      }
+    });
+    log_('전광판 자동 안내 갱신', today);
+    return true;
+  });
+}
+
+// 관리 화면의 '지금 갱신' 버튼
+function syncLedAuto() {
+  requireUser_();
+  return syncLedAuto_();
+}
+
+// 1시간마다 실행되는 트리거 (편집기에서 installLedAutoTrigger 를 한 번 실행하면 설정됨)
+function runLedAutoSync() {
+  try { syncLedAuto_(); } catch (e) { console.error('자동 안내 실패: ' + e.message); }
+}
+
+function installLedAutoTrigger() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'runLedAutoSync') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('runLedAutoSync').timeBased().everyHours(1).create();
+  syncLedAuto_();
+  return '1시간마다 자동 안내를 갱신하도록 설정했습니다.';
+}
+
+// 긴급 안내: 순서 0, 지정한 분 동안만 표시
+function saveLedUrgent(input) {
+  const email = requireUser_();
+  const text = String(input.text || '').trim();
+  if (!text) throw new Error('긴급 안내 문구를 입력해 주세요.');
+  const minutes = Math.round(Number(input.minutes));
+  if (!(minutes >= 1 && minutes <= 1440)) throw new Error('표시 시간은 1~1440분으로 입력해 주세요.');
+  const codes = ledScreens_().map(s => s.code);
+  const targets = (input.targets || []).filter(t => codes.indexOf(t) !== -1);
+  if (!targets.length) throw new Error('표시할 화면을 하나 이상 골라 주세요.');
+  return withLock_(() => {
+    const now = new Date();
+    const id = 'URGENT_' + Utilities.formatDate(now, 'GMT+9', 'yyyyMMddHHmmss');
+    upsertLedAuto_(id, {
+      title: '(긴급) ' + text.slice(0, 20), targets: targets, order: 0, enabled: true,
+      start: fmt_(now, 'yyyy-MM-dd HH:mm'), end: fmt_(new Date(now.getTime() + minutes * 60000), 'yyyy-MM-dd HH:mm'),
+      text: text, color: '#ffffff', bg: '#b91c1c', size: 55, seconds: 15, author: staffName_(email)
+    });
+    log_('전광판 긴급 안내', minutes + '분 ' + text.slice(0, 30));
+    return id;
+  });
+}
+
 // 접속 키를 새로 만듦. 예전 주소로 열린 전광판은 다음 확인 때 검은 화면이 되므로 ViPlex 주소도 바꿔야 함
 function resetLedKey(code) {
   requireUser_();

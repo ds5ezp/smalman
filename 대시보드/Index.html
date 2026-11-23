@@ -1467,6 +1467,20 @@
         <li class="nav-item"><button class="nav-link" data-tab="eSetup"><i class="bi bi-link-45deg me-1"></i>화면·주소</button></li>
       </ul>
       <section data-panel="eList" class="d-none">
+        <div class="card p-3 mb-3 border-danger">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-exclamation-triangle me-1"></i>긴급 안내</h6>
+            <button class="btn btn-sm btn-outline-secondary" onclick="syncLedAutoNow()"><i class="bi bi-arrow-clockwise me-1"></i>자동 안내 지금 갱신</button>
+          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-7"><textarea class="form-control" id="ledUrgText" rows="2" placeholder="예: 오늘 정전으로 엘리베이터를 이용할 수 없습니다"></textarea></div>
+            <div class="col-6 col-md-2"><label class="form-label small fw-bold" for="ledUrgMin">표시 시간(분)</label><input type="number" class="form-control" id="ledUrgMin" min="1" max="1440" value="10"></div>
+            <div class="col-6 col-md-3"><button class="btn btn-danger w-100" onclick="saveUrgentValue()">긴급 안내 띄우기</button></div>
+          </div>
+          <div class="small mt-2" id="ledUrgTargets"></div>
+          <div class="small text-muted mt-1">긴급 안내는 순서 0으로 등록되어 다른 콘텐츠보다 앞에 돌아오고, 지정한 시간이 지나면 자동으로 사라집니다.<br>
+            자동 안내: 오늘 방문 기관(기관방문 목록의 사용 Y)과 접수 마감 7일 전부터의 D-day가 1시간마다 자동으로 등록됩니다.</div>
+        </div>
         <div class="row g-3 mb-3" id="ledPreviews"></div>
         <div class="card p-3">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
@@ -2258,7 +2272,35 @@
         document.getElementById('ledSheetId').value = data.sheetId;
         renderLedRows();
         renderLedScreens();
+        renderUrgentTargets();
         startLedPreviews();
+      }).catch(fail);
+    }
+
+    // 긴급 안내를 띄울 화면 선택 칸 (기본은 전체 선택)
+    function renderUrgentTargets() {
+      document.getElementById('ledUrgTargets').innerHTML = '<span class="text-muted me-2">띄울 화면:</span>' + state.led.screens.map(s =>
+        '<div class="form-check form-check-inline"><input class="form-check-input ledUrgT" type="checkbox" value="' + esc(s.code) + '" checked><label class="form-check-label">' + esc(s.name) + '</label></div>').join('');
+    }
+
+    function saveUrgentValue() {
+      const text = document.getElementById('ledUrgText').value.trim();
+      const minutes = Number(document.getElementById('ledUrgMin').value);
+      const targets = Array.from(document.querySelectorAll('.ledUrgT')).filter(x => x.checked).map(x => x.value);
+      if (!text) return toast('긴급 안내 문구를 입력해 주세요.', 'danger');
+      if (!targets.length) return toast('띄울 화면을 하나 이상 골라 주세요.', 'danger');
+      if (!confirm('"' + text.slice(0, 30) + '"을(를) ' + minutes + '분 동안 긴급 안내로 띄울까요?')) return;
+      save('saveLedUrgent', { text: text, minutes: minutes, targets: targets }).then(() => {
+        toast('긴급 안내를 등록했습니다. 전광판에는 30초 안에 나와요.');
+        document.getElementById('ledUrgText').value = '';
+        loadLed();
+      }).catch(fail);
+    }
+
+    function syncLedAutoNow() {
+      save('syncLedAuto').then(() => {
+        toast('자동 안내를 갱신했습니다.');
+        loadLed();
       }).catch(fail);
     }
 
