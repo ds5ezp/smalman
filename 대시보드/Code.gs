@@ -2894,7 +2894,7 @@ function getBusinessBoard(month) {
 // =====================================================================
 
 const SHUTTLE_ALERT = {
-  STALE_MS: 10 * 60 * 1000,      // 위치 미수신 기준 (대시보드 표시 기준과 같음)
+  STALE_MS: 3 * 60 * 1000,       // 위치 미수신 기준 (운행 중 빠르게 알리려고 3분)
   APP_STALE_MS: 90 * 1000,       // 기사 앱 응답 없음 기준
   REMIND_MS: 30 * 60 * 1000,     // 같은 문제는 이 간격마다 한 번씩만 다시 알림
   HOUR_FROM: 6,                  // 운행 시간대 (KST). 이 밖에는 알리지 않음
@@ -2992,13 +2992,22 @@ function sendShuttleAlerts_(problems, now) {
   props.setProperty(SHUTTLE_ALERT.STATE_KEY, JSON.stringify(state));
 }
 
-// 편집기에서 한 번 실행: 5분마다 checkShuttleAlerts 를 돌리는 트리거를 만듦 (이미 있으면 다시 만들어 중복 방지)
+// 편집기에서 한 번 실행: 1분마다 checkShuttleAlerts 를 돌리는 트리거를 만듦 (이미 있으면 다시 만들어 중복 방지)
 function installShuttleAlertTrigger() {
   ScriptApp.getProjectTriggers().forEach(t => {
     if (t.getHandlerFunction() === 'checkShuttleAlerts') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('checkShuttleAlerts').timeBased().everyMinutes(5).create();
-  Logger.log('셔틀 지연 알림 트리거를 설정했습니다. (5분마다, 운행 시간대에만 발송)');
+  ScriptApp.newTrigger('checkShuttleAlerts').timeBased().everyMinutes(1).create();
+  Logger.log('셔틀 지연 알림 트리거를 설정했습니다. (1분마다 확인, 운행 시간대에만 발송)');
+}
+
+// 셔틀 화면에 보여 줄 알림 설정 상태: 알림 주소가 있는지, 트리거가 설치되어 있는지
+function getShuttleAlertSetup() {
+  requireUser_();
+  const recipients = (PropertiesService.getScriptProperties().getProperty(SHUTTLE_ALERT.EMAILS_KEY) || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  const triggerOn = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'checkShuttleAlerts');
+  return { recipients: recipients.length, triggerOn: triggerOn };
 }
 
 // 편집기에서 실행해 알림 받을 주소로 테스트 메일이 가는지 확인

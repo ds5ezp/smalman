@@ -942,7 +942,7 @@
       <!-- 운행 현황 -->
       <section data-panel="sStatus" class="d-none">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="small text-muted" id="sCheckedAt">불러오는 중…</span>
+          <span><span class="small text-muted" id="sCheckedAt">불러오는 중…</span><div class="small" id="sAlertSetup"></div></span>
           <span class="small text-muted"><i class="bi bi-broadcast me-1"></i>15초마다 자동 새로고침</span>
         </div>
         <div class="card p-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -5412,7 +5412,23 @@
       return s < 60 ? s + '초 전' : s < 3600 ? Math.floor(s / 60) + '분 전' : kstTime(ms);
     }
 
+    // 지연 알림 설정 상태 (알림 주소와 트리거가 모두 있어야 실제로 메일이 나감)
+    function loadShuttleAlertSetup() {
+      run('getShuttleAlertSetup').then(s => {
+        const el = document.getElementById('sAlertSetup');
+        if (!el) return;
+        if (s.recipients && s.triggerOn) {
+          el.className = 'small text-success';
+          el.textContent = '✅ 지연 알림 설정됨 (받는 주소 ' + s.recipients + '개)';
+        } else {
+          el.className = 'small text-danger';
+          el.textContent = '⚠️ 지연 알림 미설정: ' + (s.recipients ? '' : '받는 주소 없음 ') + (s.triggerOn ? '' : '트리거 없음 (installShuttleAlertTrigger 실행 필요)');
+        }
+      }).catch(() => {});
+    }
+
     function loadShuttleSignageSwitch() {
+      loadShuttleAlertSetup();
       run('getShuttleSignageOn').then(setShuttleSignageSwitch).catch(fail);
     }
 
