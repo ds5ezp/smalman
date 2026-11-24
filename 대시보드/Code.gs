@@ -2361,41 +2361,51 @@ function buildMeetingData_(month) {
   const biz = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ko')).map(k => ({
     biz: k, prev: groups[k].prev.join('\n'), next: groups[k].next.join('\n')
   }));
-  return { m: m, prevM: prevM, staff: staff, biz: biz, team: STAFF.TEAM_NAME };
+  const y = Number(month.split('-')[0]);
+  const prevY = m === 1 ? y - 1 : y;
+  return { y: y, m: m, prevY: prevY, prevM: prevM, staff: staff, biz: biz, team: STAFF.TEAM_NAME };
 }
 
-// 전월 주요결과를 직원 전체 먼저, 그다음 이번 달 주요계획을 직원 전체로 나열
-function staffTableValues_(d) {
-  const values = [['부서명', '구분', '담당자', '내용']];
-  d.staff.forEach((s, i) => {
-    values.push([i === 0 ? d.team : '', d.prevM + '월 주요결과', s.name, s.result]);
-  });
-  d.staff.forEach(s => {
-    values.push(['', d.m + '월 주요계획', s.name, s.plan]);
-  });
+// 표 1: 전월 주요결과 (직원별), 표 2: 이번 달 주요계획 (직원별) - 각각 따로 나옴
+function resultTableValues_(d) {
+  const values = [['부서명', '담당자', '내용']];
+  d.staff.forEach((s, i) => values.push([i === 0 ? d.team : '', s.name, s.result]));
   return values;
 }
 
+function planTableValues_(d) {
+  const values = [['부서명', '담당자', '내용']];
+  d.staff.forEach((s, i) => values.push([i === 0 ? d.team : '', s.name, s.plan]));
+  return values;
+}
+
+// 재단 표: 입력이 없어도 표가 보이도록 안내 줄을 넣음
 function bizTableValues_(list) {
-  return [['제목', '내용', '비고']].concat(list.map(b => [b.biz, b.text, '']));
+  const rows = list.map(b => [b.biz, b.text, '']);
+  if (!rows.length) rows.push(['(이번 달 입력 없음)', '', '']);
+  return [['제목', '내용', '비고']].concat(rows);
 }
 
 function buildMeetingDocx_(d) {
-  const doc = DocumentApp.create('월례회 자료 ' + d.m + '월');
+  const doc = DocumentApp.create('월례회 자료 ' + d.y + '-' + d.m);
   const body = doc.getBody();
-  const styled = t => {
+  const heading = (t, level) => body.appendParagraph(t).setHeading(level);
+  const table = values => {
+    const t = body.appendTable(values);
     const header = t.getRow(0);
     for (let i = 0; i < header.getNumCells(); i++) header.getCell(i).setBackgroundColor('#dfe6f0');
+    body.appendParagraph('');
     return t;
   };
-  body.appendParagraph('거제시종합사회복지관 ' + d.m + '월 직원 월례회').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  styled(body.appendTable(staffTableValues_(d)));
-  body.appendParagraph('');
-  body.appendParagraph('거제시종합사회복지관 ' + d.prevM + '월 주요업무실적').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  styled(body.appendTable(bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.prev })))));
-  body.appendParagraph('');
-  body.appendParagraph(d.m + '월 주요업무계획').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  styled(body.appendTable(bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.next })))));
+  heading('거제시종합사회복지관 ' + d.y + '년 ' + d.m + '월 직원 월례회', DocumentApp.ParagraphHeading.HEADING2);
+  heading(d.prevY + '년 ' + d.prevM + '월 주요결과 (전월 활동)', DocumentApp.ParagraphHeading.HEADING3);
+  table(resultTableValues_(d));
+  heading(d.y + '년 ' + d.m + '월 주요계획 (이번 달 계획)', DocumentApp.ParagraphHeading.HEADING3);
+  table(planTableValues_(d));
+  heading('거제시종합사회복지관 ' + d.prevY + '년 ' + d.prevM + '월 주요업무실적', DocumentApp.ParagraphHeading.HEADING2);
+  table(bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.prev }))));
+  heading(d.y + '년 ' + d.m + '월 주요업무계획', DocumentApp.ParagraphHeading.HEADING2);
+  table(bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.next }))));
   doc.saveAndClose();
   // 구글 문서를 한글(.docx) 형식으로 내보내는 주소를 직접 불러옴 (getAs 가 막히는 경우를 피함)
   const res = UrlFetchApp.fetch('https://docs.google.com/document/d/' + doc.getId() + '/export?format=docx', {
@@ -2423,17 +2433,20 @@ function writeMeetingBlock_(sheet, startRow, title, values, mergeFirstCol) {
 }
 
 function buildMeetingXlsx_(d) {
-  const ss = SpreadsheetApp.create('월례회 자료 ' + d.m + '월');
+  const ss = SpreadsheetApp.create('월례회 자료 ' + d.y + '-' + d.m);
   const s1 = ss.getSheets()[0];
   s1.setName('직원 월례회');
-  [120, 150, 100, 460].forEach((w, i) => s1.setColumnWidth(i + 1, w));
-  writeMeetingBlock_(s1, 1, '거제시종합사회복지관 ' + d.m + '월 직원 월례회', staffTableValues_(d), true);
+  [120, 110, 520].forEach((w, i) => s1.setColumnWidth(i + 1, w));
+  s1.getRange(1, 1).setValue('거제시종합사회복지관 ' + d.y + '년 ' + d.m + '월 직원 월례회').setFontWeight('bold').setFontSize(14);
+  let row = writeMeetingBlock_(s1, 3, d.prevY + '년 ' + d.prevM + '월 주요결과 (전월 활동)', resultTableValues_(d), true);
+  writeMeetingBlock_(s1, row, d.y + '년 ' + d.m + '월 주요계획 (이번 달 계획)', planTableValues_(d), true);
 
   const s2 = ss.insertSheet('재단 월례회');
   [260, 520, 160].forEach((w, i) => s2.setColumnWidth(i + 1, w));
-  let next = writeMeetingBlock_(s2, 1, '거제시종합사회복지관 ' + d.prevM + '월 주요업무실적',
+  s2.getRange(1, 1).setValue('거제시종합사회복지관 재단 월례회 (' + d.y + '년 ' + d.m + '월)').setFontWeight('bold').setFontSize(14);
+  row = writeMeetingBlock_(s2, 3, '거제시종합사회복지관 ' + d.prevY + '년 ' + d.prevM + '월 주요업무실적',
     bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.prev }))), false);
-  writeMeetingBlock_(s2, next + 1, d.m + '월 주요업무계획',
+  writeMeetingBlock_(s2, row, d.y + '년 ' + d.m + '월 주요업무계획',
     bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.next }))), false);
 
   // 구글 시트를 엑셀 형식으로 내보내는 주소를 직접 불러옴 (getAs 는 엑셀 변환을 지원하지 않음)
