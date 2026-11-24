@@ -4343,7 +4343,11 @@
         : '<option value="">담당 사업을 먼저 추가하세요</option>';
       if (myBiz.indexOf(keep) !== -1) sel.value = keep;
       // 처음 열었을 때만 전월 내용을 채움 (입력 중인 칸은 덮어쓰지 않음)
-      if (sel.value && !document.getElementById('mPrev').value && !document.getElementById('mNext').value) fillFoundationForm(sel.value);
+      // 월이 바뀌었을 때 한 번 채움 (같은 달에서는 입력 중인 내용을 덮어쓰지 않음)
+      if (sel.value && state.foundationFilledMonth !== meetMonth()) {
+        state.foundationFilledMonth = meetMonth();
+        fillFoundationForm(sel.value);
+      }
 
       // 내 담당 사업의 입력만 보여줌. 사업 한 줄에 전월·다음월을 함께 표시 (작성자별로 한 줄)
       const groups = {};
