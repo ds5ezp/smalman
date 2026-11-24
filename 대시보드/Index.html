@@ -1399,6 +1399,16 @@
             </table>
           </div>
         </div>
+        <div class="card p-3 mt-3">
+          <h6 class="fw-bold mb-1">전체 재단 입력 현황 <span class="text-muted small fw-normal">(모든 사업 · 읽기 전용)</span></h6>
+          <div class="small text-muted mb-2">다른 직원이 입력한 내용도 여기서 볼 수 있습니다. 고치려면 담당 사업 목록에서 작업하세요.</div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead><tr><th>사업명</th><th>전월 특이사항</th><th>다음월 특이사항</th><th>작성자</th></tr></thead>
+              <tbody id="foundationAllRows"><tr class="loading-row"><td colspan="4">불러오는 중…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </section>
      </div>
 
@@ -4365,6 +4375,23 @@
         '<td class="small">' + esc(g.name) + '</td>' +
         '<td class="text-end">' + (g.mine ? '<button class="btn btn-sm btn-outline-primary" data-biz="' + esc(g.biz) + '" onclick="editFoundation(this.dataset.biz)">수정</button>' : '') + '</td></tr>'
       ).join('') : '<tr class="loading-row"><td colspan="5">담당 사업의 이번 달 입력이 없습니다.</td></tr>';
+
+      // 전체 재단 입력 (모든 사업, 모든 작성자) - 읽기 전용
+      const allGroups = {};
+      state.meeting.rows.filter(r => r.kind === '재단').forEach(r => {
+        const key = r.biz + '|' + r.email;
+        allGroups[key] = allGroups[key] || { biz: r.biz, name: r.name, prev: '', next: '' };
+        if (r.item === '전월') allGroups[key].prev = r.text;
+        if (r.item === '다음월') allGroups[key].next = r.text;
+      });
+      const all = Object.keys(allGroups).map(k => allGroups[k]).sort((a, b) =>
+        a.biz.localeCompare(b.biz, 'ko') || String(a.name).localeCompare(String(b.name), 'ko'));
+      document.getElementById('foundationAllRows').innerHTML = all.length ? all.map(g =>
+        '<tr><td class="fw-bold">' + esc(g.biz) + '</td>' +
+        '<td class="small" style="white-space:pre-wrap">' + (esc(g.prev) || '<span class="text-muted">없음</span>') + '</td>' +
+        '<td class="small" style="white-space:pre-wrap">' + (esc(g.next) || '<span class="text-muted">없음</span>') + '</td>' +
+        '<td class="small">' + esc(g.name) + '</td></tr>'
+      ).join('') : '<tr class="loading-row"><td colspan="4">이번 달 재단 입력이 없습니다.</td></tr>';
     }
 
     function addBiz() {
