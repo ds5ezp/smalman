@@ -2394,10 +2394,14 @@ function buildMeetingDocx_(d) {
   body.appendParagraph(d.m + '월 주요업무계획').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   styled(body.appendTable(bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.next })))));
   doc.saveAndClose();
-  const file = DriveApp.getFileById(doc.getId());
-  const blob = file.getAs(MimeType.MICROSOFT_WORD);
-  file.setTrashed(true);
-  return blob;
+  // 구글 문서를 한글(.docx) 형식으로 내보내는 주소를 직접 불러옴 (getAs 가 막히는 경우를 피함)
+  const res = UrlFetchApp.fetch('https://docs.google.com/document/d/' + doc.getId() + '/export?format=docx', {
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true
+  });
+  DriveApp.getFileById(doc.getId()).setTrashed(true);
+  if (res.getResponseCode() !== 200) throw new Error('한글 파일을 만들지 못했습니다. (HTTP ' + res.getResponseCode() + ')');
+  return res.getBlob();
 }
 
 // 시트 한 블록: 제목 한 줄, 표 (첫 열은 세로로 합침)
