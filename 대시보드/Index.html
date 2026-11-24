@@ -1353,7 +1353,7 @@
           <h6 class="fw-bold mb-1">내 주요결과 · 주요계획</h6>
           <div class="small text-muted mb-3">본인 이름으로 저장됩니다. 내용을 비우고 저장하면 그 항목은 지워집니다.</div>
           <div class="row g-3">
-            <div class="col-md-6"><label class="form-label fw-bold small">주요결과 (전월 활동)</label><textarea class="form-control" id="mResults" rows="8"></textarea></div>
+            <div class="col-md-6"><label class="form-label fw-bold small">주요결과 (전월 활동)</label><textarea class="form-control" id="mResults" rows="8"></textarea><div class="small text-primary mt-1" id="mResultsHint"></div></div>
             <div class="col-md-6"><label class="form-label fw-bold small">주요계획 (이번 달 계획)</label><textarea class="form-control" id="mPlans" rows="8"></textarea></div>
           </div>
           <div class="text-end mt-3"><button class="btn btn-primary btn-sm" onclick="saveMyStaff()"><i class="bi bi-save me-1"></i>저장</button></div>
@@ -1382,10 +1382,10 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-bold small">사업명 <span class="text-muted fw-normal">(담당 사업 중에서 고르기)</span></label>
-            <select class="form-select" id="mBiz"></select>
+            <select class="form-select" id="mBiz" onchange="fillFoundationForm(this.value)"></select>
           </div>
           <div class="row g-3">
-            <div class="col-md-6"><label class="form-label fw-bold small">전월 특이사항</label><textarea class="form-control" id="mPrev" rows="5"></textarea></div>
+            <div class="col-md-6"><label class="form-label fw-bold small">전월 특이사항</label><textarea class="form-control" id="mPrev" rows="5"></textarea><div class="small text-primary mt-1" id="mPrevHint"></div></div>
             <div class="col-md-6"><label class="form-label fw-bold small">다음월 특이사항</label><textarea class="form-control" id="mNext" rows="5"></textarea></div>
           </div>
           <div class="text-end mt-3"><button class="btn btn-primary btn-sm" onclick="saveMyFoundation()"><i class="bi bi-save me-1"></i>저장</button></div>
@@ -4276,11 +4276,21 @@
       return el.value;
     }
 
+    // 'yyyy-MM' 의 전월
+    function prevMonthOf(month) {
+      const m = /^(\d{4})-(\d{2})$/.exec(month || '');
+      if (!m) return month;
+      let y = Number(m[1]), mo = Number(m[2]) - 1;
+      if (mo === 0) { mo = 12; y--; }
+      return y + '-' + (mo < 10 ? '0' : '') + mo;
+    }
+
     function loadMeeting() {
       const month = meetMonth();
-      Promise.all([run('getStaffList'), run('getMeetingData', month)]).then(([staff, data]) => {
+      Promise.all([run('getStaffList'), run('getMeetingData', month), run('getMeetingData', prevMonthOf(month))]).then(([staff, data, prev]) => {
         state.staff = staff;
         state.meeting = data;
+        state.meetingPrev = prev;
         renderMyStaff();
         renderStaffStatus();
         renderFoundation();
@@ -4292,8 +4302,13 @@
       document.getElementById('myTeam').textContent = me.team ? TEAM_NAME : (me.dept || '-');
       document.getElementById('myName').textContent = me.name || state.meeting.me;
       const mine = state.meeting.rows.filter(r => r.mine && r.kind === '직원');
-      document.getElementById('mResults').value = (mine.find(r => r.item === '결과') || {}).text || '';
+      // 이번 달에 아직 아무것도 안 썼으면, 전월 주요계획을 주요결과 칸에 미리 채움 (확인 후 저장)
+      const prevMine = ((state.meetingPrev && state.meetingPrev.rows) || []).filter(r => r.mine && r.kind === '직원');
+      const prevPlan = (prevMine.find(r => r.item === '계획') || {}).text || '';
+      const fromPrev = mine.length === 0 && !!prevPlan;
+      document.getElementById('mResults').value = fromPrev ? prevPlan : ((mine.find(r => r.item === '결과') || {}).text || '');
       document.getElementById('mPlans').value = (mine.find(r => r.item === '계획') || {}).text || '';
+      document.getElementById('mResultsHint').textContent = fromPrev ? '전월 주요계획을 가져왔습니다. 내용을 확인하고 고친 뒤 저장하세요.' : '';
     }
 
     function renderStaffStatus() {
@@ -4327,6 +4342,8 @@
         ? myBiz.map(b => '<option value="' + esc(b) + '">' + esc(b) + '</option>').join('')
         : '<option value="">담당 사업을 먼저 추가하세요</option>';
       if (myBiz.indexOf(keep) !== -1) sel.value = keep;
+      // 처음 열었을 때만 전월 내용을 채움 (입력 중인 칸은 덮어쓰지 않음)
+      if (sel.value && !document.getElementById('mPrev').value && !document.getElementById('mNext').value) fillFoundationForm(sel.value);
 
       // 내 담당 사업의 입력만 보여줌. 사업 한 줄에 전월·다음월을 함께 표시 (작성자별로 한 줄)
       const groups = {};
@@ -4356,12 +4373,21 @@
       save('removeMyBusiness', biz).then(() => { toast('담당 사업에서 뺐습니다.'); loadMeeting(); }).catch(fail);
     }
 
+    // 사업을 고르면 입력칸을 채움. 이번 달에 아직 쓴 적이 없으면 전월 '다음월 특이사항'을 전월 칸에 미리 채움
+    function fillFoundationForm(biz) {
+      const cur = state.meeting.rows.filter(r => r.mine && r.kind === '재단' && r.biz === biz);
+      const prev = ((state.meetingPrev && state.meetingPrev.rows) || []).filter(r => r.mine && r.kind === '재단' && r.biz === biz);
+      const prevNext = (prev.find(r => r.item === '다음월') || {}).text || '';
+      const fromPrev = cur.length === 0 && !!prevNext;
+      document.getElementById('mBiz').value = biz;
+      document.getElementById('mPrev').value = fromPrev ? prevNext : ((cur.find(r => r.item === '전월') || {}).text || '');
+      document.getElementById('mNext').value = (cur.find(r => r.item === '다음월') || {}).text || '';
+      document.getElementById('mPrevHint').textContent = fromPrev ? '전월 다음월 특이사항을 가져왔습니다. 확인하고 고친 뒤 저장하세요.' : '';
+    }
+
     // 내가 쓴 사업 내용을 입력칸으로 불러와서 고칠 수 있게 함
     function editFoundation(biz) {
-      const mine = state.meeting.rows.filter(r => r.mine && r.kind === '재단' && r.biz === biz);
-      document.getElementById('mBiz').value = biz;
-      document.getElementById('mPrev').value = (mine.find(r => r.item === '전월') || {}).text || '';
-      document.getElementById('mNext').value = (mine.find(r => r.item === '다음월') || {}).text || '';
+      fillFoundationForm(biz);
       window.scrollTo(0, 0);
     }
 
