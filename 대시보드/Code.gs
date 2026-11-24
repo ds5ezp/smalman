@@ -2429,10 +2429,14 @@ function buildMeetingXlsx_(d) {
   writeMeetingBlock_(s2, next + 1, d.m + '월 주요업무계획',
     bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.next }))), false);
 
-  const file = DriveApp.getFileById(ss.getId());
-  const blob = file.getAs(MimeType.MICROSOFT_EXCEL);
-  file.setTrashed(true);
-  return blob;
+  // 구글 시트를 엑셀 형식으로 내보내는 주소를 직접 불러옴 (getAs 는 엑셀 변환을 지원하지 않음)
+  const res = UrlFetchApp.fetch('https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=xlsx', {
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true
+  });
+  DriveApp.getFileById(ss.getId()).setTrashed(true);
+  if (res.getResponseCode() !== 200) throw new Error('엑셀 파일을 만들지 못했습니다. (HTTP ' + res.getResponseCode() + ')');
+  return res.getBlob();
 }
 
 // 화면에서 받을 파일 (base64). format 은 'docx' 또는 'xlsx'
