@@ -2461,6 +2461,13 @@ function buildMeetingXlsx_(d) {
   return res.getBlob();
 }
 
+// 편집기에서 한 번 실행하면 '문서' 권한 승인 창이 뜸 (한글 파일 만들기에 필요)
+function authorizeDocs() {
+  const doc = DocumentApp.create('권한 확인용 (삭제해도 됨)');
+  DriveApp.getFileById(doc.getId()).setTrashed(true);
+  return '문서 권한이 확인되었습니다.';
+}
+
 // 화면에서 받을 파일 (base64). format 은 'docx' 또는 'xlsx'
 function meetingDocumentFile(month, format) {
   requireUser_();
