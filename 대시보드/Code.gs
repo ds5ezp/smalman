@@ -2364,10 +2364,13 @@ function buildMeetingData_(month) {
   return { m: m, prevM: prevM, staff: staff, biz: biz, team: STAFF.TEAM_NAME };
 }
 
+// 전월 주요결과를 직원 전체 먼저, 그다음 이번 달 주요계획을 직원 전체로 나열
 function staffTableValues_(d) {
   const values = [['부서명', '구분', '담당자', '내용']];
   d.staff.forEach((s, i) => {
     values.push([i === 0 ? d.team : '', d.prevM + '월 주요결과', s.name, s.result]);
+  });
+  d.staff.forEach(s => {
     values.push(['', d.m + '월 주요계획', s.name, s.plan]);
   });
   return values;
