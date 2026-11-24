@@ -1133,6 +1133,8 @@
         <h6 class="fw-bold mb-1">자료 엑셀로 받기</h6>
         <div class="small text-muted mb-3">버튼을 누르면 구글 시트가 만들어지고 링크가 나옵니다. 열어서 파일 > 다운로드 > Microsoft Excel(.xlsx)로 받으세요.</div>
         <div class="d-flex flex-wrap gap-2 mb-3">
+          <button class="btn btn-sm btn-primary" onclick="downloadMeetingFile('docx')"><i class="bi bi-file-earmark-word me-1"></i>월례회 자료 한글(.docx) 받기</button>
+          <button class="btn btn-sm btn-primary" onclick="downloadMeetingFile('xlsx')"><i class="bi bi-file-earmark-excel me-1"></i>월례회 자료 엑셀(.xlsx) 받기</button>
           <button class="btn btn-sm btn-outline-success" onclick="exportSubMeeting()"><i class="bi bi-file-earmark-excel me-1"></i>월례회 자료</button>
           <button class="btn btn-sm btn-outline-success" onclick="exportSubRepair()"><i class="bi bi-file-earmark-excel me-1"></i>시설보수 목록</button>
         </div>
@@ -3177,6 +3179,26 @@
           item(s.repairs > 0, '시설보수: ' + s.repairs + '건 기록') +
           '</ul>';
       }).catch(fail);
+    }
+
+    // 회의월을 골라 한글(.docx) 또는 엑셀(.xlsx) 파일을 바로 받음
+    function downloadMeetingFile(format) {
+      const el = document.getElementById('subResult');
+      el.textContent = '파일을 만드는 중입니다…';
+      save('meetingDocumentFile', subMonth(), format).then(file => {
+        const bin = atob(file.data);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const url = URL.createObjectURL(new Blob([bytes], { type: file.mime }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        el.textContent = file.name + ' 파일을 받았습니다.';
+      }).catch(err => { el.textContent = ''; fail(err); });
     }
 
     function exportSubMeeting() {

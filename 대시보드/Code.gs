@@ -2339,6 +2339,116 @@ function exportMeetingMonth(month) {
   return ss.getUrl();
 }
 
+// ---------- 제출용 파일 (한글 .docx / 엑셀 .xlsx) ----------
+// 양식: 직원 월례회 표(부서명·구분·담당자·내용), 재단 주요업무실적·계획 표(제목·내용·비고)
+
+function buildMeetingData_(month) {
+  const rows = meetingRows_().filter(r => r.month === month);
+  const m = Number(month.split('-')[1]);
+  const prevM = m === 1 ? 12 : m - 1;
+  const staff = getStaffList().filter(s => s.team).map(s => {
+    const mine = rows.filter(r => r.kind === MEETING.STAFF && r.email === s.email);
+    const textOf = item => (mine.filter(r => r.item === item)[0] || {}).text || '';
+    return { name: s.name, result: textOf('결과'), plan: textOf('계획') };
+  });
+  // 재단: 사업별로 작성자 내용을 모아서 한 칸에 넣음
+  const groups = {};
+  rows.filter(r => r.kind === MEETING.FOUNDATION).forEach(r => {
+    groups[r.biz] = groups[r.biz] || { biz: r.biz, prev: [], next: [] };
+    if (r.item === '전월' && r.text) groups[r.biz].prev.push(r.name + ': ' + r.text);
+    if (r.item === '다음월' && r.text) groups[r.biz].next.push(r.name + ': ' + r.text);
+  });
+  const biz = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'ko')).map(k => ({
+    biz: k, prev: groups[k].prev.join('\n'), next: groups[k].next.join('\n')
+  }));
+  return { m: m, prevM: prevM, staff: staff, biz: biz, team: STAFF.TEAM_NAME };
+}
+
+function staffTableValues_(d) {
+  const values = [['부서명', '구분', '담당자', '내용']];
+  d.staff.forEach((s, i) => {
+    values.push([i === 0 ? d.team : '', d.prevM + '월 주요결과', s.name, s.result]);
+    values.push(['', d.m + '월 주요계획', s.name, s.plan]);
+  });
+  return values;
+}
+
+function bizTableValues_(list) {
+  return [['제목', '내용', '비고']].concat(list.map(b => [b.biz, b.text, '']));
+}
+
+function buildMeetingDocx_(d) {
+  const doc = DocumentApp.create('월례회 자료 ' + d.m + '월');
+  const body = doc.getBody();
+  const styled = t => {
+    const header = t.getRow(0);
+    for (let i = 0; i < header.getNumCells(); i++) header.getCell(i).setBackgroundColor('#dfe6f0');
+    return t;
+  };
+  body.appendParagraph('거제시종합사회복지관 ' + d.m + '월 직원 월례회').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  styled(body.appendTable(staffTableValues_(d)));
+  body.appendParagraph('');
+  body.appendParagraph('거제시종합사회복지관 ' + d.prevM + '월 주요업무실적').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  styled(body.appendTable(bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.prev })))));
+  body.appendParagraph('');
+  body.appendParagraph(d.m + '월 주요업무계획').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  styled(body.appendTable(bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.next })))));
+  doc.saveAndClose();
+  const file = DriveApp.getFileById(doc.getId());
+  const blob = file.getAs(MimeType.MICROSOFT_WORD);
+  file.setTrashed(true);
+  return blob;
+}
+
+// 시트 한 블록: 제목 한 줄, 표 (첫 열은 세로로 합침)
+function writeMeetingBlock_(sheet, startRow, title, values, mergeFirstCol) {
+  sheet.getRange(startRow, 1).setValue(title).setFontWeight('bold').setFontSize(13);
+  const top = startRow + 1;
+  const width = values[0].length;
+  const range = sheet.getRange(top, 1, values.length, width);
+  range.setNumberFormat('@').setValues(values).setWrap(true).setVerticalAlignment('top')
+    .setBorder(true, true, true, true, true, true);
+  sheet.getRange(top, 1, 1, width).setFontWeight('bold').setBackground('#dfe6f0').setHorizontalAlignment('center');
+  if (mergeFirstCol && values.length > 2) {
+    sheet.getRange(top + 1, 1, values.length - 1, 1).merge().setVerticalAlignment('middle').setHorizontalAlignment('center');
+  }
+  return top + values.length + 1;
+}
+
+function buildMeetingXlsx_(d) {
+  const ss = SpreadsheetApp.create('월례회 자료 ' + d.m + '월');
+  const s1 = ss.getSheets()[0];
+  s1.setName('직원 월례회');
+  [120, 150, 100, 460].forEach((w, i) => s1.setColumnWidth(i + 1, w));
+  writeMeetingBlock_(s1, 1, '거제시종합사회복지관 ' + d.m + '월 직원 월례회', staffTableValues_(d), true);
+
+  const s2 = ss.insertSheet('재단 월례회');
+  [260, 520, 160].forEach((w, i) => s2.setColumnWidth(i + 1, w));
+  let next = writeMeetingBlock_(s2, 1, '거제시종합사회복지관 ' + d.prevM + '월 주요업무실적',
+    bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.prev }))), false);
+  writeMeetingBlock_(s2, next + 1, d.m + '월 주요업무계획',
+    bizTableValues_(d.biz.map(b => ({ biz: b.biz, text: b.next }))), false);
+
+  const file = DriveApp.getFileById(ss.getId());
+  const blob = file.getAs(MimeType.MICROSOFT_EXCEL);
+  file.setTrashed(true);
+  return blob;
+}
+
+// 화면에서 받을 파일 (base64). format 은 'docx' 또는 'xlsx'
+function meetingDocumentFile(month, format) {
+  requireUser_();
+  checkMonth_(month);
+  const d = buildMeetingData_(month);
+  const blob = format === 'xlsx' ? buildMeetingXlsx_(d) : buildMeetingDocx_(d);
+  log_('월례회 파일 받기', month + ' ' + format);
+  return {
+    name: '월례회 자료 ' + month + '.' + (format === 'xlsx' ? 'xlsx' : 'docx'),
+    mime: blob.getContentType(),
+    data: Utilities.base64Encode(blob.getBytes())
+  };
+}
+
 function writeExportTable_(sheet, rows) {
   const width = rows[0].length;
   sheet.getRange(1, 1, rows.length, width).setNumberFormat('@').setValues(rows).setWrap(true).setVerticalAlignment('top');
