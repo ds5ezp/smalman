@@ -765,7 +765,10 @@ function normDesign(d) {
       bunting: deco.bunting !== false, burst: deco.burst !== false, confetti: deco.confetti !== false,
       chars: !!deco.chars, snow: !!deco.snow, petals: !!deco.petals, hearts: !!deco.hearts
     },
-    stickers: { builtin: builtin, custom: custom },
+    stickers: {
+      builtin: builtin, custom: custom,
+      customOn: Array.isArray(st.customOn) ? st.customOn.filter(x => custom.indexOf(x) !== -1) : custom.slice()
+    },
     ratio: { '1:1': '1fr 1fr', '3:2': '3fr 2fr', '2:1': '2fr 1fr' }[d.ratio] || '3fr 2fr'
   };
 }
@@ -785,7 +788,7 @@ function buildConfig(st) {
     : ['SunHi', 'InJoon', 'Natural', 'Online', 'Google', 'Heami'];
   c.design = normDesign(c.design);
   c.stickers = st.template === 'custom'
-    ? c.design.stickers.builtin.concat(c.design.stickers.custom.map((_, i) => 'u' + i))
+    ? c.design.stickers.builtin.concat(c.design.stickers.customOn.map((_, i) => 'u' + i))
     : BUILTIN_STICKERS.slice(0, 8);
   c.maxSimultaneous = 10;
   c.adminHoldMs = 3000;
@@ -974,7 +977,7 @@ drawBunting();
 function svgFor(type) {
   const m = /^u(\d)$/.exec(type);
   if (!m) return `<svg viewBox="0 0 100 100"><use href="#s-${type}"/></svg>`;
-  const id = (CONFIG.design && CONFIG.design.stickers.custom[Number(m[1])]) || '';
+  const id = (CONFIG.design && CONFIG.design.stickers.customOn[Number(m[1])]) || '';
   if (id && !imgCache[id]) loadImage(id, src => document.querySelectorAll(`img[data-u="${type}"]`).forEach(i => { i.src = src; }));
   return `<img data-u="${type}" alt="" src="${imgCache[id] || BLANK_IMG}">`;
 }

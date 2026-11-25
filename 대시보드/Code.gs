@@ -4051,7 +4051,13 @@ function cleanSurveyDesign_(d) {
     },
     stickers: {
       builtin: (Array.isArray(st.builtin) ? st.builtin : []).filter(x => SURVEY.BUILTIN_STICKERS.indexOf(x) !== -1),
-      custom: (Array.isArray(st.custom) ? st.custom : []).map(img).filter(Boolean).slice(0, 8)
+      custom: (Array.isArray(st.custom) ? st.custom : []).map(img).filter(Boolean).slice(0, 8),
+      // 올린 그림 중 실제로 쓰는 것 (없으면 올린 그림을 모두 씀). 올린 목록에 있는 것만 허용
+      customOn: (function () {
+        const pool = (Array.isArray(st.custom) ? st.custom : []).map(img).filter(Boolean).slice(0, 8);
+        const on = Array.isArray(st.customOn) ? st.customOn.map(img) : pool;
+        return on.filter(x => x && pool.indexOf(x) !== -1);
+      })()
     },
     ratio: ['1:1', '3:2', '2:1'].indexOf(d.ratio) !== -1 ? d.ratio : '3:2'
   };
