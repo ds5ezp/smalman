@@ -29,7 +29,7 @@ function doGet(e) {
 
   const t = HtmlService.createTemplateFromFile('Survey');
   // 처음 화면에 필요한 자료를 함께 넣어 보냄 (스크립트 안에 넣으므로 < 를 바꿔 태그가 닫히지 않게)
-  t.boot = JSON.stringify({ key: key, preview: preview, state: surveyState_(survey) })
+  t.boot = JSON.stringify({ key: key, preview: preview, state: surveyState_(survey), images: surveyImages_(survey) })
     .replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   return t.evaluate()
     .setTitle(survey.name || '만족도 조사')
@@ -184,11 +184,16 @@ function addResponses(key, round, items) {
 function getImage(key, fileId) {
   const survey = findSurvey_(String(key || ''));
   if (!survey) { Logger.log('[그림] 조사를 찾지 못함: key=' + key); return ''; }
+  return imageDataUri_(survey, String(fileId || ''));
+}
+
+// 이 조사 디자인에 들어 있는 그림 하나를 data 주소로 만듦 (아니면 '')
+function imageDataUri_(survey, fileId) {
   const d = survey.config.design || {};
   const allowed = [d.header && d.header.imageId, d.background && d.background.imageId]
     .concat((d.stickers && d.stickers.custom) || []).filter(Boolean);
   if (allowed.indexOf(String(fileId)) === -1) {
-    Logger.log('[그림] 이 조사 디자인에 없는 그림: id=' + fileId + ', 허용 ' + allowed.length + '개, 조사 상태=' + survey.config.status);
+    Logger.log('[그림] 이 조사 디자인에 없는 그림: id=' + fileId + ', 허용 ' + allowed.length + '개');
     return '';
   }
   let blob = null;
@@ -201,4 +206,14 @@ function getImage(key, fileId) {
   const bytes = blob.getBytes();
   if (bytes.length > MAX_IMAGE_BYTES) { Logger.log('[그림] 너무 큼: ' + bytes.length + '바이트'); return ''; }
   return 'data:' + (blob.getContentType() || 'image/png') + ';base64,' + Utilities.base64Encode(bytes);
+}
+
+// 처음 화면을 만들 때 그림을 함께 넣음 (화면이 따로 요청하지 않아도 되도록)
+function surveyImages_(survey) {
+  const d = survey.config.design || {};
+  const ids = [d.header && d.header.imageId, d.background && d.background.imageId]
+    .concat((d.stickers && d.stickers.custom) || []).filter(Boolean);
+  const out = {};
+  ids.forEach(id => { const u = imageDataUri_(survey, String(id)); if (u) out[id] = u; });
+  return out;
 }

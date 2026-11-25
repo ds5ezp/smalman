@@ -832,7 +832,7 @@ function renderTexts() {
 
 // ---------- 직접 꾸미기 ----------
 // 대시보드에 올린 그림(상단 그림·배경 사진·스티커)은 서버에서 한 번 받아 기억해 둠
-const imgCache = {}, imgWait = {};
+const imgCache = Object.assign({}, (BOOT && BOOT.images) || {}), imgWait = {};
 const BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 function loadImage(id, cb) {
   if (!id) return;
