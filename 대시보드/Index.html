@@ -1862,12 +1862,28 @@
               <div class="col-sm-6">
                 <div class="fw-bold mb-1">배경 무늬</div>
                 <select id="qBgPattern" class="form-select form-select-sm" onchange="designChanged()">
-                  <option value="plain">무늬 없음</option><option value="dots">점무늬</option><option value="grid">모눈</option><option value="stripes">사선 줄무늬</option><option value="image">배경 사진</option>
+                  <option value="plain">무늬 없음</option><option value="dots">점무늬</option><option value="grid">모눈</option><option value="stripes">사선 줄무늬</option><option value="image">배경 사진 (파일 올리기)</option><option value="url">배경 주소 (링크)</option>
+                  <optgroup label="꾸밈 배경">
+                    <option value="preset:sunset">노을</option><option value="preset:mint">민트</option><option value="preset:sky">하늘</option><option value="preset:forest">숲</option>
+                    <option value="preset:spring">봄꽃</option><option value="preset:ocean">바다</option><option value="preset:autumn">가을</option><option value="preset:winter">겨울</option>
+                    <option value="preset:night">밤하늘</option><option value="preset:party">축제 색감</option><option value="preset:gold">골드</option><option value="preset:pastel">파스텔</option>
+                    <option value="preset:thanks">감사</option><option value="preset:paper">종이</option>
+                  </optgroup>
                 </select>
                 <div class="d-flex align-items-center gap-2 mt-1" id="qBgImageRow">
                   <input type="file" class="form-control form-control-sm" accept="image/*" onchange="pickDesignImage(this, 'background')">
                   <img id="qBgThumb" alt="" class="rounded border d-none" style="height:40px;width:40px;object-fit:cover">
                 </div>
+                <div class="mt-1 d-none" id="qBgUrlRow">
+                  <input type="url" id="qBgUrl" class="form-control form-control-sm" placeholder="https://... 이미지 주소" onchange="designChanged()">
+                  <div class="form-text">https 주소의 그림만 됩니다. 그림을 보내 주는 사이트가 외부 접속을 막으면 보이지 않을 수 있습니다.</div>
+                </div>
+                <div class="fw-bold mt-2 mb-1">글씨체</div>
+                <select id="qFont" class="form-select form-select-sm" onchange="designChanged()">
+                  <option value="default">기본 (블랙한산 · 주아)</option><option value="do-hyeon">도현체</option><option value="gowun-dodum">고운돋움</option>
+                  <option value="gowun-batang">고운바탕 (명조)</option><option value="song-myung">송명체 (명조)</option><option value="yeon-sung">연성체</option>
+                  <option value="nanum-pen">나눔펜 (손글씨)</option><option value="gamja">감자꽃 (손글씨)</option><option value="single-day">싱글데이</option>
+                </select>
               </div>
               <div class="col-sm-6">
                 <div class="fw-bold mb-1">칸 너비 (왼쪽 : 오른쪽)</div>
@@ -5644,7 +5660,8 @@
       return {
         header: { mode: 'text', imageId: '' },
         palette: Object.assign({}, DESIGN_PRESETS[0]),
-        background: { pattern: 'dots', imageId: '' },
+        background: { pattern: 'dots', imageId: '', url: '' },
+        font: 'default',
         deco: { bunting: true, burst: true, confetti: true, chars: false, snow: false, petals: false, hearts: false },
         stickers: { builtin: Object.keys(DESIGN_STICKERS).slice(0, 8), custom: [] },
         ratio: '3:2'
@@ -5801,6 +5818,9 @@
       document.getElementById('qColBg').value = d.palette.bg;
       document.getElementById('qBgPattern').value = d.background.pattern;
       document.getElementById('qBgImageRow').classList.toggle('d-none', d.background.pattern !== 'image');
+      document.getElementById('qBgUrlRow').classList.toggle('d-none', d.background.pattern !== 'url');
+      document.getElementById('qBgUrl').value = d.background.url || '';
+      document.getElementById('qFont').value = d.font || 'default';
       setDesignThumb('qBgThumb', d.background.imageId);
       document.getElementById('qRatio').value = d.ratio;
       document.getElementById('qDeco').innerHTML = Object.keys(DESIGN_DECO).map(k =>
@@ -5841,6 +5861,8 @@
         ink: document.getElementById('qColInk').value, bg: document.getElementById('qColBg').value
       };
       d.background.pattern = document.getElementById('qBgPattern').value;
+      d.background.url = document.getElementById('qBgUrl').value.trim();
+      d.font = document.getElementById('qFont').value;
       d.ratio = document.getElementById('qRatio').value;
       Object.keys(DESIGN_DECO).forEach(k => { d.deco[k] = document.getElementById('qDeco_' + k).checked; });
       d.stickers.builtin = Object.keys(DESIGN_STICKERS).filter(k => document.getElementById('qSt_' + k).checked);
@@ -5850,6 +5872,7 @@
       readDesignForm();
       document.getElementById('qHeadImageRow').classList.toggle('d-none', state.design.header.mode !== 'image');
       document.getElementById('qBgImageRow').classList.toggle('d-none', state.design.background.pattern !== 'image');
+      document.getElementById('qBgUrlRow').classList.toggle('d-none', state.design.background.pattern !== 'url');
       schedulePreview();
     }
 

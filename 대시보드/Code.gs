@@ -3851,8 +3851,25 @@ const SURVEY = {
   DESIGN_HEADERS: ['이름', '디자인', '만든사람', '만든일시'],
   FOLDER_NAME: '만족도 조사 그림',
   BUILTIN_STICKERS: ['heart', 'pinkheart', 'star', 'smile', 'flower', 'thumb', 'clover', 'blueheart', 'snowflake', 'maple', 'sun', 'gift', 'balloon'],
-  MAX_IMAGE_BYTES: 3 * 1024 * 1024
+  MAX_IMAGE_BYTES: 3 * 1024 * 1024,
+  // 배경 프리셋·글씨체 이름은 조사 화면(만족도조사-화면/Survey.html)의 BG_PRESETS, FONT_OPTIONS 와 같아야 함
+  BG_PRESETS: ['sunset', 'mint', 'sky', 'forest', 'spring', 'ocean', 'autumn', 'winter', 'night', 'party', 'gold', 'pastel', 'thanks', 'paper'],
+  FONTS: ['default', 'do-hyeon', 'gowun-dodum', 'gowun-batang', 'song-myung', 'yeon-sung', 'nanum-pen', 'gamja', 'single-day']
 };
+
+// 배경 종류: 기본 무늬, 사진(업로드), 외부 주소, 프리셋(preset:이름)만 허용
+function cleanBgPattern_(p) {
+  p = String(p || '');
+  if (['plain', 'dots', 'grid', 'stripes', 'image', 'url'].indexOf(p) !== -1) return p;
+  if (p.indexOf('preset:') === 0 && SURVEY.BG_PRESETS.indexOf(p.slice(7)) !== -1) return p;
+  return 'dots';
+}
+
+// 외부 배경 주소: https 만 허용. 따옴표·괄호 등은 막아서 화면의 CSS가 깨지지 않게 함
+function cleanBgUrl_(u) {
+  u = String(u || '').trim();
+  return /^https:\/\/[^\s"'()<>\\]{8,500}$/.test(u) ? u : '';
+}
 
 // 파일 ID는 스크립트 속성(SURVEY_SHEET_ID)에 저장. 없거나 열 수 없으면 새로 만듦
 function surveySpreadsheet_() {
@@ -4026,7 +4043,8 @@ function cleanSurveyDesign_(d) {
   return {
     header: { mode: hd.mode === 'image' && headerImage ? 'image' : 'text', imageId: headerImage },
     palette: { main: hex(pal.main), yes: hex(pal.yes), no: hex(pal.no), ink: hex(pal.ink), bg: hex(pal.bg) },
-    background: { pattern: ['plain', 'dots', 'grid', 'stripes', 'image'].indexOf(bg.pattern) !== -1 ? bg.pattern : 'dots', imageId: img(bg.imageId) },
+    background: { pattern: cleanBgPattern_(bg.pattern), imageId: img(bg.imageId), url: cleanBgUrl_(bg.url) },
+    font: SURVEY.FONTS.indexOf(d.font) !== -1 ? d.font : 'default',
     deco: {
       bunting: !!deco.bunting, burst: !!deco.burst, confetti: !!deco.confetti, chars: !!deco.chars,
       snow: !!deco.snow, petals: !!deco.petals, hearts: !!deco.hearts
