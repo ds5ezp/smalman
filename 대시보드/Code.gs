@@ -2903,9 +2903,19 @@ const SHUTTLE_ALERT = {
   EMAILS_KEY: 'SHUTTLE_ALERT_EMAILS'
 };
 
+// 일시적인 네트워크 오류는 몇 번 다시 시도하고, 끝내 실패하면 null을 돌려줌 (예외로 알림 전체가 멈추지 않도록)
 function fetchFirebaseJson_(path) {
-  const res = UrlFetchApp.fetch(SHUTTLE.FIREBASE_URL + '/' + path + '.json', { muteHttpExceptions: true });
-  return res.getResponseCode() === 200 ? JSON.parse(res.getContentText() || 'null') : null;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = UrlFetchApp.fetch(SHUTTLE.FIREBASE_URL + '/' + path + '.json', { muteHttpExceptions: true });
+      if (res.getResponseCode() === 200) return JSON.parse(res.getContentText() || 'null');
+      Logger.log('[셔틀 알림] ' + path + ' 응답 코드 ' + res.getResponseCode() + ' (' + (i + 1) + '/3)');
+    } catch (e) {
+      Logger.log('[셔틀 알림] ' + path + ' 읽기 실패 (' + (i + 1) + '/3): ' + e);
+    }
+    Utilities.sleep(2000);
+  }
+  return null;
 }
 
 // 지금 운행 상황과 문제 목록. 지연 알림과 홈 화면이 같은 기준을 씀
