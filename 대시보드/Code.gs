@@ -2980,7 +2980,14 @@ function getShuttleSummary() {
 // 같은 문제는 REMIND_MS 간격으로만 다시 알리고, 해결된 문제는 기록에서 지움 (해결 후 재발하면 바로 알림)
 function sendShuttleAlerts_(problems, now) {
   const props = PropertiesService.getScriptProperties();
-  const state = JSON.parse(props.getProperty(SHUTTLE_ALERT.STATE_KEY) || '{}');
+  // 기록 값이 깨져 있어도(예: 주소가 잘못 들어간 경우) 알림이 멈추지 않도록 빈 기록으로 다시 시작
+  let state = {};
+  try {
+    const parsed = JSON.parse(props.getProperty(SHUTTLE_ALERT.STATE_KEY) || '{}');
+    if (parsed && typeof parsed === 'object') state = parsed;
+  } catch (e) {
+    Logger.log('[셔틀 알림] 기록 값을 읽을 수 없어 초기화합니다: ' + e);
+  }
   const current = {};
   problems.forEach(p => { current[p.key] = true; });
   Object.keys(state).forEach(key => { if (!current[key]) delete state[key]; });
