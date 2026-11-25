@@ -840,7 +840,7 @@ function loadImage(id, cb) {
   (imgWait[id] = imgWait[id] || []).push(cb);
   if (imgWait[id].length > 1 || !window.google || !google.script) return;
   google.script.run
-    .withSuccessHandler(d => { if (d) imgCache[id] = d; (imgWait[id] || []).forEach(f => d && f(d)); delete imgWait[id]; })
+    .withSuccessHandler(d => { if (d) imgCache[id] = d; else console.warn('[그림] 서버가 빈 응답을 보냄: ' + id); (imgWait[id] || []).forEach(f => d && f(d)); delete imgWait[id]; })
     .withFailureHandler(() => { delete imgWait[id]; })
     .getImage(KEY, id);
 }

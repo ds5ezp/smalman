@@ -183,13 +183,22 @@ function addResponses(key, round, items) {
 // 그 조사의 디자인에 들어 있는 그림만 보내므로, 주소를 알아도 다른 드라이브 파일은 볼 수 없음
 function getImage(key, fileId) {
   const survey = findSurvey_(String(key || ''));
-  if (!survey) return '';
+  if (!survey) { Logger.log('[그림] 조사를 찾지 못함: key=' + key); return ''; }
   const d = survey.config.design || {};
   const allowed = [d.header && d.header.imageId, d.background && d.background.imageId]
     .concat((d.stickers && d.stickers.custom) || []).filter(Boolean);
-  if (allowed.indexOf(String(fileId)) === -1) return '';
-  const blob = DriveApp.getFileById(String(fileId)).getBlob();
+  if (allowed.indexOf(String(fileId)) === -1) {
+    Logger.log('[그림] 이 조사 디자인에 없는 그림: id=' + fileId + ', 허용 ' + allowed.length + '개, 조사 상태=' + survey.config.status);
+    return '';
+  }
+  let blob = null;
+  try {
+    blob = DriveApp.getFileById(String(fileId)).getBlob();
+  } catch (e) {
+    Logger.log('[그림] 드라이브에서 읽지 못함: id=' + fileId + ' · ' + e);
+    return '';
+  }
   const bytes = blob.getBytes();
-  if (bytes.length > MAX_IMAGE_BYTES) return '';
+  if (bytes.length > MAX_IMAGE_BYTES) { Logger.log('[그림] 너무 큼: ' + bytes.length + '바이트'); return ''; }
   return 'data:' + (blob.getContentType() || 'image/png') + ';base64,' + Utilities.base64Encode(bytes);
 }
