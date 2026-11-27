@@ -1282,13 +1282,6 @@
         <div class="col-6 col-md-4"><div class="card p-3 h-100"><div class="stat-label mb-1">재단 특이사항 입력</div><div id="homeBiz" class="stat-value">-</div><div class="small text-muted">이번 달 입력된 사업 수</div></div></div>
         <div class="col-6 col-md-4"><div class="card p-3 h-100"><div class="stat-label mb-1">이번 달 시설 보수</div><div id="homeRepair" class="stat-value">-</div><div class="small text-muted" id="homeRepairSub"></div></div></div>
       </div>
-      <div class="card p-3 mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h6 class="fw-bold mb-0">셔틀 운행 상태</h6>
-          <button class="btn btn-sm btn-outline-primary" onclick="showModule('shuttle')">운행 현황 보기</button>
-        </div>
-        <div id="homeShuttle" class="small text-muted">불러오는 중…</div>
-      </div>
       <div class="row g-3 mb-3">
         <div class="col-12 col-md-6"><div class="card p-3 h-100">
           <div class="d-flex justify-content-between align-items-center mb-2">
@@ -1315,21 +1308,31 @@
         </div></div>
         <div class="col-12 col-md-6"><div class="card p-3 h-100">
           <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">시설보수 현황</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="showModule('repair')">시설보수대장</button>
+          </div>
+          <div id="homeRepairCost" class="small text-muted mb-3">불러오는 중…</div>
+          <div id="homeRepairChart"></div>
+        </div></div>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">셔틀 운행 상태</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="showModule('shuttle')">운행 현황 보기</button>
+          </div>
+          <div id="homeShuttle" class="small text-muted">불러오는 중…</div>
+        </div></div>
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
             <h6 class="fw-bold mb-0">공유트럭 처리할 일</h6>
             <button class="btn btn-sm btn-outline-primary" onclick="showModule('truck')">트럭 관리</button>
           </div>
           <div id="homeTruck" class="small text-muted">불러오는 중…</div>
         </div></div>
       </div>
-      <div class="card p-3 mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h6 class="fw-bold mb-0">시설보수 현황</h6>
-          <button class="btn btn-sm btn-outline-primary" onclick="showModule('repair')">시설보수대장</button>
-        </div>
-        <div id="homeRepairCost" class="small text-muted mb-3">불러오는 중…</div>
-        <div id="homeRepairChart"></div>
-      </div>
-      <div class="card p-3 mb-3">
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
         <h6 class="fw-bold mb-3">업무 바로 가기</h6>
         <div class="d-flex flex-wrap gap-2">
           <button class="btn btn-sm btn-primary" onclick="showModule('meeting')"><i class="bi bi-journal-text me-1"></i>월례회 자료</button>
@@ -1339,11 +1342,12 @@
           <button class="btn btn-sm btn-primary" onclick="showModule('staff')"><i class="bi bi-people me-1"></i>직원 목록</button>
           <button class="btn btn-sm btn-primary" onclick="openTicket()"><i class="bi bi-ticket-perforated me-1"></i>발권시스템</button>
         </div>
-      </div>
-      <div class="card p-3">
+        </div></div>
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
         <h6 class="fw-bold mb-1">외부 시스템 바로 가기</h6>
         <div class="small text-muted mb-3">목록은 '월례회 기록' 파일의 '바로가기' 탭에서 추가하거나 고칩니다. 주소가 비어 있는 항목은 나타나지 않습니다.</div>
         <div id="homeLinks"><span class="text-muted small">불러오는 중…</span></div>
+        </div></div>
       </div>
      </div>
 
