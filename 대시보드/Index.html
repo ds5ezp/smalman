@@ -3381,9 +3381,12 @@
           const summary = (p.summary && p.summary.length)
             ? '<ul class="mt-2 mb-0 ps-3">' + p.summary.map(s => '<li class="mb-1">' + esc(s) + '</li>').join('') + '</ul>'
             : '';
+          const notes = (p.notes && p.notes.length)
+            ? '<div class="small text-muted mt-2">' + p.notes.map(esc).join('<br>') + '</div>'
+            : '';
           pr.innerHTML = '<span class="badge text-bg-primary me-2">' + esc(p.source || '언론사 미상') + '</span>' +
             '<span class="text-muted">' + esc(p.published) + '</span>' +
-            '<div class="fw-bold mt-2">' + title + '</div>' + summary;
+            '<div class="fw-bold mt-2">' + title + '</div>' + summary + notes;
         }
       }).catch(err => {
         document.getElementById('homeRentals').textContent = '불러오지 못했습니다: ' + ((err && err.message) || err);

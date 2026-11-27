@@ -3080,7 +3080,7 @@ function getHomeExtras() {
     const a = data.articles && data.articles[0];
     if (a) press = {
       title: a.title, source: a.source || '', published: a.published || a.date || '', link: a.link || '',
-      summary: (a.summary || []).slice(0, 3), fetchedAt: data.fetchedAt
+      summary: (a.summary || []).slice(0, 8), notes: (a.notes || []).slice(0, 3), fetchedAt: data.fetchedAt
     };
   } catch (e) {
     pressError = e.message;
