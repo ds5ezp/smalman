@@ -685,14 +685,6 @@
 
       <!-- 현황 -->
       <section data-panel="lStatus" class="d-none">
-        <div class="card p-3 mb-3">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="fw-bold mb-0">신청 화면 미리보기 <span class="text-muted small fw-normal">(세로 화면 기준)</span></h6>
-            <button class="btn btn-sm btn-outline-primary" id="lPrevBtn" onclick="toggleLearnPreview()">미리보기 켜기</button>
-          </div>
-          <div class="preview-wrap" id="lPreviewWrap" data-w="1080" data-h="1920" style="height:70vh"><div class="preview-placeholder small">미리보기 켜기를 누르면 지금 선택한 학기의 신청 화면이 여기에 나옵니다.</div></div>
-          <div class="small text-muted mt-2">미리보기에 '현재 파일을 열 수 없습니다'가 나오면 브라우저에 구글 계정이 여러 개 로그인된 경우예요. <a id="lPrevNewTab" target="_blank">새 창에서 보기 <i class="bi bi-box-arrow-up-right"></i></a></div>
-        </div>
         <div class="d-flex justify-content-between align-items-center mb-2">
           <span class="small text-muted" id="lCheckedAt">불러오는 중…</span>
           <button class="btn btn-sm btn-light" onclick="loadLearnStatus()"><i class="bi bi-arrow-clockwise"></i> 새로고침</button>
@@ -716,6 +708,14 @@
               <tbody id="lCourseRows"><tr class="loading-row"><td colspan="7">불러오는 중…</td></tr></tbody>
             </table>
           </div>
+        </div>
+        <div class="card p-3 mt-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">신청 화면 미리보기 <span class="text-muted small fw-normal">(세로 화면 기준)</span></h6>
+            <button class="btn btn-sm btn-outline-primary" id="lPrevBtn" onclick="toggleLearnPreview()">미리보기 켜기</button>
+          </div>
+          <div class="preview-wrap" id="lPreviewWrap" data-w="1080" data-h="1920" style="height:70vh"><div class="preview-placeholder small">미리보기 켜기를 누르면 지금 선택한 학기의 신청 화면이 여기에 나옵니다.</div></div>
+          <div class="small text-muted mt-2">미리보기에 '현재 파일을 열 수 없습니다'가 나오면 브라우저에 구글 계정이 여러 개 로그인된 경우예요. <a id="lPrevNewTab" target="_blank">새 창에서 보기 <i class="bi bi-box-arrow-up-right"></i></a></div>
         </div>
       </section>
 
