@@ -3045,6 +3045,31 @@ function checkCalendarAccess() {
 }
 
 // 홈 화면용: 오늘 대관일정 전체와 가장 최근 언론보도 한 건
+// 알림 띠 추가 항목: 배움터 접수 마감 3일 이내, 직원 월례회 미작성 인원
+function getBandExtras() {
+  requireUser_();
+  const now = new Date();
+  const learnDeadline = [];
+  listLearnTerms_().forEach(t => {
+    try {
+      const info = learnSchedule_(learnInfo_(getLearnTerm_(t.id)));
+      const end = learnParseInput_(info.endInput);
+      const msLeft = end ? end.getTime() - now.getTime() : -1;
+      if (info.phase === '접수 중' && msLeft > 0 && msLeft <= 3 * 86400000) {
+        learnDeadline.push({ name: t.name, days: Math.max(1, Math.ceil(msLeft / 86400000)) });
+      }
+    } catch (e) {
+      // 한 학기 설정이 잘못되어도 나머지 항목은 계속 확인
+    }
+  });
+  const home = getHomeSummary();
+  return {
+    learnDeadline: learnDeadline,
+    staffUnwritten: Math.max(0, (home.teamTotal || 0) - (home.staffWritten || 0)),
+    staffTotal: home.teamTotal || 0
+  };
+}
+
 function getHomeExtras() {
   requireUser_();
   const now = new Date();

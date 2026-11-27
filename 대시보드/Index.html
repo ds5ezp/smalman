@@ -1298,6 +1298,13 @@
           <div id="homePress" class="small text-muted">불러오는 중…</div>
         </div></div>
       </div>
+      <div class="card p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-bold mb-0">만족도 조사 현황</h6>
+          <button class="btn btn-sm btn-outline-primary" onclick="showModule('survey')">만족도 조사</button>
+        </div>
+        <div id="homeSurvey" class="small text-muted">불러오는 중…</div>
+      </div>
       <div class="row g-3 mb-3">
         <div class="col-12 col-md-6"><div class="card p-3 h-100">
           <div class="d-flex justify-content-between align-items-center mb-2">
@@ -3360,6 +3367,16 @@
         document.getElementById('homeShuttle').textContent = '셔틀 상태를 불러오지 못했습니다: ' + ((err && err.message) || err);
       });
 
+      run('getSurveyData').then(d => {
+        const active = (d.surveys || []).filter(s => s.status === '진행');
+        document.getElementById('homeSurvey').innerHTML = !active.length
+          ? '진행 중인 만족도 조사가 없습니다.'
+          : '<ul class="mb-0 ps-3">' + active.map(s =>
+              '<li class="mb-1"><b>' + esc(s.name) + '</b> · 좋아요 ' + s.yes + ' · 아니에요 ' + s.no + ' (' + (s.yes + s.no) + '명 응답)</li>').join('') + '</ul>';
+      }).catch(err => {
+        document.getElementById('homeSurvey').textContent = '만족도 조사 현황을 불러오지 못했습니다: ' + ((err && err.message) || err);
+      });
+
       run('getHomeExtras').then(x => {
         const rent = document.getElementById('homeRentals');
         if (x.rentalError) {
@@ -3418,7 +3435,7 @@
     // ---------- 처리할 일 알림 띠: 셔틀 문제, 나눔트럭 접수·반납, 에어컨 문제를 모아 모든 화면 위에 표시 ----------
     // 처리할 일이 없으면 띠를 숨김. 5분마다 다시 확인하고, 칩을 누르면 해당 화면으로 이동
     function refreshActionBanner() {
-      Promise.allSettled([run('getShuttleSummary'), run('getTruckSummary'), run('getHomeAircon')]).then(([sh, tr, ac]) => {
+      Promise.allSettled([run('getShuttleSummary'), run('getTruckSummary'), run('getHomeAircon'), run('getBandExtras')]).then(([sh, tr, ac, bx]) => {
         const chips = [];
         const chip = (cls, text, module) => chips.push(
           '<button type="button" class="btn btn-sm ' + cls + ' me-2 mb-1" onclick="showModule(\'' + module + '\')">' + esc(text) + '</button>');
@@ -3434,6 +3451,10 @@
         if (ac.status === 'fulfilled') {
           if (ac.value.failed) chip('btn-warning', '에어컨 예약 실패 ' + ac.value.failed + '건', 'aircon');
           if (ac.value.offline) chip('btn-warning', '에어컨 연결 안 됨 ' + ac.value.offline + '대', 'aircon');
+        }
+        if (bx.status === 'fulfilled') {
+          bx.value.learnDeadline.forEach(l => chip('btn-danger', l.name + ' 접수 마감 D-' + l.days, 'learn'));
+          if (bx.value.staffUnwritten) chip('btn-warning', '월례회 미작성 ' + bx.value.staffUnwritten + '명', 'meeting');
         }
         const el = document.getElementById('actionBanner');
         el.innerHTML = chips.length
