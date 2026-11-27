@@ -76,6 +76,7 @@
     </aside>
 
     <main class="p-3 p-md-4">
+     <div id="actionBanner" class="d-none mb-3"></div>
      <div data-module-view="lobby" class="d-none">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <h4 class="mb-0">로비 사이니지</h4>
@@ -3326,6 +3327,35 @@
       }).catch(fail);
     }
 
+    // ---------- 처리할 일 알림 띠: 셔틀 문제, 나눔트럭 접수·반납, 에어컨 문제를 모아 모든 화면 위에 표시 ----------
+    // 처리할 일이 없으면 띠를 숨김. 5분마다 다시 확인하고, 칩을 누르면 해당 화면으로 이동
+    function refreshActionBanner() {
+      Promise.allSettled([run('getShuttleSummary'), run('getTruckSummary'), run('getHomeAircon')]).then(([sh, tr, ac]) => {
+        const chips = [];
+        const chip = (cls, text, module) => chips.push(
+          '<button type="button" class="btn btn-sm ' + cls + ' me-2 mb-1" onclick="showModule(\'' + module + '\')">' + esc(text) + '</button>');
+        if (sh.status === 'fulfilled' && sh.value.problems && sh.value.problems.length) {
+          chip('btn-danger', '셔틀 확인 필요 ' + sh.value.problems.length + '건', 'shuttle');
+        }
+        if (tr.status === 'fulfilled' && tr.value.ready) {
+          const c = tr.value.counts;
+          if (c.pending) chip('btn-primary', '나눔트럭 접수 대기 ' + c.pending + '건', 'truck');
+          if (c.returnReview) chip('btn-primary', '나눔트럭 반납 검토 ' + c.returnReview + '건', 'truck');
+          if (c.overdue) chip('btn-danger', '나눔트럭 반납 지연 ' + c.overdue + '건', 'truck');
+        }
+        if (ac.status === 'fulfilled') {
+          if (ac.value.failed) chip('btn-warning', '에어컨 예약 실패 ' + ac.value.failed + '건', 'aircon');
+          if (ac.value.offline) chip('btn-warning', '에어컨 연결 안 됨 ' + ac.value.offline + '대', 'aircon');
+        }
+        const el = document.getElementById('actionBanner');
+        el.innerHTML = chips.length
+          ? '<div class="card border-0 shadow-sm p-2 px-3"><div class="small fw-bold text-muted mb-1"><i class="bi bi-bell-fill text-danger me-1"></i>처리할 일</div><div>' + chips.join('') + '</div></div>'
+          : '';
+        el.classList.toggle('d-none', !chips.length);
+      });
+    }
+    setInterval(refreshActionBanner, 5 * 60 * 1000);
+
     // ---------- 꽃다비 카페 사이니지 ----------
     var cafeSlides = [];
     var cafeFileLists = {};
@@ -6290,6 +6320,7 @@
       // 예: 복지사업팀 · 홍길동 사회복지사
       document.getElementById('userName').textContent = [p.dept, [p.name, p.title].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
       showModule('home');
+      refreshActionBanner();
       document.getElementById('linkDisplay').href = boot.lobby.displayUrl;
       document.getElementById('lobbyPreviewNewTab').href = boot.lobby.displayUrl;
       document.getElementById('linkSheet').href = boot.lobby.sheetUrl;
