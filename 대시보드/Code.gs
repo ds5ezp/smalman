@@ -3065,10 +3065,10 @@ function getHomeExtras() {
         allDay: e.isAllDayEvent(),
         start: e.isAllDayEvent() ? '' : fmt_(e.getStartTime(), 'HH:mm'),
         end: e.isAllDayEvent() ? '' : fmt_(e.getEndTime(), 'HH:mm'),
-        startMs: e.getStartTime().getTime()
+        startMs: e.getStartTime().getTime(),
+        endMs: e.getEndTime().getTime()
       }))
-      .sort((a, b) => a.startMs - b.startMs)
-      .map(({ startMs, ...rest }) => rest);
+      .sort((a, b) => a.startMs - b.startMs);
   } catch (e) {
     rentalError = e.message;
   }
@@ -3078,7 +3078,10 @@ function getHomeExtras() {
   try {
     const data = getPressMonitor(false);
     const a = data.articles && data.articles[0];
-    if (a) press = { title: a.title, source: a.source || '', published: a.published || a.date || '', link: a.link || '', fetchedAt: data.fetchedAt };
+    if (a) press = {
+      title: a.title, source: a.source || '', published: a.published || a.date || '', link: a.link || '',
+      summary: (a.summary || []).slice(0, 3), fetchedAt: data.fetchedAt
+    };
   } catch (e) {
     pressError = e.message;
   }

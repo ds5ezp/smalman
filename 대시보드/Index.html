@@ -3256,6 +3256,42 @@
       return '<div class="col-4"><div class="small text-muted">' + label + '</div><div class="fw-bold fs-5 ' + (cls || '') + '">' + value + '</div></div>';
     }
 
+    // ---------- 홈: 오늘 대관일정 (지금 진행 중인 일정 강조, 지나간 일정은 흐리게, 다음 일정 표시) ----------
+    let homeRentalsData = null;
+    function todayKeyLocal_() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function renderHomeRentals() {
+      const el = document.getElementById('homeRentals');
+      if (!el || !homeRentalsData) return;
+      const list = homeRentalsData.list;
+      if (!list.length) { el.textContent = '오늘 대관 일정이 없습니다.'; return; }
+      const now = Date.now();
+      const isNow = r => r.allDay || (r.startMs <= now && now < r.endMs);
+      const nextIdx = list.findIndex(r => !isNow(r) && r.startMs > now);
+      const current = list.filter(isNow);
+      const head = current.length
+        ? '<div class="mb-2"><span class="badge text-bg-success me-1">지금 대관 중</span>' + current.map(r => esc(r.title)).join(', ') + '</div>'
+        : '<div class="mb-2 text-muted">지금 진행 중인 대관은 없습니다.</div>';
+      el.innerHTML = head + '<ul class="mb-0 ps-3">' + list.map((r, i) => {
+        const cur = isNow(r);
+        const past = !cur && r.endMs <= now;
+        const cls = cur ? 'fw-bold' : past ? 'text-muted' : '';
+        const tag = cur ? ' <span class="badge text-bg-success">진행 중</span>' : i === nextIdx ? ' <span class="badge text-bg-primary">다음</span>' : '';
+        return '<li class="mb-1 ' + cls + '"><b>' + (r.allDay ? '종일' : esc(r.start) + ' ~ ' + esc(r.end)) + '</b> ' + esc(r.title) + tag + '</li>';
+      }).join('') + '</ul>';
+    }
+    // 1분마다 다시 그림. 날짜가 바뀌면 홈 화면을 새로 불러옴
+    setInterval(() => {
+      if (!homeRentalsData) return;
+      if (homeRentalsData.day !== todayKeyLocal_()) {
+        if (!document.querySelector('[data-module-view="home"]').classList.contains('d-none')) loadHome();
+        return;
+      }
+      renderHomeRentals();
+    }, 60 * 1000);
+
     function loadHome() {
       run('getHomeAircon').then(a => {
         document.getElementById('homeAircon').innerHTML =
@@ -3324,11 +3360,9 @@
         const rent = document.getElementById('homeRentals');
         if (x.rentalError) {
           rent.textContent = '대관일정을 불러오지 못했습니다: ' + x.rentalError;
-        } else if (!x.rentals.length) {
-          rent.textContent = '오늘 대관 일정이 없습니다.';
         } else {
-          rent.innerHTML = '<ul class="mb-0 ps-3">' + x.rentals.map(r =>
-            '<li class="mb-1"><b>' + (r.allDay ? '종일' : esc(r.start) + ' ~ ' + esc(r.end)) + '</b> ' + esc(r.title) + '</li>').join('') + '</ul>';
+          homeRentalsData = { day: x.today, list: x.rentals };
+          renderHomeRentals();
         }
         const pr = document.getElementById('homePress');
         if (x.pressError) {
@@ -3340,9 +3374,12 @@
           const title = p.link
             ? '<a href="' + esc(p.link) + '" target="_blank" rel="noopener" class="text-decoration-none">' + esc(p.title) + ' <i class="bi bi-box-arrow-up-right small"></i></a>'
             : esc(p.title);
+          const summary = (p.summary && p.summary.length)
+            ? '<ul class="mt-2 mb-0 ps-3">' + p.summary.map(s => '<li class="mb-1">' + esc(s) + '</li>').join('') + '</ul>'
+            : '';
           pr.innerHTML = '<span class="badge text-bg-primary me-2">' + esc(p.source || '언론사 미상') + '</span>' +
             '<span class="text-muted">' + esc(p.published) + '</span>' +
-            '<div class="fw-bold mt-2">' + title + '</div>';
+            '<div class="fw-bold mt-2">' + title + '</div>' + summary;
         }
       }).catch(err => {
         document.getElementById('homeRentals').textContent = '불러오지 못했습니다: ' + ((err && err.message) || err);
