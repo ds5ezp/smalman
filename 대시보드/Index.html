@@ -3401,9 +3401,13 @@
         if (weekItems.length) {
           const byDay = {};
           weekItems.forEach(w => { (byDay[w.date] = byDay[w.date] || []).push(w); });
-          wk.innerHTML = '<div class="fw-bold mb-1">이번 주 대관</div>' + Object.keys(byDay).map(day =>
-            '<div class="mb-1"><span class="badge text-bg-light border me-1">' + esc(day) + '</span>' +
-            byDay[day].map(w => (w.allDay ? '종일' : esc(w.time)) + ' ' + esc(w.title)).join(' · ') + '</div>').join('');
+          wk.innerHTML = '<div class="fw-bold mb-1">앞으로 7일 대관</div>' + Object.keys(byDay).map(day =>
+            '<div class="d-flex gap-3 py-2 border-top">' +
+              '<div class="fw-bold text-nowrap" style="min-width:90px">' + esc(day) + '</div>' +
+              '<ul class="mb-0 flex-fill" style="list-style:none;padding:0">' +
+                byDay[day].map(w =>
+                  '<li class="mb-1"><span class="fw-bold text-nowrap me-2">' + (w.allDay ? '종일' : esc(w.time)) + '</span>' + esc(w.title) + '</li>').join('') +
+              '</ul></div>').join('');
         } else {
           wk.innerHTML = '';
         }

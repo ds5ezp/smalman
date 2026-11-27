@@ -3106,9 +3106,11 @@ function getHomeExtras() {
       }))
       .sort((a, b) => a.startMs - b.startMs);
     // 이번 주(오늘부터 7일): 날짜별로 묶음
-    const weekEnd = new Date(dayStart.getTime() + 7 * 86400000);
+    // 오늘은 위 목록에 있으니, 내일부터 7일 동안의 일정을 보여 줌
+    const weekStart = new Date(dayStart.getTime() + 86400000);
+    const weekEnd = new Date(dayStart.getTime() + 8 * 86400000);
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-    week = cal.getEvents(dayStart, weekEnd)
+    week = cal.getEvents(weekStart, weekEnd)
       .map(e => {
         const s = e.getStartTime();
         return {
