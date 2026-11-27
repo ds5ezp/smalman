@@ -3044,6 +3044,48 @@ function checkCalendarAccess() {
   Logger.log(cal.getName() + ' 캘린더 읽기 성공 - 오늘 일정 ' + events.length + '건');
 }
 
+// 홈 화면용: 오늘 대관일정 전체와 가장 최근 언론보도 한 건
+function getHomeExtras() {
+  requireUser_();
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+  const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+  let rentals = [];
+  let rentalError = '';
+  try {
+    let cal = CalendarApp.getCalendarById(ROOM.CALENDAR_ID);
+    if (!cal) {
+      try { cal = CalendarApp.subscribeToCalendar(ROOM.CALENDAR_ID, { hidden: false }); } catch (e) {}
+    }
+    if (!cal) throw new Error('대관 캘린더를 내 캘린더 목록에 추가해 주세요.');
+    rentals = cal.getEvents(dayStart, dayEnd)
+      .map(e => ({
+        title: e.getTitle(),
+        allDay: e.isAllDayEvent(),
+        start: e.isAllDayEvent() ? '' : fmt_(e.getStartTime(), 'HH:mm'),
+        end: e.isAllDayEvent() ? '' : fmt_(e.getEndTime(), 'HH:mm'),
+        startMs: e.getStartTime().getTime()
+      }))
+      .sort((a, b) => a.startMs - b.startMs)
+      .map(({ startMs, ...rest }) => rest);
+  } catch (e) {
+    rentalError = e.message;
+  }
+
+  let press = null;
+  let pressError = '';
+  try {
+    const data = getPressMonitor(false);
+    const a = data.articles && data.articles[0];
+    if (a) press = { title: a.title, source: a.source || '', published: a.published || a.date || '', link: a.link || '', fetchedAt: data.fetchedAt };
+  } catch (e) {
+    pressError = e.message;
+  }
+
+  return { today: fmt_(now, 'yyyy-MM-dd'), rentals: rentals, rentalError: rentalError, press: press, pressError: pressError };
+}
+
 // 실별로 지금 수업, 다음 수업, 화면에 나오는 이미지 종류를 각 실 사이니지와 같은 규칙으로 계산
 function getRoomsStatus() {
   requireUser_();

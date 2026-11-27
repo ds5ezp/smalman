@@ -1292,6 +1292,22 @@
       <div class="row g-3 mb-3">
         <div class="col-12 col-md-6"><div class="card p-3 h-100">
           <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">오늘 대관일정</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="showModule('mycal')">대관일정 보기</button>
+          </div>
+          <div id="homeRentals" class="small text-muted">불러오는 중…</div>
+        </div></div>
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">최근 언론보도</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="showModule('press')">언론보도 보기</button>
+          </div>
+          <div id="homePress" class="small text-muted">불러오는 중…</div>
+        </div></div>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
             <h6 class="fw-bold mb-0">에어컨 상태</h6>
             <button class="btn btn-sm btn-outline-primary" onclick="showModule('aircon')">에어컨 제어</button>
           </div>
@@ -3302,6 +3318,34 @@
           (sh.problems.length ? '<ul class="mt-2 mb-0 ps-3">' + sh.problems.map(p => '<li>' + esc(p) + '</li>').join('') + '</ul>' : '');
       }).catch(err => {
         document.getElementById('homeShuttle').textContent = '셔틀 상태를 불러오지 못했습니다: ' + ((err && err.message) || err);
+      });
+
+      run('getHomeExtras').then(x => {
+        const rent = document.getElementById('homeRentals');
+        if (x.rentalError) {
+          rent.textContent = '대관일정을 불러오지 못했습니다: ' + x.rentalError;
+        } else if (!x.rentals.length) {
+          rent.textContent = '오늘 대관 일정이 없습니다.';
+        } else {
+          rent.innerHTML = '<ul class="mb-0 ps-3">' + x.rentals.map(r =>
+            '<li class="mb-1"><b>' + (r.allDay ? '종일' : esc(r.start) + ' ~ ' + esc(r.end)) + '</b> ' + esc(r.title) + '</li>').join('') + '</ul>';
+        }
+        const pr = document.getElementById('homePress');
+        if (x.pressError) {
+          pr.textContent = '언론보도를 불러오지 못했습니다: ' + x.pressError;
+        } else if (!x.press) {
+          pr.textContent = '등록된 언론보도가 없습니다.';
+        } else {
+          const p = x.press;
+          const title = p.link
+            ? '<a href="' + esc(p.link) + '" target="_blank" rel="noopener" class="text-decoration-none">' + esc(p.title) + ' <i class="bi bi-box-arrow-up-right small"></i></a>'
+            : esc(p.title);
+          pr.innerHTML = '<span class="badge text-bg-primary me-2">' + esc(p.source || '언론사 미상') + '</span>' +
+            '<span class="text-muted">' + esc(p.published) + '</span>' +
+            '<div class="fw-bold mt-2">' + title + '</div>';
+        }
+      }).catch(err => {
+        document.getElementById('homeRentals').textContent = '불러오지 못했습니다: ' + ((err && err.message) || err);
       });
 
       Promise.all([run('getHomeSummary'), run('getPortalLinks')]).then(([s, links]) => {
