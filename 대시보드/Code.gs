@@ -3045,6 +3045,16 @@ function checkCalendarAccess() {
 }
 
 // 홈 화면용: 오늘 대관일정 전체와 가장 최근 언론보도 한 건
+// 올해 '조치 후' 사진이 없는 시설보수 기록 목록 (홈 화면에서 바로 확인용, 최근 것부터)
+function getRepairNoAfter() {
+  requireUser_();
+  const year = fmt_(new Date(), 'yyyy');
+  return repairRows_()
+    .filter(r => r.date.indexOf(year) === 0 && r.before.length > 0 && r.after.length === 0)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map(r => ({ date: r.date, place: r.place, content: r.content, name: r.name }));
+}
+
 // 알림 띠 추가 항목: 배움터 접수 마감 3일 이내, 직원 월례회 미작성 인원
 function getBandExtras() {
   requireUser_();
@@ -3077,6 +3087,7 @@ function getHomeExtras() {
   const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
   let rentals = [];
+  let week = [];
   let rentalError = '';
   try {
     let cal = CalendarApp.getCalendarById(ROOM.CALENDAR_ID);
@@ -3093,6 +3104,21 @@ function getHomeExtras() {
         startMs: e.getStartTime().getTime(),
         endMs: e.getEndTime().getTime()
       }))
+      .sort((a, b) => a.startMs - b.startMs);
+    // 이번 주(오늘부터 7일): 날짜별로 묶음
+    const weekEnd = new Date(dayStart.getTime() + 7 * 86400000);
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    week = cal.getEvents(dayStart, weekEnd)
+      .map(e => {
+        const s = e.getStartTime();
+        return {
+          date: fmt_(s, 'M/d') + ' (' + dayNames[s.getDay()] + ')',
+          title: e.getTitle(),
+          allDay: e.isAllDayEvent(),
+          time: e.isAllDayEvent() ? '' : fmt_(s, 'HH:mm') + ' ~ ' + fmt_(e.getEndTime(), 'HH:mm'),
+          startMs: s.getTime()
+        };
+      })
       .sort((a, b) => a.startMs - b.startMs);
   } catch (e) {
     rentalError = e.message;
@@ -3111,7 +3137,7 @@ function getHomeExtras() {
     pressError = e.message;
   }
 
-  return { today: fmt_(now, 'yyyy-MM-dd'), rentals: rentals, rentalError: rentalError, press: press, pressError: pressError };
+  return { today: fmt_(now, 'yyyy-MM-dd'), rentals: rentals, week: week, rentalError: rentalError, press: press, pressError: pressError };
 }
 
 // 실별로 지금 수업, 다음 수업, 화면에 나오는 이미지 종류를 각 실 사이니지와 같은 규칙으로 계산
