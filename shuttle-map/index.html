@@ -186,14 +186,38 @@
       return map;
     }
 
+    // 노선경로 탭(코스, 순번, 위도, 경도)을 코스별 좌표 목록으로 바꿈 (도로를 따라 그린 선)
+    function parseRoadRows(json) {
+      const rows = json?.table?.rows || [];
+      const byCourse = {};
+      rows.forEach(r => {
+        const c = r?.c || [];
+        const course = String(c[0]?.v ?? '').trim();
+        const seq = Number(c[1]?.v) || 0;
+        const lat = Number(c[2]?.v), lng = Number(c[3]?.v);
+        if (!course || !(lat > 0 && lng > 0)) return;
+        (byCourse[course] = byCourse[course] || []).push({ seq: seq, lat: lat, lng: lng });
+      });
+      const out = {};
+      Object.keys(byCourse).forEach(k => {
+        const pts = byCourse[k].sort((a, b) => a.seq - b.seq);
+        if (pts.length > 1) out[k] = pts.map(p => new kakao.maps.LatLng(p.lat, p.lng));
+      });
+      return out;
+    }
+
     async function loadRoutes() {
-      const [stationJson, routeJson] = await Promise.all([gvizJsonp('정류소목록'), gvizJsonp('노선데이터')]);
+      // 노선경로 탭이 없거나 읽지 못하면 아래에서 기존 자동차 길찾기로 그림
+      const [stationJson, routeJson, roadJson] = await Promise.all([
+        gvizJsonp('정류소목록'), gvizJsonp('노선데이터'), gvizJsonp('노선경로').catch(() => null)
+      ]);
       const parsed = parseRoutes(routeJson, parseStations(stationJson));
       const keys = Object.keys(parsed).filter(k => parsed[k].stops.length > 1);
       if (!keys.length) throw new Error('노선 데이터가 비어 있습니다.');
 
       ensureMap();
-      const paths = await Promise.all(keys.map(k => roadPath(parsed[k].stops)));
+      const roadByCourse = roadJson ? parseRoadRows(roadJson) : {};
+      const paths = await Promise.all(keys.map(k => roadByCourse[k] ? Promise.resolve(roadByCourse[k]) : roadPath(parsed[k].stops)));
 
       routeData = {};
       keys.forEach(k => { routeData[k] = parsed[k]; });
